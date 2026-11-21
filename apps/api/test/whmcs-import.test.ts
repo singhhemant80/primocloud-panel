@@ -112,6 +112,9 @@ test("WHMCS import: dry run writes nothing, real run imports everything, re-run 
   assert.equal(paid.total, 64782);
   assert.equal(paid.items[0].relId, svc.id);
   assert.equal(paid.transactions.length, 2, "payment + refund linked");
+  // invoice dates come from WHMCS (2025-01-10 IST), not the day of the import — lists and the invoice page use createdAt
+  assert.equal(paid.issueDate.toISOString(), "2025-01-09T18:30:00.000Z");
+  assert.equal(paid.createdAt.toISOString(), "2025-01-09T18:30:00.000Z");
   const unpaid = await prisma.invoice.findFirstOrThrow({ where: { proformaNumber: `WH-${id(51)}` }, include: { items: true } });
   assert.equal(unpaid.status, "UNPAID");
   assert.equal(unpaid.number, null);
@@ -166,6 +169,10 @@ test("WHMCS import: dry run writes nothing, real run imports everything, re-run 
   assert.equal(again.counts.transactions.created, 0);
   assert.equal(await prisma.user.count({ where: { email: `ravi-${RUN}@example.in` } }), 1);
   assert.equal((await prisma.invoice.findUniqueOrThrow({ where: { id: unpaid.id } })).status, "PAID");
+  // a re-run puts back the WHMCS date on invoices imported earlier with today's date
+  await prisma.invoice.update({ where: { id: paid.id }, data: { createdAt: new Date(), issueDate: new Date() } });
+  await runWhmcsImport(source(data), { ...opts, dryRun: false });
+  assert.equal((await prisma.invoice.findUniqueOrThrow({ where: { id: paid.id } })).createdAt.toISOString(), "2025-01-09T18:30:00.000Z");
   assert.equal((await prisma.service.findUniqueOrThrow({ where: { id: svc.id } })).nextDueDate!.toISOString().slice(0, 10), "2026-12-14", "IST midnight stored as UTC");
   const ravi2 = await prisma.user.findUniqueOrThrow({ where: { id: ravi.id }, include: { profile: true } });
   assert.equal(ravi2.profile!.creditBalance, 30000);

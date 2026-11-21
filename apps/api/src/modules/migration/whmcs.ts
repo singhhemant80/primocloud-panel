@@ -621,6 +621,8 @@ export async function runWhmcsImport(src: SourceDb, opts: ImportOptions, onProgr
           terminationDate: dt(h.termination_date) ?? (["TERMINATED", "CANCELLED"].includes(status) ? cancelReq.get(String(h.id))?.date ?? null : null),
           ...(["TERMINATED", "CANCELLED"].includes(status) && cancelReq.get(String(h.id)) ? { terminationReason: `Cancellation requested by the customer${cancelReq.get(String(h.id))!.reason ? `: ${cancelReq.get(String(h.id))!.reason.slice(0, 250)}` : ""}` } : {}),
           notes: nul(h.notes),
+          // "created" = the WHMCS registration date, not the day of the import
+          ...(dt(h.regdate) ? { createdAt: dt(h.regdate)! } : {}),
           ...(remoteId ? { remoteId } : {}),
           ...(node ? { node } : {}),
         };
@@ -681,6 +683,7 @@ export async function runWhmcsImport(src: SourceDb, opts: ImportOptions, onProgr
           status: DOMAIN_STATUS[str(d.status).toLowerCase()] ?? "ACTIVE", registrar: str(d.registrar) || "manual", years: Number(d.registrationperiod) || 1,
           registrationDate: dt(d.registrationdate), expiryDate: dt(d.expirydate), nextDueDate: dt(d.nextduedate), recurringAmount: paise(d.recurringamount),
           autoRenew: !Number(d.donotrenew), idProtection: !!Number(d.idprotection),
+          ...(dt(d.registrationdate) ? { createdAt: dt(d.registrationdate)! } : {}),
         };
         let localId = get("domain", d.id);
         if (!localId) {
@@ -726,7 +729,8 @@ export async function runWhmcsImport(src: SourceDb, opts: ImportOptions, onProgr
         const amountPaid = status === "PAID" ? total : Math.min(total, Math.max(0, (paidBy.get(String(inv.id)) ?? 0) + credit));
         const existing = get("invoice", inv.id);
         if (existing) {
-          await tx.invoice.update({ where: { id: existing }, data: { status, amountPaid, paidAt: status === "PAID" ? paidAt ?? issue : null, dueDate: dt(inv.duedate) ?? issue } });
+          // issueDate/createdAt too: invoices imported before this fix were stamped with the import day
+          await tx.invoice.update({ where: { id: existing }, data: { status, amountPaid, paidAt: status === "PAID" ? paidAt ?? issue : null, dueDate: dt(inv.duedate) ?? issue, issueDate: issue, createdAt: issue } });
           c("invoices").updated++;
           continue;
         }
@@ -740,7 +744,7 @@ export async function runWhmcsImport(src: SourceDb, opts: ImportOptions, onProgr
         const due = dt(inv.duedate) ?? issue;
         const created = await tx.invoice.create({
           data: {
-            number, proformaNumber: `WH-${inv.id}`, userId, status, currency: prof?.currency ?? "INR", issueDate: issue, dueDate: due, paidAt: status === "PAID" ? paidAt ?? issue : null,
+            number, proformaNumber: `WH-${inv.id}`, userId, status, currency: prof?.currency ?? "INR", issueDate: issue, createdAt: issue, dueDate: due, paidAt: status === "PAID" ? paidAt ?? issue : null,
             subtotal: paise(inv.subtotal) + its.filter((x) => paise(x.amount) < 0).reduce((s, x) => s - paise(x.amount), 0),
             discount: its.filter((x) => paise(x.amount) < 0).reduce((s, x) => s - paise(x.amount), 0),
             taxableAmount: its.filter((x) => Number(x.taxed)).reduce((s, x) => s + paise(x.amount), 0),
