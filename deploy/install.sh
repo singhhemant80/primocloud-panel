@@ -8,7 +8,11 @@
 set -euo pipefail
 
 DOMAIN="${DOMAIN:?Set DOMAIN, e.g. DOMAIN=primocloud.in}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@${DOMAIN}}"
+# a bare IPv4 address = access by IP before DNS is ready: plain http, no certificate
+IS_IP=0
+[[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && IS_IP=1
+if [ "$IS_IP" = "1" ]; then SCHEME=http; MAIL_DOMAIN=primocloud.in; unset LETSENCRYPT_EMAIL; else SCHEME=https; MAIL_DOMAIN="$DOMAIN"; fi
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@${MAIL_DOMAIN}}"
 APP_USER="${APP_USER:-primocloud}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/apps/api/.env"
@@ -89,7 +93,7 @@ SQL
   cat > "$ENV_FILE" <<ENV
 NODE_ENV=production
 API_PORT=4000
-APP_URL=https://${DOMAIN}
+APP_URL=${SCHEME}://${DOMAIN}
 DATABASE_URL=postgresql://primocloud:${DB_PASS}@127.0.0.1:5432/primocloud
 REDIS_URL=${REDIS_URL_VALUE}
 JWT_SECRET=$(openssl rand -hex 48)
@@ -103,7 +107,7 @@ SMTP_PORT=${SMTP_PORT:-587}
 SMTP_SECURE=false
 SMTP_USER=${SMTP_USER:-}
 SMTP_PASS=${SMTP_PASS:-}
-SMTP_FROM="${SMTP_FROM:-PrimoCloud <billing@${DOMAIN}>}"
+SMTP_FROM="${SMTP_FROM:-PrimoCloud <info@${MAIL_DOMAIN}>}"
 INBOUND_EMAIL_SECRET=$(openssl rand -hex 24)
 IP_RESERVATION_MINUTES=15
 PROVISION_DRY_RUN=false
@@ -114,6 +118,11 @@ else
   echo "Keeping existing $ENV_FILE"
   # older installs forced Secure cookies, which breaks logging in over http:// — switch to auto
   sed -i 's/^COOKIE_SECURE=true$/COOKIE_SECURE=auto/' "$ENV_FILE"
+  # moving from the IP address to the domain (or back): links in emails follow the new address
+  if ! grep -qx "APP_URL=${SCHEME}://${DOMAIN}" "$ENV_FILE"; then
+    sed -i "s#^APP_URL=.*#APP_URL=${SCHEME}://${DOMAIN}#" "$ENV_FILE"
+    echo "    APP_URL is now ${SCHEME}://${DOMAIN}"
+  fi
   FIRST_INSTALL=0
 fi
 mkdir -p /var/lib/primocloud/uploads /var/backups/primocloud
@@ -161,13 +170,20 @@ aapanel_configure_site "$DOMAIN" "$ROOT"
 echo "    SSL: aaPanel → Website → ${DOMAIN} → SSL → Let's Encrypt, then turn on Force HTTPS"
 else
 log "Configuring Nginx for ${DOMAIN}"
-sed "s|__DOMAIN__|${DOMAIN}|g; s|__ROOT__|${ROOT}|g" "$ROOT/deploy/nginx-primocloud.conf" > /etc/nginx/sites-available/primocloud
+if [ "$IS_IP" = "1" ]; then
+  # answer on the bare IP (and any other name that reaches this server) until the domain is set up
+  sed "s|server_name __DOMAIN__ www.__DOMAIN__;|server_name ${DOMAIN} _;|; s|listen 80;|listen 80 default_server;|; s|listen \[::\]:80;|listen [::]:80 default_server;|; s|__DOMAIN__|${DOMAIN}|g; s|__ROOT__|${ROOT}|g" "$ROOT/deploy/nginx-primocloud.conf" > /etc/nginx/sites-available/primocloud
+else
+  sed "s|__DOMAIN__|${DOMAIN}|g; s|__ROOT__|${ROOT}|g" "$ROOT/deploy/nginx-primocloud.conf" > /etc/nginx/sites-available/primocloud
+fi
 ln -sf /etc/nginx/sites-available/primocloud /etc/nginx/sites-enabled/primocloud
 rm -f /etc/nginx/sites-enabled/default
 chmod o+x "$(dirname "$ROOT")" "$ROOT" || true
 nginx -t && systemctl reload nginx
 
-if [ -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
+if [ "$IS_IP" = "1" ]; then
+  echo "    No SSL on an IP address. When primocloud.in points here, re-run the installer with --domain primocloud.in"
+elif [ -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
   log "Re-applying the existing SSL certificate"
   certbot install --nginx -n --cert-name "$DOMAIN" --redirect >/dev/null 2>&1 || echo "certbot couldn't re-apply SSL — run: certbot --nginx -d $DOMAIN"
 elif [ -n "${LETSENCRYPT_EMAIL:-}" ]; then
@@ -192,7 +208,7 @@ if [ "$FIRST_INSTALL" = "0" ] && [ "${SKIP_VIRTUALIZOR_SYNC:-0}" != "1" ]; then
 fi
 
 log "Done"
-echo "Website:      https://${DOMAIN}/"
-echo "Client area:  https://${DOMAIN}/client"
-echo "Admin:        https://${DOMAIN}/admin   (credentials in /root/primocloud-admin-credentials.txt)"
+echo "Website:      ${SCHEME}://${DOMAIN}/"
+echo "Client area:  ${SCHEME}://${DOMAIN}/client"
+echo "Admin:        ${SCHEME}://${DOMAIN}/admin   (credentials in /root/primocloud-admin-credentials.txt)"
 echo "Logs:         sudo -u ${APP_USER} pm2 logs"

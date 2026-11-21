@@ -60,6 +60,17 @@ Point your domain's DNS (A record) at the server, then run as root:
 curl -fsSL https://raw.githubusercontent.com/singhhemant80/primocloud-panel/main/install.sh | sudo bash -s -- --domain primocloud.in --email admin@primocloud.in
 ```
 
+**No domain yet? Install on the server's IP address** (plain http — Let's Encrypt can't issue certificates for an IP):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/singhhemant80/primocloud-panel/main/install.sh | sudo bash -s -- --ip
+```
+
+The IP is detected automatically (or pass it: `--ip 203.0.113.7`). Everything works at `http://<ip>/`,
+`http://<ip>/client` and `http://<ip>/admin`; the admin login is `admin@primocloud.in` unless you pass `--email`.
+When primocloud.in points at the server, run the domain command above: it keeps the database, `.env` and admin
+account, switches the site and email links to `https://primocloud.in` and issues the certificate.
+
 Options: `--no-ssl` (skip Let's Encrypt), `--demo` (seed a test server, IP range and demo customer),
 `--dir /opt/primocloud-panel`, `--branch main`. **Run the same command again to update** — it pulls the latest code,
 rebuilds and applies migrations; your `.env`, database and uploads are kept. On a server that's already installed,
