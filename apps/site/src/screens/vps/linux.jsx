@@ -2,7 +2,7 @@ import { orderUrl } from "../../lib/panel";
 import React, { useState, useEffect, useRef } from "react";
 import Layout from "../../components/layout";
 import { useMotion } from "../../components/motion";
-import { useCurrency } from "../../context/CurrencyContext";
+import { INR_RATE, useCurrency } from "../../context/CurrencyContext";
 import { I, Pill, Sec, Head, cardHover, IconBox } from "../../components/ui";
 
 // ---------- content (taken from the HTML design) ----------
@@ -34,67 +34,30 @@ const pillars = [
     "RESTful API, Terraform provider, robust CLI tooling, cloud-init user-data manifests, and custom ISO upload via emergency out-of-band VNC.",
   ],
 ];
+// Plans are priced in rupees; the page works in USD internally (fmt converts back at INR_RATE, so ₹ shows exactly).
+// Annual = 20% off, like every yearly plan on the site. Slugs match apps/api/prisma/catalog.ts.
+const inr = (rupees) => rupees / INR_RATE;
+const vPrimo = (gb, cpu, disk, rupees, extra = {}) => ({
+  n: `V-Primo (${gb}GB)`,
+  slug: `v-primo-${gb}gb`,
+  d: `${cpu} vCPU, ${gb} GB RAM and ${disk} GB SSD on KVM, hosted in India.`,
+  p: [inr(rupees), inr(rupees * 0.8)],
+  cta: "Purchase Plan",
+  s: [
+    `${cpu} vCPU`,
+    `${gb} GB RAM`,
+    `${disk} GB SSD Storage`,
+    "Unlimited Bandwidth",
+    "1 Dedicated IP",
+    "Server Location India",
+  ],
+  ...extra,
+});
 const plans = [
-  {
-    n: "Lin-Starter", slug: "lin-starter",
-    d: "Ideal for personal dev servers, lightweight APIs, or proxy gateways.",
-    p: [6.99, 5.59],
-    cta: "Deploy Starter",
-    s: [
-      "1 vCPU @ 3.4GHz+ AMD EPYC",
-      "2 GB DDR5 ECC RAM",
-      "40 GB NVMe Gen4 Storage",
-      "2 TB Bandwidth @ 1 Gbps",
-      "1 Dedicated IPv4 + /64 IPv6",
-      "Full Root / SSH Console",
-    ],
-  },
-  {
-    n: "Lin-Dev", slug: "lin-dev",
-    d: "Perfect for microservices, staging, Docker containers, and web apps.",
-    p: [14.99, 11.99],
-    feat: true,
-    cta: "Deploy Lin-Dev",
-    s: [
-      "2 vCPU @ 3.7GHz+ AMD EPYC",
-      "4 GB DDR5 ECC RAM",
-      "80 GB NVMe Gen4 Storage",
-      "5 TB Bandwidth @ 1 Gbps",
-      "1 Dedicated IPv4 + /64 IPv6",
-      "Automated Daily Snapshots",
-      "1-Click App Catalog (Docker/LEMP)",
-    ],
-  },
-  {
-    n: "Lin-Pro", slug: "lin-pro",
-    d: "Built for intensive databases, high-traffic SaaS, and CI/CD runners.",
-    p: [28.99, 23.19],
-    cta: "Deploy Lin-Pro",
-    s: [
-      "4 vCPU @ 3.7GHz+ Dedicated",
-      "8 GB DDR5 ECC RAM",
-      "160 GB NVMe Gen4 Storage",
-      "10 TB Bandwidth @ 1 Gbps",
-      "2 Dedicated IPv4 + /64 IPv6",
-      "24/7 Priority SysAdmin Support",
-      "Custom Reverse DNS / rDNS",
-    ],
-  },
-  {
-    n: "Lin-Scale", slug: "lin-scale",
-    d: "Enterprise computing for clusters, big data, and high-concurrency APIs.",
-    p: [56.99, 45.59],
-    cta: "Deploy Lin-Scale",
-    s: [
-      "8 vCPU Dedicated Zen 4",
-      "16 GB DDR5 ECC RAM",
-      "320 GB NVMe Gen4 RAID-10",
-      "Unmetered Bandwidth @ 10 Gbps",
-      "3 Dedicated IPv4 + /64 IPv6",
-      "Private 10G VPC Network",
-      "99.99% Hardware SLA SLA",
-    ],
-  },
+  vPrimo(2, 2, 40, 399),
+  vPrimo(4, 4, 80, 699, { feat: true }),
+  vPrimo(8, 6, 120, 999),
+  vPrimo(16, 8, 160, 1299),
 ];
 const priceTrust = [
   ["verified", "30-Day Money-Back Guarantee"],

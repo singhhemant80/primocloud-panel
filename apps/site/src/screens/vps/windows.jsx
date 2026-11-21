@@ -2,7 +2,7 @@ import { orderUrl } from "../../lib/panel";
 import React, { useState, useEffect, useRef } from "react";
 import Layout from "../../components/layout";
 import { useMotion, CountUp } from "../../components/motion";
-import { useCurrency } from "../../context/CurrencyContext";
+import { INR_RATE, useCurrency } from "../../context/CurrencyContext";
 import { I, Pill, Sec, Head, cardHover, IconBox } from "../../components/ui";
 
 // ---------- content (taken from the HTML design) ----------
@@ -44,72 +44,30 @@ const pillars = [
     "7,500 MB/s PCIe Gen4 Bus",
   ],
 ];
+// Plans are priced in rupees; the page works in USD internally (fmt converts back at INR_RATE, so ₹ shows exactly).
+// Annual = 20% off, like every yearly plan on the site. Slugs match apps/api/prisma/catalog.ts.
+const inr = (rupees) => rupees / INR_RATE;
+const vpsW = (n, tag, d, cpu, ram, disk, rupees, extra = {}) => ({
+  n: `VPS W${n}`,
+  slug: `vps-w${n}`,
+  tag,
+  d,
+  p: [inr(rupees), inr(rupees * 0.8)],
+  cta: `Select VPS W${n}`,
+  s: [
+    ["memory", `${cpu} vCPU Cores`, ""],
+    ["developer_board", `${ram} GB`, " RAM"],
+    ["hard_drive", `${disk} GB`, " SSD"],
+    ["sync_alt", "Unlimited", " Bandwidth"],
+    ["dns", "", "1 Dedicated IP"],
+    ["lock", "", "Full Root Access"],
+  ],
+  ...extra,
+});
 const plans = [
-  {
-    n: "Win-Basic", slug: "win-basic",
-    tag: "Entry Node",
-    d: "Perfect for basic administrative tools, light bots, and single-user remote workspace.",
-    p: [12.99, 10.39],
-    cta: "Deploy Win-Basic",
-    s: [
-      ["memory", "2 vCPU Cores", " @ 3.4GHz+"],
-      ["developer_board", "4 GB", " DDR4 ECC RAM"],
-      ["hard_drive", "60 GB", " Gen4 NVMe RAID-10"],
-      ["sync_alt", "3 TB", " Bandwidth @ 1 Gbps"],
-      ["dns", "", "1 Dedicated IPv4 Address"],
-      ["lock", "", "Full Administrator Access"],
-      ["check", "", "Windows Server 2022 / 2025"],
-    ],
-  },
-  {
-    n: "Win-Pro", slug: "win-pro",
-    tag: "High Concurrency",
-    feat: true,
-    d: "Recommended for Forex MT4/MT5, multi-session RDP, and IIS microservices.",
-    p: [24.99, 19.99],
-    cta: "Deploy Win-Pro Now",
-    s: [
-      ["memory", "4 vCPU Cores", " @ 3.4GHz+"],
-      ["developer_board", "8 GB", " DDR4 ECC RAM"],
-      ["hard_drive", "120 GB", " Gen4 NVMe RAID-10"],
-      ["sync_alt", "6 TB", " Bandwidth @ 1 Gbps"],
-      ["dns", "", "1 Dedicated IPv4 + /64 IPv6"],
-      ["backup", "", "Automated Daily Backups"],
-      ["bolt", "", "Instant Reboot & 1-Click OS Reset"],
-    ],
-  },
-  {
-    n: "Win-Elite", slug: "win-elite",
-    tag: "Enterprise Core",
-    d: "Tailored for MSSQL servers, enterprise accounting (Tally/QuickBooks), and multi-tenant teams.",
-    p: [48.99, 39.19],
-    cta: "Deploy Win-Elite",
-    s: [
-      ["memory", "8 vCPU Cores", " @ 3.7GHz+"],
-      ["developer_board", "16 GB", " DDR4/DDR5 ECC RAM"],
-      ["hard_drive", "240 GB", " Gen4 NVMe RAID-10"],
-      ["sync_alt", "10 TB", " Bandwidth @ 1 Gbps"],
-      ["dns", "", "2 Dedicated IPv4 Addresses"],
-      ["support_agent", "", "24/7 Priority SysAdmin Support"],
-      ["security", "", "Enhanced Layer 7 DDoS Guard"],
-    ],
-  },
-  {
-    n: "Win-Extreme", slug: "win-extreme",
-    tag: "Bare-Metal Power",
-    d: "Heavy compute node for Hyper-V nested virtualization, large trading farms, and corporate ERP.",
-    p: [89.99, 71.99],
-    cta: "Deploy Win-Extreme",
-    s: [
-      ["memory", "16 vCPU Cores", " Dedicated Core"],
-      ["developer_board", "32 GB", " DDR5 High-Speed RAM"],
-      ["hard_drive", "500 GB", " Gen4 NVMe RAID-10"],
-      ["all_inclusive", "Unmetered", " Transfer @ 10 Gbps"],
-      ["dns", "", "3 Dedicated IPv4 Addresses"],
-      ["hub", "", "Dedicated 10Gbps Uplink Port"],
-      ["verified", "", "Dedicated TAM (Technical Mgr)"],
-    ],
-  },
+  vpsW(1, "Win Starter", "Light apps, remote desktop access", 2, 4, 80, 799),
+  vpsW(2, "Win Business", "Business apps & multi-user RDP", 4, 8, 120, 999, { feat: true }),
+  vpsW(3, "Win Pro", "Heavy workloads & enterprise use", 8, 16, 160, 1299),
 ];
 const trust = [
   ["verified", "30-Day Money-Back Guarantee"],
@@ -311,7 +269,7 @@ const reviews = [
     "DK",
     "David Kowalski",
     "IT Director, Apex Financial Group",
-    '"We migrated 18 remote accounting workstations running QuickBooks and MS Access to Primo Cloud Win-Elite instances. RDP responsiveness feels as instantaneous as sitting in front of a local desktop. Zero crashes in 14 months."',
+    '"We migrated 18 remote accounting workstations running QuickBooks and MS Access to Primo Cloud VPS W3 instances. RDP responsiveness feels as instantaneous as sitting in front of a local desktop. Zero crashes in 14 months."',
   ],
   [
     "SM",
@@ -353,11 +311,11 @@ const faqs = [
   ],
   [
     "Can I upgrade my CPU, RAM, or NVMe storage without losing my data?",
-    "Yes. You can scale seamlessly from Win-Basic to Win-Pro, Win-Elite, or Win-Extreme with a simple 1-click resize in your client dashboard. The underlying hypervisor dynamically expands your hardware resources and disk volumes without altering existing installations.",
+    "Yes. You can scale seamlessly from VPS W1 to VPS W2 or VPS W3 with a simple 1-click resize in your client dashboard. The underlying hypervisor dynamically expands your hardware resources and disk volumes without altering existing installations.",
   ],
   [
     "Do you provide automated backups and disaster recovery snapshots?",
-    "Yes, our Win-Pro, Win-Elite, and Win-Extreme plans feature daily snapshot backups stored on physically separate storage clusters. You can also generate immediate manual snapshots before undertaking major software updates.",
+    "Yes, our VPS W2 and VPS W3 plans feature daily snapshot backups stored on physically separate storage clusters. You can also generate immediate manual snapshots before undertaking major software updates.",
   ],
   [
     "Is nested virtualization (Hyper-V, WSL2, Docker) supported?",
@@ -688,7 +646,7 @@ const Windows = () => {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter items-stretch">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 md:grid-cols-3 gap-gutter items-stretch">
             {plans.map((p) => (
               <div
                 key={p.n}

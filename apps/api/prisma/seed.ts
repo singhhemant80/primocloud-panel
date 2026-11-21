@@ -82,7 +82,9 @@ async function main() {
       const isVps = g.provisioner === "PROXMOX";
       const cycles: { cycle: BillingCycle; usd: number; setupUsd: number }[] = [{ cycle: "MONTHLY", usd: p.usd, setupUsd: p.setupUsd ?? 0 }];
       if (p.usdAnnual) cycles.push({ cycle: "ANNUAL", usd: p.usdAnnual * 12, setupUsd: 0 });
-      const inr = (usd: number, cycle: BillingCycle) => (cycle === "ANNUAL" ? paise(usd / 12) * 12 : paise(usd));
+      // rupee-priced plans: exact ₹ monthly, annual = the website's 20% off (whole rupees per month)
+      const inr = (usd: number, cycle: BillingCycle) =>
+        p.inr ? (cycle === "ANNUAL" ? Math.round(p.inr * 0.8) * 12 * 100 : p.inr * 100) : cycle === "ANNUAL" ? paise(usd / 12) * 12 : paise(usd);
       const prod = await prisma.product.create({
         data: {
           groupId: group.id,

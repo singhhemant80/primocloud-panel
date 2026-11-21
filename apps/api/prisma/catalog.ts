@@ -13,8 +13,10 @@ export interface CatalogPlan {
   name: string;
   slug: string;
   tagline: string;
-  /** monthly price in USD */
+  /** monthly price in USD (for plans priced in rupees: inr / USD_TO_INR) */
   usd: number;
+  /** plans priced in rupees: exact monthly INR; USD is derived */
+  inr?: number;
   /** per-month price in USD when billed yearly (omitted = no annual cycle) */
   usdAnnual?: number;
   /** one-time setup fee in USD on monthly billing (waived on annual) */
@@ -141,91 +143,92 @@ export const CATALOG: CatalogGroup[] = [
     "os": "linux",
     "resellerEnabled": true,
     "plans": [
-      {
-        "name": "Lin-Starter",
-        "slug": "lin-starter",
-        "tagline": "Ideal for personal dev servers, lightweight APIs, or proxy gateways.",
-        "usd": 6.99,
-        "usdAnnual": 5.59,
-        "cpu": 1,
-        "ram": 2,
-        "disk": 40,
-        "bw": 2048,
-        "ipv4": 1,
-        "features": [
-          "1 vCPU @ 3.4GHz+ AMD EPYC",
-          "2 GB DDR5 ECC RAM",
-          "40 GB NVMe Gen4 Storage",
-          "2 TB Bandwidth @ 1 Gbps",
-          "1 Dedicated IPv4 + /64 IPv6",
-          "Full Root / SSH Console"
-        ]
-      },
-      {
-        "name": "Lin-Dev",
-        "slug": "lin-dev",
-        "tagline": "Perfect for microservices, staging, Docker containers, and web apps.",
-        "usd": 14.99,
-        "usdAnnual": 11.99,
-        "featured": true,
-        "cpu": 2,
-        "ram": 4,
-        "disk": 80,
-        "bw": 5120,
-        "ipv4": 1,
-        "features": [
-          "2 vCPU @ 3.7GHz+ AMD EPYC",
-          "4 GB DDR5 ECC RAM",
-          "80 GB NVMe Gen4 Storage",
-          "5 TB Bandwidth @ 1 Gbps",
-          "1 Dedicated IPv4 + /64 IPv6",
-          "Automated Daily Snapshots",
-          "1-Click App Catalog (Docker/LEMP)"
-        ]
-      },
-      {
-        "name": "Lin-Pro",
-        "slug": "lin-pro",
-        "tagline": "Built for intensive databases, high-traffic SaaS, and CI/CD runners.",
-        "usd": 28.99,
-        "usdAnnual": 23.19,
-        "cpu": 4,
-        "ram": 8,
-        "disk": 160,
-        "bw": 10240,
-        "ipv4": 2,
-        "features": [
-          "4 vCPU @ 3.7GHz+ Dedicated",
-          "8 GB DDR5 ECC RAM",
-          "160 GB NVMe Gen4 Storage",
-          "10 TB Bandwidth @ 1 Gbps",
-          "2 Dedicated IPv4 + /64 IPv6",
-          "24/7 Priority SysAdmin Support",
-          "Custom Reverse DNS / rDNS"
-        ]
-      },
-      {
-        "name": "Lin-Scale",
-        "slug": "lin-scale",
-        "tagline": "Enterprise computing for clusters, big data, and high-concurrency APIs.",
-        "usd": 56.99,
-        "usdAnnual": 45.59,
-        "cpu": 8,
-        "ram": 16,
-        "disk": 320,
-        "bw": null,
-        "ipv4": 3,
-        "features": [
-          "8 vCPU Dedicated Zen 4",
-          "16 GB DDR5 ECC RAM",
-          "320 GB NVMe Gen4 RAID-10",
-          "Unmetered Bandwidth @ 10 Gbps",
-          "3 Dedicated IPv4 + /64 IPv6",
-          "Private 10G VPC Network",
-          "99.99% Hardware SLA SLA"
-        ]
-      }
-    ]
+        {
+          "name": "V-Primo (2GB)",
+          "slug": "v-primo-2gb",
+          "tagline": "2 vCPU, 2 GB RAM and 40 GB SSD on KVM, hosted in India.",
+          "usd": 4.5341,
+          "usdAnnual": 3.6273,
+          "inr": 399,
+          "cpu": 2,
+          "ram": 2,
+          "disk": 40,
+          "bw": null,
+          "ipv4": 1,
+          "features": [
+            "2 vCPU",
+            "2 GB RAM",
+            "40 GB SSD Storage",
+            "Unlimited Bandwidth",
+            "1 Dedicated IP",
+            "Server Location India"
+          ]
+        },
+        {
+          "name": "V-Primo (4GB)",
+          "slug": "v-primo-4gb",
+          "tagline": "4 vCPU, 4 GB RAM and 80 GB SSD on KVM, hosted in India.",
+          "usd": 7.9432,
+          "usdAnnual": 6.3545,
+          "inr": 699,
+          "featured": true,
+          "cpu": 4,
+          "ram": 4,
+          "disk": 80,
+          "bw": null,
+          "ipv4": 1,
+          "features": [
+            "4 vCPU",
+            "4 GB RAM",
+            "80 GB SSD Storage",
+            "Unlimited Bandwidth",
+            "1 Dedicated IP",
+            "Server Location India"
+          ]
+        },
+        {
+          "name": "V-Primo (8GB)",
+          "slug": "v-primo-8gb",
+          "tagline": "6 vCPU, 8 GB RAM and 120 GB SSD on KVM, hosted in India.",
+          "usd": 11.3523,
+          "usdAnnual": 9.0818,
+          "inr": 999,
+          "cpu": 6,
+          "ram": 8,
+          "disk": 120,
+          "bw": null,
+          "ipv4": 1,
+          "features": [
+            "6 vCPU",
+            "8 GB RAM",
+            "120 GB SSD Storage",
+            "Unlimited Bandwidth",
+            "1 Dedicated IP",
+            "Server Location India"
+          ]
+        },
+        {
+          "name": "V-Primo (16GB)",
+          "slug": "v-primo-16gb",
+          "tagline": "8 vCPU, 16 GB RAM and 160 GB SSD on KVM, hosted in India.",
+          "usd": 14.7614,
+          "usdAnnual": 11.8091,
+          "inr": 1299,
+          "cpu": 8,
+          "ram": 16,
+          "disk": 160,
+          "bw": null,
+          "ipv4": 1,
+          "features": [
+            "8 vCPU",
+            "16 GB RAM",
+            "160 GB SSD Storage",
+            "Unlimited Bandwidth",
+            "1 Dedicated IP",
+            "Server Location India"
+          ]
+        }
+      ]
   },
   {
     "name": "Windows VPS",
@@ -236,91 +239,71 @@ export const CATALOG: CatalogGroup[] = [
     "os": "windows",
     "resellerEnabled": true,
     "plans": [
-      {
-        "name": "Win-Basic",
-        "slug": "win-basic",
-        "tagline": "Perfect for basic administrative tools, light bots, and single-user remote workspace.",
-        "usd": 12.99,
-        "usdAnnual": 10.39,
-        "cpu": 2,
-        "ram": 4,
-        "disk": 60,
-        "bw": 3072,
-        "ipv4": 1,
-        "features": [
-          "2 vCPU Cores @ 3.4GHz+",
-          "4 GB DDR4 ECC RAM",
-          "60 GB Gen4 NVMe RAID-10",
-          "3 TB Bandwidth @ 1 Gbps",
-          "1 Dedicated IPv4 Address",
-          "Full Administrator Access",
-          "Windows Server 2022 / 2025"
-        ]
-      },
-      {
-        "name": "Win-Pro",
-        "slug": "win-pro",
-        "tagline": "Recommended for Forex MT4/MT5, multi-session RDP, and IIS microservices.",
-        "usd": 24.99,
-        "usdAnnual": 19.99,
-        "featured": true,
-        "cpu": 4,
-        "ram": 8,
-        "disk": 120,
-        "bw": 6144,
-        "ipv4": 1,
-        "features": [
-          "4 vCPU Cores @ 3.4GHz+",
-          "8 GB DDR4 ECC RAM",
-          "120 GB Gen4 NVMe RAID-10",
-          "6 TB Bandwidth @ 1 Gbps",
-          "1 Dedicated IPv4 + /64 IPv6",
-          "Automated Daily Backups",
-          "Instant Reboot & 1-Click OS Reset"
-        ]
-      },
-      {
-        "name": "Win-Elite",
-        "slug": "win-elite",
-        "tagline": "Tailored for MSSQL servers, enterprise accounting (Tally/QuickBooks), and multi-tenant teams.",
-        "usd": 48.99,
-        "usdAnnual": 39.19,
-        "cpu": 8,
-        "ram": 16,
-        "disk": 240,
-        "bw": 10240,
-        "ipv4": 2,
-        "features": [
-          "8 vCPU Cores @ 3.7GHz+",
-          "16 GB DDR4/DDR5 ECC RAM",
-          "240 GB Gen4 NVMe RAID-10",
-          "10 TB Bandwidth @ 1 Gbps",
-          "2 Dedicated IPv4 Addresses",
-          "24/7 Priority SysAdmin Support",
-          "Enhanced Layer 7 DDoS Guard"
-        ]
-      },
-      {
-        "name": "Win-Extreme",
-        "slug": "win-extreme",
-        "tagline": "Heavy compute node for Hyper-V nested virtualization, large trading farms, and corporate ERP.",
-        "usd": 89.99,
-        "usdAnnual": 71.99,
-        "cpu": 16,
-        "ram": 32,
-        "disk": 500,
-        "ipv4": 3,
-        "features": [
-          "16 vCPU Cores Dedicated Core",
-          "32 GB DDR5 High-Speed RAM",
-          "500 GB Gen4 NVMe RAID-10",
-          "Unmetered Transfer @ 10 Gbps",
-          "3 Dedicated IPv4 Addresses",
-          "Dedicated 10Gbps Uplink Port",
-          "Dedicated TAM (Technical Mgr)"
-        ]
-      }
-    ]
+        {
+          "name": "VPS W1",
+          "slug": "vps-w1",
+          "tagline": "Light apps, remote desktop access",
+          "usd": 9.0795,
+          "usdAnnual": 7.2636,
+          "inr": 799,
+          "cpu": 2,
+          "ram": 4,
+          "disk": 80,
+          "bw": null,
+          "ipv4": 1,
+          "features": [
+            "2 vCPU Cores",
+            "4 GB RAM",
+            "80 GB SSD",
+            "Unlimited Bandwidth",
+            "1 Dedicated IP",
+            "Full Root Access"
+          ]
+        },
+        {
+          "name": "VPS W2",
+          "slug": "vps-w2",
+          "tagline": "Business apps & multi-user RDP",
+          "usd": 11.3523,
+          "usdAnnual": 9.0818,
+          "inr": 999,
+          "featured": true,
+          "cpu": 4,
+          "ram": 8,
+          "disk": 120,
+          "bw": null,
+          "ipv4": 1,
+          "features": [
+            "4 vCPU Cores",
+            "8 GB RAM",
+            "120 GB SSD",
+            "Unlimited Bandwidth",
+            "1 Dedicated IP",
+            "Full Root Access"
+          ]
+        },
+        {
+          "name": "VPS W3",
+          "slug": "vps-w3",
+          "tagline": "Heavy workloads & enterprise use",
+          "usd": 14.7614,
+          "usdAnnual": 11.8091,
+          "inr": 1299,
+          "cpu": 8,
+          "ram": 16,
+          "disk": 160,
+          "bw": null,
+          "ipv4": 1,
+          "features": [
+            "8 vCPU Cores",
+            "16 GB RAM",
+            "160 GB SSD",
+            "Unlimited Bandwidth",
+            "1 Dedicated IP",
+            "Full Root Access"
+          ]
+        }
+      ]
   },
   {
     "name": "Forex VPS",

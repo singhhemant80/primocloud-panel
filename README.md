@@ -42,6 +42,8 @@ What ties them together:
 - **Prices.** The website shows USD and converts to INR at a fixed **₹88 = $1** (`INR_RATE` in
   `apps/site/src/context/CurrencyContext.jsx`). The panel is seeded with the same numbers — exact USD prices and
   INR at the same rate (`USD_TO_INR` in `seed.ts`) — so the price on the website is the price on the invoice.
+  Linux VPS (V-Primo) and Windows VPS (VPS W1–W3) are priced in rupees (`inr` in `catalog.ts`, `inr(…)` on the
+  page) — exact ₹ amounts, USD derived; annual is 20% off, like the rest of the site.
   The ₹/$ switch is shared too (`localStorage.primocloud_currency`). **If you change a price in Admin → Products,
   change it on the website page as well** (or the other way round).
 - **Old WHMCS links** redirect (Nginx): `index.php?rp=/login` → `/client/login`, `?rp=/store/<group>/<plan>` → that plan,
@@ -108,7 +110,7 @@ Development: `npm install`, set `apps/api/.env` (see `.env.example`, `PROVISION_
    and/or LXC template volume. Windows templates should use cloudbase-init.
 3. **Admin → IP Management → Import CIDR range** (e.g. `103.x.x.0/26`, gateway, server). Or import CSV.
 4. **Admin → Products**: assign servers to each VPS plan (the IP picker shows that server's pool).
-   All 52 plans on the website (13 groups) are pre-seeded with monthly and annual prices in USD and INR
+   All 51 plans on the website (13 groups) are pre-seeded with monthly and annual prices in USD and INR
    (annual = the website's yearly price, 20% off); colocation plans carry their setup fee on monthly billing.
    Shared, reseller, WordPress, dedicated, GPU and colocation plans are set up manually (or attach a cPanel/WHM
    server to the hosting plans).
