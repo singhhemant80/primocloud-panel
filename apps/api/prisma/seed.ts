@@ -8,28 +8,15 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { prisma, BillingCycle, ProductType, Provisioner } from "../src/db";
+import { prisma } from "../src/db";
 import { encrypt, encryptJson } from "../src/lib/crypto";
 import { importCidr } from "../src/modules/ipam/service";
-import { CATALOG } from "./catalog";
 
-/** Website prices are USD; INR = USD × this rate (same as INR_RATE in apps/site/src/context/CurrencyContext.jsx). */
-const USD_TO_INR = 88;
-const paise = (usd: number) => Math.round(usd * USD_TO_INR) * 100; // whole rupees, as the website shows them
-const cents = (usd: number) => Math.round(usd * 100);
+import { syncCatalog, USD_TO_INR } from "./sync-catalog";
+
 const R = (rupees: number) => Math.round(rupees * 100);
 
-const VPS_FEATURES = ["Full root / admin access", "KVM virtualization", "NVMe storage", "DDoS protection", "Choose your IPv4 address", "99.99% uptime SLA"];
 
-const OS = [
-  { name: "Ubuntu 24.04 LTS", family: "linux", vmid: 9000, lxc: "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst" },
-  { name: "Ubuntu 22.04 LTS", family: "linux", vmid: 9001, lxc: "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst" },
-  { name: "Debian 12", family: "linux", vmid: 9002, lxc: "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst" },
-  { name: "AlmaLinux 9", family: "linux", vmid: 9003, lxc: "local:vztmpl/almalinux-9-default_20240911_amd64.tar.xz" },
-  { name: "Rocky Linux 9", family: "linux", vmid: 9004, lxc: "local:vztmpl/rockylinux-9-default_20240912_amd64.tar.xz" },
-  { name: "Windows Server 2022", family: "windows", vmid: 9010, lxc: null },
-  { name: "Windows Server 2019", family: "windows", vmid: 9011, lxc: null },
-];
 
 async function main() {
   const demo = process.env.SEED_DEMO === "true";
@@ -61,65 +48,11 @@ async function main() {
   for (const [i, name] of depts.entries())
     await prisma.ticketDepartment.upsert({ where: { name }, update: {}, create: { name, sortOrder: i, slaHours: name === "Abuse Department" ? 2 : name === "Sales Department" ? 8 : 4 } });
 
-  // OS templates (Proxmox VMIDs are the conventional 9000+ template IDs — edit them in Admin → OS Templates)
-  const osRows = [];
-  for (const [i, o] of OS.entries()) {
-    const existing = await prisma.osTemplate.findFirst({ where: { name: o.name } });
-    osRows.push(
-      existing ??
-        (await prisma.osTemplate.create({ data: { name: o.name, family: o.family, proxmoxKvmVmid: o.vmid, proxmoxLxcVolid: o.lxc, defaultUser: o.family === "windows" ? "Administrator" : "root", sortOrder: i } })),
-    );
-  }
-
   // location
   const gwl = await prisma.location.upsert({ where: { code: "NOI" }, update: {}, create: { name: "Noida, India", code: "NOI", country: "IN" } });
 
-  // catalogue (prices: website USD exactly, INR at USD_TO_INR; monthly + annual like the website)
-  for (const [gi, g] of CATALOG.entries()) {
-    const group = await prisma.productGroup.upsert({ where: { slug: g.slug }, update: { name: g.name, headline: g.headline }, create: { name: g.name, slug: g.slug, headline: g.headline, sortOrder: gi } });
-    for (const [pi, p] of g.plans.entries()) {
-      if (await prisma.product.findUnique({ where: { slug: p.slug } })) continue;
-      const isVps = g.provisioner === "PROXMOX";
-      const cycles: { cycle: BillingCycle; usd: number; setupUsd: number }[] = [{ cycle: "MONTHLY", usd: p.usd, setupUsd: p.setupUsd ?? 0 }];
-      if (p.usdAnnual) cycles.push({ cycle: "ANNUAL", usd: p.usdAnnual * 12, setupUsd: 0 });
-      // rupee-priced plans: exact ₹ monthly, annual = the website's 20% off (whole rupees per month)
-      const inr = (usd: number, cycle: BillingCycle) =>
-        p.inr ? (cycle === "ANNUAL" ? Math.round(p.inr * 0.8) * 12 * 100 : p.inr * 100) : cycle === "ANNUAL" ? paise(usd / 12) * 12 : paise(usd);
-      const prod = await prisma.product.create({
-        data: {
-          groupId: group.id,
-          name: p.name,
-          slug: p.slug,
-          type: g.type,
-          tagline: p.tagline,
-          features: p.features.length ? p.features : isVps ? VPS_FEATURES : [],
-          provisioner: g.provisioner,
-          virtType: "KVM",
-          cpuCores: p.cpu ?? null,
-          ramMb: p.ram ? p.ram * 1024 : null,
-          diskGb: p.disk ?? null,
-          bandwidthGb: p.bw === undefined ? null : p.bw,
-          ipv4Count: isVps ? (p.ipv4 ?? 1) : 0,
-          allowIpSelection: isVps,
-          requireHostname: isVps,
-          featured: !!p.featured,
-          sortOrder: pi,
-          resellerEnabled: g.resellerEnabled,
-          hsnSac: "998315",
-          pricing: {
-            create: cycles.flatMap(({ cycle, usd, setupUsd }) => [
-              { cycle, currency: "INR", price: inr(usd, cycle), setupFee: setupUsd ? paise(setupUsd) : 0, enabled: true },
-              { cycle, currency: "USD", price: cents(usd), setupFee: cents(setupUsd), enabled: true },
-            ]),
-          },
-          wholesalePricing: g.resellerEnabled ? { create: cycles.map(({ cycle, usd }) => ({ cycle, price: Math.round(inr(usd, cycle) * 0.8) })) } : undefined,
-        },
-      });
-      if (isVps && g.os !== "none") {
-        await prisma.productOs.createMany({ data: osRows.filter((o) => g.os === "any" || o.family === g.os).map((o) => ({ productId: prod.id, osTemplateId: o.id })) });
-      }
-    }
-  }
+  // OS templates + the website's plans (also run on every update by deploy/install.sh)
+  await syncCatalog();
 
   // payment gateways (disabled until configured in Admin → Payment Gateways)
   const gw = [

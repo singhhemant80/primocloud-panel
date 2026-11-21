@@ -156,6 +156,10 @@ if [ "$FIRST_INSTALL" = "1" ]; then
   sudo -u "$APP_USER" bash -lc "cd '$ROOT/apps/api' && SEED_ADMIN_EMAIL='$ADMIN_EMAIL' SEED_ADMIN_PASSWORD='$ADMIN_PW' SEED_DEMO='${SEED_DEMO:-false}' npx tsx prisma/seed.ts"
   printf '%s\n' "Admin: $ADMIN_EMAIL" "Password: $ADMIN_PW" > /root/primocloud-admin-credentials.txt
   chmod 600 /root/primocloud-admin-credentials.txt
+else
+  log "Syncing the plan catalogue with the website"
+  # adds plans the website now offers and hides retired ones; never changes plans you've edited
+  sudo -u "$APP_USER" bash -lc "cd '$ROOT/apps/api' && npx tsx prisma/sync-catalog.ts" || echo "    catalogue sync failed — run: cd $ROOT/apps/api && npx tsx prisma/sync-catalog.ts"
 fi
 
 log "Starting processes with PM2"
