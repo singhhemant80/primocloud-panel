@@ -219,7 +219,32 @@ export class VirtualizorClient {
     const list = r.ips as Record<string, { ip?: string }> | { ip?: string }[] | undefined;
     if (!list || typeof list !== "object") return null;
     const ips = (Array.isArray(list) ? list : Object.values(list)).map((x) => String(x?.ip ?? "")).filter((ip) => /^\d+\.\d+\.\d+\.\d+$/.test(ip));
-    return new Set(ips);
+    // Virtualizor's form lists locked IPs too — never offer those
+    const blocked = await this.unusableIps();
+    return new Set(blocked ? ips.filter((ip) => !blocked.has(ip)) : ips);
+  }
+
+  /**
+   * IPv4s that must not be handed out, from Virtualizor's live IP list: locked (Virtualizor → IP Pool →
+   * lock an IP or a whole pool) or already on a VPS. Value = why. null if the list couldn't be read.
+   */
+  async unusableIps(): Promise<Map<string, string> | null> {
+    try {
+      const out = new Map<string, string>();
+      for (let page = 1; page <= 50; page++) {
+        const rows = Object.values((await this.ips(page, 1000)).ips ?? {});
+        for (const r of rows) {
+          const ip = String(r.ip ?? "").trim();
+          if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) continue;
+          if (String(r.locked ?? "0") === "1") out.set(ip, "locked in Virtualizor");
+          else if (String(r.vpsid ?? "0") !== "0") out.set(ip, `in use by VPS ${r.vpsid}`);
+        }
+        if (rows.length < 1000) break;
+      }
+      return out;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -255,8 +280,14 @@ export class VirtualizorClient {
     if (!vps) throw new VirtualizorError(`Virtualizor didn't return VPS ${vpsid} for editing`, form);
     const current = Object.values((vps.ips ?? {}) as Record<string, string>).map(String).filter((ip) => /^\d+\.\d+\.\d+\.\d+$/.test(ip));
     const free = (Array.isArray(form.ips) ? form.ips : Object.values(form.ips ?? {})).map((x) => String(x?.ip ?? "")).filter((ip) => /^\d+\.\d+\.\d+\.\d+$/.test(ip));
-    const want = newIps?.length ? newIps : free.filter((ip) => !current.includes(ip)).slice(0, Math.max(1, current.length));
-    if (!want.length) throw new VirtualizorError("Virtualizor has no free IPs for this VPS's node", form);
+    // the edit form's list includes locked IPs: check every candidate against Virtualizor's live IP list
+    const blocked = await this.unusableIps();
+    if (newIps?.length && blocked) {
+      const bad = newIps.filter((ip) => !current.includes(ip) && blocked.has(ip));
+      if (bad.length) throw new VirtualizorError(`Can't use ${bad.map((ip) => `${ip} (${blocked.get(ip)})`).join(", ")} — pick another IP`);
+    }
+    const want = newIps?.length ? newIps : free.filter((ip) => !current.includes(ip) && !blocked?.has(ip)).slice(0, Math.max(1, current.length));
+    if (!want.length) throw new VirtualizorError("Virtualizor has no free, unlocked IPs for this VPS's node", form);
     const post: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(vps)) if (v === null || typeof v !== "object") post[k] = v;
     await this.call("editvs", { vpsid }, { ...post, hostname: vps.hostname, ips: want, editvps: 1 });
