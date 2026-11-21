@@ -16,6 +16,7 @@ import { measureAll } from "./modules/latency/service";
 import { checkAllServers } from "./jobs/health";
 import { refreshExchangeRates } from "./lib/currency";
 import { syncVirtualizorOs } from "./modules/provisioning/virtualizor-os";
+import { withProgress } from "./modules/provisioning/action-progress";
 import { syncVirtualizorIps } from "./modules/provisioning/virtualizor-ips";
 import { getSettings } from "./lib/settings";
 import { prisma } from "./db";
@@ -27,10 +28,11 @@ const connection = bullConnection();
 
 const provisioning = new Worker<ProvisionJob>(
   "provisioning",
-  async (job: Job<ProvisionJob>) => runProvisionAction(job.data.serviceId, job.data.action, job.data.params ?? {}),
+  // each step the provisioning code reports shows live on the service page (GET …/activity)
+  async (job: Job<ProvisionJob>) => withProgress((p) => job.updateProgress(p as never), () => runProvisionAction(job.data.serviceId, job.data.action, job.data.params ?? {})),
   // short lock, renewed automatically while a job runs: a run killed by a restart is picked up again
   // within about a minute instead of looking "active" for half an hour
-  { connection, concurrency: 4, lockDuration: 60_000, stalledInterval: 30_000, maxStalledCount: 3, autorun: false },
+  { connection, concurrency: 10, lockDuration: 60_000, stalledInterval: 30_000, maxStalledCount: 3, autorun: false },
 );
 provisioning.on("failed", async (job, err) => {
   if (!job) return;

@@ -19,8 +19,9 @@ import { adjustCredit, applyPayment, cancelInvoice, createInvoice, invoiceEmailV
 import { renderInvoicePdf } from "../billing/pdf";
 import { reviewOfflinePayment, refundTransaction } from "../payments/service";
 import { releaseOrderReservations } from "../ipam/service";
-import { liveStates, liveStatus, replaceVirtualizorIps, syncVirtualizorService } from "../provisioning/provisioner";
+import { liveStates, liveStatus, syncVirtualizorService } from "../provisioning/provisioner";
 import { provisioningProgress } from "../provisioning/progress";
+import { serviceActivity } from "../provisioning/activity";
 import { queueEmail } from "../email/mailer";
 import { profileSchema, resolveStateCode, publicUser } from "../auth/routes";
 import { runBillingCycle } from "../../jobs/billing";
@@ -799,9 +800,11 @@ adminCore.post(
   requireStaff("services.manage"),
   ah(async (req, res) => {
     const b = parse(z.object({ ips: z.array(z.string().ip({ version: "v4" })).max(32).optional() }), req.body ?? {});
-    const r = await replaceVirtualizorIps(req.params.id, b.ips);
-    await audit({ actorId: req.user!.id, action: "service.ips_replaced", entity: "service", entityId: req.params.id, details: r });
-    res.json(r);
+    const s = await prisma.service.findUniqueOrThrow({ where: { id: req.params.id }, select: { id: true, userId: true } });
+    // runs in the background so the page can show each step (GET /services/:id/activity)
+    const job = await enqueueProvision({ serviceId: s.id, action: "change_ip", params: { ips: b.ips }, actorId: req.user!.id });
+    await audit({ actorId: req.user!.id, userId: s.userId, action: "service.ips_replaced", entity: "service", entityId: s.id, details: { requested: b.ips ?? "auto" } });
+    res.status(202).json({ queued: true, jobId: job?.id ?? null });
   }),
 );
 
@@ -968,11 +971,11 @@ adminCore.post(
       // remove a finished/failed create job so it can be queued again under the same id
       if (old && (state === "failed" || state === "completed")) await old.remove();
     }
-    await enqueueProvision({ serviceId: s.id, action: b.action as ProvisionAction, params: { reason: b.reason, osTemplateId: b.osTemplateId, notify: b.notify, package: b.package, ...((b.action === "reset_password" || b.action === "reinstall") && b.password ? { passwordEnc: encrypt(b.password) } : {}) }, actorId: req.user!.id });
+    const job = await enqueueProvision({ serviceId: s.id, action: b.action as ProvisionAction, params: { reason: b.reason, osTemplateId: b.osTemplateId, notify: b.notify, package: b.package, ...((b.action === "reset_password" || b.action === "reinstall") && b.password ? { passwordEnc: encrypt(b.password) } : {}) }, actorId: req.user!.id });
     // never put the password in the audit log
     const { password: chosen, ...logged } = b;
     await audit({ actorId: req.user!.id, userId: s.userId, action: `service.${b.action}`, entity: "service", entityId: s.id, details: { ...logged, ...(chosen ? { passwordChosen: true } : {}) } });
-    res.status(202).json({ queued: true });
+    res.status(202).json({ queued: true, jobId: job?.id ?? null });
   }),
 );
 
@@ -1283,6 +1286,15 @@ adminCore.get(
 );
 
 // ───────────── Provisioning status ─────────────
+/** Actions running or just finished on this service, with live progress. */
+adminCore.get(
+  "/services/:id/activity",
+  requireStaff("services.view"),
+  ah(async (req, res) => {
+    res.json(await serviceActivity(req.params.id, "admin"));
+  }),
+);
+
 adminCore.get(
   "/services/:id/provisioning",
   requireStaff("services.view"),

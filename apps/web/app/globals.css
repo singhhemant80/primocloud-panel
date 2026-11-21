@@ -23,3 +23,6 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; col
 
 /* grid/flex children may shrink below their content (tables scroll inside their card instead of widening the page) */
 main .grid > * { min-width: 0; }
+
+/* indeterminate progress bar (components/service-activity.tsx) */
+@keyframes progress-slide { 0% { transform: translateX(-110%) } 100% { transform: translateX(320%) } }

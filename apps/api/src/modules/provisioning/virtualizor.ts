@@ -15,6 +15,15 @@ export interface VirtualizorCreds {
   verifyTls: boolean;
 }
 
+export interface VirtualizorTask {
+  actid: number;
+  /** 1 in progress, 2 completed, 3 updated, -1 errored */
+  status: number;
+  statusText: string;
+  actionText: string;
+  progress: number | null;
+}
+
 export class VirtualizorError extends Error {
   constructor(message: string, public body?: unknown) {
     super(message);
@@ -547,6 +556,27 @@ export class VirtualizorClient {
   power(vpsid: string, action: "start" | "stop" | "restart" | "poweroff") {
     return this.call("vs", { action, vpsid });
   }
+  /**
+   * Newest Virtualizor task for a VPS (act=tasks&vpsid=…), optionally of one kind such as "rebuildvs".
+   * status: 1 in progress, 2 completed, 3 updated, -1 errored. null when the VPS has none.
+   */
+  async latestTask(vpsid: string, action?: string): Promise<VirtualizorTask | null> {
+    const r = await this.call<{ tasks?: Record<string, Record<string, unknown>> | null }>("tasks", { vpsid, ...(action ? { action } : {}), order: "DESC", page: 1, reslen: 10 });
+    const rows = Object.values(r.tasks ?? {})
+      .filter((t) => String(t.vpsid ?? "") === String(vpsid) && (!action || String(t.action ?? "") === action))
+      .sort((a, b) => Number(b.actid) - Number(a.actid));
+    const t = rows[0];
+    if (!t) return null;
+    const pct = Number(t.progress);
+    return {
+      actid: Number(t.actid),
+      status: Number(t.status),
+      statusText: String(t.status_txt ?? ""),
+      actionText: String(t.action_txt ?? t.action ?? ""),
+      progress: Number.isFinite(pct) && pct >= 0 ? pct : null,
+    };
+  }
+
   rebuild(vpsid: string, osId: number, newPass: string) {
     return this.call("rebuild", {}, { vpsid, osid: osId, newpass: newPass, conf: newPass, reos: 1 });
   }

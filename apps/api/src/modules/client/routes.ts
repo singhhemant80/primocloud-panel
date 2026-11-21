@@ -1,4 +1,5 @@
 import { provisioningProgress } from "../provisioning/progress";
+import { serviceActivity } from "../provisioning/activity";
 import { requireCurrency } from "../../lib/currency";
 import { Router } from "express";
 import { z } from "zod";
@@ -322,6 +323,15 @@ clientRouter.get(
   }),
 );
 
+/** Actions running or just finished on my service (reinstall, power, password…), with live progress. */
+clientRouter.get(
+  "/services/:id/activity",
+  ah(async (req, res) => {
+    const s = await ownService(req.user!.id, req.params.id);
+    res.json(await serviceActivity(s.id, "client"));
+  }),
+);
+
 clientRouter.post(
   "/services/:id/reveal-password",
   ah(async (req, res) => {
@@ -371,9 +381,9 @@ clientRouter.post(
     // anti double-click: one request per 10 s (finished jobs' own log lines don't count)
     const recent = await prisma.provisioningLog.count({ where: { serviceId: s.id, action: { endsWith: "_requested" }, createdAt: { gt: new Date(Date.now() - 10_000) } } });
     if (recent) throw conflict("You just sent a request for this server — please wait a few seconds");
-    await enqueueProvision({ serviceId: s.id, action: b.action, params: { osTemplateId: b.osTemplateId, ...((b.action === "reset_password" || b.action === "reinstall") && b.password ? { passwordEnc: encrypt(b.password) } : {}) }, actorId: req.user!.id });
+    const job = await enqueueProvision({ serviceId: s.id, action: b.action, params: { osTemplateId: b.osTemplateId, ...((b.action === "reset_password" || b.action === "reinstall") && b.password ? { passwordEnc: encrypt(b.password) } : {}) }, actorId: req.user!.id });
     await prisma.provisioningLog.create({ data: { serviceId: s.id, action: `${b.action}_requested`, success: true, message: "Queued by customer" } });
-    res.status(202).json({ queued: true });
+    res.status(202).json({ queued: true, jobId: job?.id ?? null });
   }),
 );
 

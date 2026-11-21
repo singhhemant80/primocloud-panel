@@ -3,6 +3,8 @@
  * Every action is executed by the BullMQ worker (jobs/worker.ts) — never inside an HTTP request.
  */
 import { prisma, Prisma, type Server, ServiceStatus } from "../../db";
+import { inJob, reportProgress, sleep } from "./action-progress";
+import type { VirtualizorClient as VzClient } from "./virtualizor";
 import { config } from "../../config";
 import { decrypt, encrypt, generatePassword } from "../../lib/crypto";
 import { HttpError } from "../../lib/http";
@@ -585,7 +587,14 @@ async function withServiceLock<T>(serviceId: string, fn: () => Promise<T>): Prom
   const { redis } = await import("../../jobs/queues");
   const key = `primocloud:lock:service:${serviceId}`;
   const token = generatePassword(12);
-  const ok = await redis().set(key, token, "PX", 30 * 60_000, "NX");
+  let ok = await redis().set(key, token, "PX", 30 * 60_000, "NX");
+  // in a queued job, wait for the action before it (a reinstall can take several minutes) instead of failing
+  const until = Date.now() + 30 * 60_000;
+  while (!ok && inJob() && Date.now() < until) {
+    reportProgress("Waiting for the previous action on this service to finish", 2);
+    await sleep(4000);
+    ok = await redis().set(key, token, "PX", 30 * 60_000, "NX");
+  }
   if (!ok) throw new ProvisionError("Another operation is already running for this service — will retry", true);
   try {
     return await fn();
@@ -595,13 +604,81 @@ async function withServiceLock<T>(serviceId: string, fn: () => Promise<T>): Prom
   }
 }
 
+const START_STEP: Partial<Record<ProvisionAction, string>> = {
+  start: "Sending start to the hypervisor",
+  stop: "Sending power-off to the hypervisor",
+  shutdown: "Sending shutdown to the hypervisor",
+  reboot: "Sending reboot to the hypervisor",
+  hard_reset: "Resetting the VPS",
+  reinstall: "Preparing the reinstall",
+  reset_password: "Setting the new password",
+  change_ip: "Finding a free, unlocked IP",
+  suspend: "Suspending",
+  unsuspend: "Unsuspending",
+  terminate: "Terminating",
+  change_package: "Changing the hosting package",
+  change_plan: "Applying the new plan",
+};
+
+/**
+ * Follow Virtualizor's own task for this VPS (rebuild, …) until it finishes, reporting its progress.
+ * Returns quietly if the master doesn't expose tasks; throws if Virtualizor says the task failed.
+ */
+async function waitVirtualizorTask(c: VzClient, vpsid: string, action: string, afterActid: number, label: string, from: number, to: number) {
+  if (!inJob()) return;
+  const started = Date.now();
+  const deadline = started + 25 * 60_000;
+  let seen = false;
+  while (Date.now() < deadline) {
+    await sleep(8000);
+    let t;
+    try {
+      t = await c.latestTask(vpsid, action);
+    } catch {
+      return; // tasks API not available on this master — nothing more to follow
+    }
+    const mine = t && t.actid > afterActid ? t : null;
+    if (!mine) {
+      if (!seen && Date.now() - started > 90_000) return; // Virtualizor never listed it
+      reportProgress(`${label}: waiting for Virtualizor to start the task`, from);
+      continue;
+    }
+    seen = true;
+    if (mine.status === -1) throw new ProvisionError(`Virtualizor reported the task failed: ${mine.statusText || "error"}`, false);
+    if (mine.status === 2 || /complet/i.test(mine.statusText)) return;
+    // Virtualizor's own % when it gives one; otherwise a time-based estimate (a rebuild takes ~3–8 min)
+    const est = from + ((to - from) * Math.min(0.95, (Date.now() - started) / (6 * 60_000)));
+    reportProgress(label, mine.progress != null ? from + ((to - from) * mine.progress) / 100 : est, [mine.actionText, mine.statusText].filter(Boolean).join(" · "));
+  }
+  reportProgress(`${label}: still running in Virtualizor`, to, "It's taking longer than usual — it will finish on its own");
+}
+
+/** After a power action, wait (up to a few minutes) until the VPS reports the expected state. */
+async function waitPowerState(svc: FullService, want: "running" | "stopped", label: string) {
+  if (!inJob()) return;
+  const { server, remoteId, node } = requireRemote(svc);
+  const started = Date.now();
+  while (Date.now() - started < 180_000) {
+    await sleep(5000);
+    const st =
+      svc.product.provisioner === "PROXMOX"
+        ? (await proxmoxFor(server).guestStatus(node, kindOf(svc), remoteId).catch(() => null))?.status
+        : ({ 1: "running", 0: "stopped", 2: "suspended" } as Record<number, string>)[(await virtualizorFor(server).vpsStatus([remoteId]).catch(() => ({}) as Record<string, number>))[remoteId] ?? -9];
+    if (st === want) return;
+    reportProgress(label, 30 + Math.min(65, ((Date.now() - started) / 180_000) * 65), st ? `VPS is ${st}` : undefined);
+  }
+  reportProgress(`${label}: the hypervisor accepted it; the VPS hasn't reported ${want} yet`, 100);
+}
+
 export async function runProvisionAction(serviceId: string, action: ProvisionAction, params: Record<string, unknown> = {}) {
   if (action === "sync") return runProvisionActionUnlocked(serviceId, action, params);
   const before = await prisma.service.findUnique({ where: { id: serviceId }, select: { status: true, resellerId: true } });
   let ok = false;
   try {
+    if (START_STEP[action]) reportProgress(START_STEP[action]!, 5);
     const r = await withServiceLock(serviceId, () => runProvisionActionUnlocked(serviceId, action, params));
     ok = true;
+    reportProgress("Done", 100);
     return r;
   } finally {
     // the order's status follows its services (pending → active → suspended → terminated)
@@ -771,6 +848,10 @@ async function runProvisionActionUnlocked(serviceId: string, action: ProvisionAc
           const map = { start: "start", stop: "poweroff", shutdown: "stop", reboot: "restart" } as const;
           await virtualizorFor(server).power(remoteId, map[action]);
         }
+        const waitLabel = { start: "Starting the VPS", stop: "Powering off the VPS", shutdown: "Shutting down the VPS (the OS gets time to close)", reboot: "Rebooting the VPS" }[action];
+        reportProgress(waitLabel, 25);
+        if (action === "reboot") await sleep(inJob() ? 8000 : 0); // let it go down before waiting for "running"
+        await waitPowerState(svc, action === "start" || action === "reboot" ? "running" : "stopped", waitLabel);
         await log(svc.id, action, true);
         return { ok: true };
       }
@@ -786,6 +867,7 @@ async function runProvisionActionUnlocked(serviceId: string, action: ProvisionAc
           await c.regenerateCloudInit(node, remoteId).catch(() => undefined);
           await c.power(node, "qemu", remoteId, "reboot");
         } else if (prov === "VIRTUALIZOR") await virtualizorFor(server).changeRootPassword(remoteId, password);
+        reportProgress("Saving the new password", 90);
         await prisma.service.update({ where: { id: svc.id }, data: { passwordEnc: encrypt(password) } });
         await log(svc.id, action, true);
         return { ok: true };
@@ -860,22 +942,37 @@ async function runProvisionActionUnlocked(serviceId: string, action: ProvisionAc
           const kind = kindOf(svc);
           const st = await c.guestStatus(node, kind, remoteId).catch(() => null);
           if (st) {
+            reportProgress("Stopping the VPS", 10);
             if (st.status === "running") await c.power(node, kind, remoteId, "stop");
+            reportProgress("Removing the old disk", 20);
             await c.destroy(node, kind, remoteId);
           }
           await prisma.service.update({ where: { id: svc.id }, data: { osTemplateId: os.id, passwordEnc: encrypt(password), status: "PROVISIONING" } });
           const fresh = await loadService(svc.id);
+          reportProgress(`Installing ${os.name}`, 35, "Cloning the template and booting — usually 1–5 minutes");
           const r = await proxmoxCreate(fresh); // re-uses the same VMID, node and IPs
           await queueEmail("service.vps_ready", svc.user.email, { ...vars, ...r, os: os.name }, svc.userId);
         } else if (prov === "VIRTUALIZOR") {
           const { server, remoteId } = requireRemote(svc);
           if (!os.virtualizorOsId) throw new ProvisionError("OS has no Virtualizor id", false);
-          await virtualizorFor(server).rebuild(remoteId, os.virtualizorOsId, password);
+          const vz = virtualizorFor(server);
+          const before = await vz.latestTask(remoteId, "rebuildvs").catch(() => null);
+          reportProgress(`Sending the reinstall of ${os.name} to Virtualizor`, 10);
+          await vz.rebuild(remoteId, os.virtualizorOsId, password);
+          // Virtualizor rebuilds in the background: follow its task so "done" means really done
+          await waitVirtualizorTask(vz, remoteId, "rebuildvs", before?.actid ?? 0, `Reinstalling ${os.name}`, 15, 95);
+          reportProgress("Saving the new login", 97);
           await prisma.service.update({ where: { id: svc.id }, data: { osTemplateId: os.id, passwordEnc: encrypt(password), username: loginUserOf(os) } });
           await queueEmail("service.vps_ready", svc.user.email, { ...vars, password, username: loginUserOf(os), ip: svc.ips[0]?.address ?? "", os: os.name }, svc.userId);
         }
         await log(svc.id, action, true, `Reinstalled with ${os.name}`);
         return { ok: true };
+      }
+      case "change_ip": {
+        if (prov !== "VIRTUALIZOR") throw new ProvisionError("Changing IPs from the panel is supported for Virtualizor VPSes", false);
+        const ips = Array.isArray(params.ips) ? (params.ips as string[]) : undefined;
+        const r = await replaceVirtualizorIps(svc.id, ips?.length ? ips : undefined);
+        return { ok: true, ...r };
       }
       case "sync": {
         if (svc.product.provisioner === "VIRTUALIZOR" && svc.remoteId) return { ok: true, status: await syncVirtualizorService(svc.id) };
@@ -1034,9 +1131,13 @@ export async function replaceVirtualizorIps(serviceId: string, newIps?: string[]
   const svc = await loadService(serviceId);
   if (svc.product.provisioner !== "VIRTUALIZOR" || !svc.server || !svc.remoteId) throw new ProvisionError("This service has no Virtualizor VPS yet", false);
   const client = virtualizorFor(svc.server);
+  reportProgress("Reading the VPS's current IPs", 15);
   const before = await client.vpsIps(svc.remoteId).catch(() => [] as string[]);
+  reportProgress(newIps?.length ? `Assigning ${newIps.join(", ")} in Virtualizor` : "Picking a free, unlocked IP and assigning it in Virtualizor", 40);
   await client.replaceIps(svc.remoteId, newIps);
+  reportProgress("Confirming the new IP with Virtualizor", 75);
   const after = await client.vpsIps(svc.remoteId).catch(() => [] as string[]);
+  reportProgress("Updating IP Management", 90);
   if (after.length) await recordServiceIps(svc.id, svc.server.id, after);
   void import("./virtualizor-ips").then((m) => m.syncVirtualizorIps(svc.server!)).catch(() => null);
   await log(svc.id, "change_ip", true, `IPs changed in Virtualizor: ${before.join(", ") || "none"} → ${after.join(", ") || "?"}`);

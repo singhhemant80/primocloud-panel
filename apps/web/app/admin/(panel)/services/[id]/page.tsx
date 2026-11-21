@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, CYCLES, date, invNo, money } from "@/lib/api";
+import { ServiceActivity, kickServiceActivity } from "@/components/service-activity";
 import { Alert, Badge, Button, Card, Copy, Field, Icon, Input, Loading, Modal, Select, Table, Td, Textarea, Toggle, cx, toast, useApi } from "@/components/ui";
 
 export default function AdminService() {
@@ -33,7 +34,13 @@ export default function AdminService() {
   }, [data, id]);
   if (loading || !data || !edit) return <Loading />;
   const s = data.service;
-  const act = (action: string, extra: Record<string, unknown> = {}) => api(`/admin/services/${id}/action`, { body: { action, ...extra } }).then(() => { toast.success(`${action} queued`); setTimeout(reload, 3000); }).catch((e) => toast.error(e.message));
+  // create keeps its own tracker; every other action shows live in <ServiceActivity> below the header
+  const act = (action: string, extra: Record<string, unknown> = {}) =>
+    api(`/admin/services/${id}/action`, { body: { action, ...extra } })
+      .then(() => {
+        if (action === "create") { toast.success("Setup queued"); setTimeout(reload, 3000); } else kickServiceActivity();
+      })
+      .catch((e) => toast.error(e.message));
   const isVps = s.product.provisioner === "PROXMOX" || s.product.provisioner === "VIRTUALIZOR";
   const isHosting = s.product.provisioner === "CPANEL";
   const isColo = s.product.type === "COLOCATION";
@@ -102,6 +109,7 @@ export default function AdminService() {
         <ProvisioningTracker path={`/admin/services/${id}/provisioning`} audience="admin" hideExplain={s.status === "FAILED"} onChange={() => reload()} onRetry={() => act("create")} />
       )}
       {s.status === "FAILED" && <FailurePanel s={s} />}
+      <ServiceActivity base={`/admin/services/${id}`} onFinished={(it) => { reload(); refreshLive(); if (it.state === "failed") toast.error(`${it.label} failed${it.error ? `: ${it.error}` : ""}`); else toast.success(`${it.label} finished`); }} />
       {s.status === "SUSPENDED" && <Alert tone="warn" className="mb-6"><b>Suspended</b>{s.suspendReason ? ` — ${s.suspendReason}` : ""}</Alert>}
       {["TERMINATED", "CANCELLED"].includes(s.status) && <Alert tone="info" className="mb-6"><b>{s.status === "CANCELLED" ? "Cancelled" : "Terminated"}{s.terminationDate ? ` on ${date(s.terminationDate)}` : ""}</b>{s.terminationReason ? ` — ${s.terminationReason}` : " — no reason recorded (add one under Billing & overrides)"}</Alert>}
       {terminating && <TerminateModal hosting={isHosting} username={s.username} onClose={() => setTerminating(false)} onConfirm={(reason) => { setTerminating(false); act("terminate", { reason }); }} />}
@@ -225,7 +233,7 @@ export default function AdminService() {
               {s.server?.type === "VIRTUALIZOR" && s.remoteId && (
                 <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
                   <Button size="sm" variant="outline" icon="sync" onClick={async () => { try { const r = await api(`/admin/services/${id}/virtualizor-sync`, { body: {} }); toast.success(`Synced: ${r.ips.join(", ") || "no IPs"} · ${r.state}`); reload(); refreshLive(); } catch (e: any) { toast.error(e.message); } }}>Sync from Virtualizor</Button>
-                  <Button size="sm" variant="outline" icon="swap_horiz" onClick={async () => { if (!confirm("Replace this VPS's IPs with free IPs from Virtualizor's pool for its node? The VPS will get new addresses — tell the customer.")) return; try { const r = await api(`/admin/services/${id}/replace-ips`, { body: {} }); toast.success(`IPs changed: ${r.before.join(", ") || "—"} → ${r.after.join(", ")}`); reload(); } catch (e: any) { toast.error(e.message); } }}>Use Virtualizor's free IPs</Button>
+                  <Button size="sm" variant="outline" icon="swap_horiz" onClick={async () => { if (!confirm("Replace this VPS's IPs with free IPs from Virtualizor's pool for its node? The VPS will get new addresses — tell the customer.")) return; try { await api(`/admin/services/${id}/replace-ips`, { body: {} }); kickServiceActivity(); window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e: any) { toast.error(e.message); } }}>Use Virtualizor's free IPs</Button>
                   <VirtualizorCheck serviceId={id} onLinked={() => { reload(); refreshLive(); }} />
                 </div>
               )}
@@ -671,7 +679,7 @@ function HostingActions({ s, onDone }: { s: any; onDone: () => void }) {
       <Button variant="outline" size="sm" icon="mail" onClick={() => openLogin(`/admin/services/${s.id}/cpanel-login`, "webmaild")}>Webmail</Button>
       <Button variant="outline" size="sm" icon="key" onClick={() => setPw(generatePassword())}>Change password</Button>
       {pkgs ? (
-        <Select className="h-9 w-56" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v && confirm(`Change the WHM package to ${v}?`)) api(`/admin/services/${s.id}/action`, { body: { action: "change_package", package: v } }).then(() => { toast.success("Package change queued"); setTimeout(onDone, 2500); }).catch((er) => toast.error(er.message)); }}>
+        <Select className="h-9 w-56" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v && confirm(`Change the WHM package to ${v}?`)) api(`/admin/services/${s.id}/action`, { body: { action: "change_package", package: v } }).then(() => kickServiceActivity()).catch((er) => toast.error(er.message)); }}>
           <option value="">Change package to…</option>
           {pkgs.map((x) => <option key={x}>{x}</option>)}
         </Select>

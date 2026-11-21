@@ -12,6 +12,7 @@ import { Alert, Badge, Button, Card, Copy, Field, Icon, Input, Loading, Modal, P
 import { PasswordField, passwordProblem } from "@/components/password-field";
 import { Sparkline } from "@/components/sparkline";
 import { ProvisioningTracker } from "@/components/provisioning-tracker";
+import { ServiceActivity, kickServiceActivity } from "@/components/service-activity";
 import { LiveBadge } from "@/components/live-state";
 
 export default function ServicePage() {
@@ -46,9 +47,9 @@ export default function ServicePage() {
     setBusy(action);
     try {
       await api(`/client/services/${id}/action`, { body: { action, ...extra } });
-      toast.success(`${action.replace("_", " ")} requested — this takes a few seconds`);
       setModal(null);
-      setTimeout(reload, 4000);
+      kickServiceActivity(); // progress shows live at the top of the page
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -96,6 +97,7 @@ export default function ServicePage() {
       {(isVps || isHosting) && (["PENDING", "PROVISIONING", "FAILED"].includes(svc.status) || (svc.status === "ACTIVE" && Date.now() - new Date(svc.createdAt).getTime() < 3 * 3600_000)) && (
         <ProvisioningTracker path={`/client/services/${id}/provisioning`} audience="client" onChange={() => reload()} />
       )}
+      <ServiceActivity base={`/client/services/${id}`} onFinished={(it) => { reload(); api(`/client/services/${id}/status`).then((r) => setLive(r.live)).catch(() => {}); if (it.state === "failed") toast.error(`${it.label} couldn't be completed`); else toast.success(`${it.label} finished`); }} />
       {!isVps && !isHosting && svc.status === "PENDING" && (data.unpaidInvoiceId ? (
         <Alert tone="warn" className="mb-5">
           This service is awaiting payment. <Link href={`/client/invoices/${data.unpaidInvoiceId}`} className="font-bold underline">Pay the invoice</Link> to activate it.
