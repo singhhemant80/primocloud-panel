@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, CYCLES, money } from "@/lib/api";
 import { Alert, Button, Card, Field, Icon, Input, Loading, PageHeader, Select, Textarea, Toggle, cx, toast, useApi } from "@/components/ui";
@@ -14,7 +14,15 @@ export default function Page() {
   );
 }
 
-/** Staff place an order for a customer — same checkout as the shop, with an optional root password. */
+type Line = { key: number; productId: string; cycle: string; qty: number; os: string; hostname: string; password: string };
+let nextKey = 1;
+const blank = (): Line => ({ key: nextKey++, productId: "", cycle: "", qty: 1, os: "", hostname: "", password: "" });
+const HOSTNAME = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+/**
+ * Staff place an order for a customer — same checkout as the shop: one or several plans in one order
+ * (one invoice), an optional promo code and root password, optionally marked paid.
+ */
 function NewOrder() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -22,16 +30,13 @@ function NewOrder() {
   const [q, setQ] = useState("");
   const [found, setFound] = useState<any[]>([]);
   const [client, setClient] = useState<any>(null);
-  const [productId, setProductId] = useState("");
-  const [cycle, setCycle] = useState("");
-  const [os, setOs] = useState("");
-  const [hostname, setHostname] = useState("");
-  const [password, setPassword] = useState("");
-  const [qty, setQty] = useState(1);
+  const [lines, setLines] = useState<Line[]>(() => [blank()]);
   const [markPaid, setMarkPaid] = useState(false);
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [promo, setPromo] = useState("");
+  const [promoOpts, setPromoOpts] = useState<any[] | null>(null);
 
   // preselect a customer when opened from their page (?client=<id>)
   useEffect(() => {
@@ -45,30 +50,63 @@ function NewOrder() {
   }, [q]);
 
   const products = (pd?.products ?? []).filter((p: any) => p.enabled);
-  const p = products.find((x: any) => x.id === productId);
-  const isVps = p && (p.provisioner === "PROXMOX" || p.provisioner === "VIRTUALIZOR");
-  const cycles = useMemo(() => (p?.pricing ?? []).filter((x: any) => x.currency === "INR" && x.enabled), [p]);
-  const oses = (p?.osTemplates ?? []).map((x: any) => x.osTemplate).filter((o: any) => o.enabled);
+  const productOf = (l: Line) => products.find((x: any) => x.id === l.productId);
+  const isVpsP = (p: any) => p && (p.provisioner === "PROXMOX" || p.provisioner === "VIRTUALIZOR");
+  const isHostingP = (p: any) => p && (["SHARED", "RESELLER_HOSTING", "WORDPRESS"].includes(p.type) || p.provisioner === "CPANEL");
+  const cyclesOf = (p: any) => (p?.pricing ?? []).filter((x: any) => x.currency === "INR" && x.enabled);
+  const osesOf = (p: any) => (p?.osTemplates ?? []).map((x: any) => x.osTemplate).filter((o: any) => o.enabled);
+  const ready = lines.filter((l) => l.productId && l.cycle);
+
+  const update = (key: number, patch: Partial<Line>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  const choosePlan = (key: number, productId: string) => {
+    const p = products.find((x: any) => x.id === productId);
+    const cycles = cyclesOf(p);
+    update(key, { productId, cycle: cycles.find((c: any) => c.cycle === "MONTHLY")?.cycle ?? cycles[0]?.cycle ?? "", os: osesOf(p)[0]?.id ?? "" });
+  };
+
+  // promo codes that apply to this customer + the order's items (checked with the checkout's own pricing)
+  const promoKey = JSON.stringify([client?.id ?? null, ready.map((l) => [l.productId, l.cycle, l.qty])]);
   useEffect(() => {
-    setCycle(cycles.find((c: any) => c.cycle === "MONTHLY")?.cycle ?? cycles[0]?.cycle ?? "");
-    setOs(oses[0]?.id ?? "");
-  }, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
+    setPromoOpts(null);
+    if (!ready.length) return;
+    const t = setTimeout(
+      () =>
+        api("/admin/orders/promo-options", { body: { userId: client?.id ?? null, items: ready.map((l) => ({ productId: l.productId, cycle: l.cycle, quantity: l.qty })) } })
+          .then((r) => {
+            setPromoOpts(r.options ?? []);
+            setPromo((cur) => (cur && !(r.options ?? []).some((o: any) => o.code === cur && o.applicable) ? "" : cur));
+          })
+          .catch(() => setPromoOpts([])),
+      250,
+    );
+    return () => clearTimeout(t);
+  }, [promoKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <Loading />;
 
   async function submit() {
     if (!client) return toast.error("Choose the customer");
-    if (!p || !cycle) return toast.error("Choose a plan and billing cycle");
-    if (isVps && p.requireHostname && !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)) return toast.error("Enter a hostname like server1.example.com");
-    const pw = passwordProblem(password);
-    if (pw) return toast.error(`Root password: ${pw}`);
+    if (!ready.length || ready.length !== lines.length) return toast.error(lines.length > 1 ? "Choose a plan and billing cycle for every item (or remove the empty one)" : "Choose a plan and billing cycle");
+    for (const [n, l] of lines.entries()) {
+      const p = productOf(l);
+      const which = lines.length > 1 ? `Item ${n + 1}: ` : "";
+      if (isVpsP(p) && p.requireHostname && !HOSTNAME.test(l.hostname)) return toast.error(`${which}enter a hostname like server1.example.com`);
+      if (isHostingP(p) && !HOSTNAME.test(l.hostname)) return toast.error(`${which}enter the domain for ${p.name} (e.g. example.com)`);
+      if (isHostingP(p) && l.qty > 1) return toast.error(`${which}order ${p.name} once per domain — add another plan for a second domain`);
+      const pw = isVpsP(p) ? passwordProblem(l.password) : null;
+      if (pw) return toast.error(`${which}root password: ${pw}`);
+    }
     setBusy(true);
     try {
       const r = await api("/admin/orders", {
         body: {
           userId: client.id,
-          items: [{ productId: p.id, cycle, osTemplateId: isVps ? os || null : null, hostname: hostname || null, rootPassword: isVps ? password || null : null, quantity: qty, config: {}, addonIds: [] }],
+          items: lines.map((l) => {
+            const vps = isVpsP(productOf(l));
+            return { productId: l.productId, cycle: l.cycle, osTemplateId: vps ? l.os || null : null, hostname: l.hostname || null, rootPassword: vps ? l.password || null : null, quantity: l.qty, config: {}, addonIds: [] };
+          }),
           domains: [],
+          promoCode: promo || null,
           notes: notes || undefined,
           markPaid,
           paymentReference: reference || undefined,
@@ -82,11 +120,14 @@ function NewOrder() {
     }
   }
 
-  const price = cycles.find((c: any) => c.cycle === cycle);
+  const priceOf = (l: Line) => cyclesOf(productOf(l)).find((c: any) => c.cycle === l.cycle);
+  const subtotal = lines.reduce((t, l) => t + (priceOf(l)?.price ?? 0) * l.qty, 0);
+  const chosenPromo = promoOpts?.find((x) => x.code === promo && x.applicable);
+  const anyVps = lines.some((l) => isVpsP(productOf(l)));
   return (
     <>
-      <PageHeader back="/admin/orders" title="New order" subtitle="Place an order for a customer. It goes through the normal checkout: invoice, tax, emails and automatic setup." />
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+      <PageHeader back="/admin/orders" title="New order" subtitle="Place an order for a customer — one plan or several in one invoice. It goes through the normal checkout: invoice, tax, emails and automatic setup." />
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
           <Card title="1 · Customer">
             {client ? (
@@ -111,43 +152,83 @@ function NewOrder() {
             )}
           </Card>
 
-          <Card title="2 · Plan">
-            <div className="grid gap-4 sm:grid-cols-[1fr_200px_110px]">
-              <Field label="Plan">
-                <Select value={productId} onChange={(e) => setProductId(e.target.value)}>
-                  <option value="">Choose…</option>
-                  {products.map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                </Select>
-              </Field>
-              <Field label="Billing cycle">
-                <Select value={cycle} onChange={(e) => setCycle(e.target.value)} disabled={!p}>
-                  {cycles.map((c: any) => <option key={c.cycle} value={c.cycle}>{CYCLES[c.cycle] ?? c.cycle} — {money(c.price, "INR")}</option>)}
-                </Select>
-              </Field>
-              <Field label="Quantity"><Input type="number" min={1} max={10} value={qty} onChange={(e) => setQty(Math.max(1, Math.min(10, Number(e.target.value) || 1)))} /></Field>
+          {lines.map((l, n) => {
+            const p = productOf(l);
+            const vps = isVpsP(p);
+            const cycles = cyclesOf(p);
+            const oses = osesOf(p);
+            const os = oses.find((o: any) => o.id === l.os);
+            return (
+              <Card
+                key={l.key}
+                title={lines.length > 1 ? `2 · Plan ${n + 1} of ${lines.length}` : "2 · Plan"}
+                action={lines.length > 1 ? <Button size="sm" variant="ghost" icon="delete" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>Remove</Button> : undefined}
+              >
+                <div className="grid gap-4 sm:grid-cols-[1fr_200px_110px]">
+                  <Field label="Plan">
+                    <Select value={l.productId} onChange={(e) => choosePlan(l.key, e.target.value)}>
+                      <option value="">Choose…</option>
+                      {products.map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Billing cycle">
+                    <Select value={l.cycle} onChange={(e) => update(l.key, { cycle: e.target.value })} disabled={!p}>
+                      {cycles.map((c: any) => <option key={c.cycle} value={c.cycle}>{CYCLES[c.cycle] ?? c.cycle} — {money(c.price, "INR")}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Quantity"><Input type="number" min={1} max={10} value={l.qty} onChange={(e) => update(l.key, { qty: Math.max(1, Math.min(10, Number(e.target.value) || 1)) })} /></Field>
+                </div>
+                {isHostingP(p) && (
+                  <Field label="Domain" className="mt-4 max-w-md"><Input value={l.hostname} onChange={(e) => update(l.key, { hostname: e.target.value.toLowerCase().trim() })} placeholder="example.com" /></Field>
+                )}
+                {vps && (
+                  <div className="mt-4 border-t border-line pt-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Hostname"><Input value={l.hostname} onChange={(e) => update(l.key, { hostname: e.target.value.toLowerCase().trim() })} placeholder="server1.example.com" /></Field>
+                      <Field label="Operating system">
+                        <Select value={l.os} onChange={(e) => update(l.key, { os: e.target.value })}>{oses.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select>
+                      </Field>
+                    </div>
+                    {os && <div className="mt-2 flex items-center gap-2 text-xs text-mute"><OsLogo os={os} size={20} />{os.name}</div>}
+                    <div className="mt-4">
+                      <div className="mb-1.5 text-sm font-bold text-ink">Root password{l.qty > 1 ? ` (used for all ${l.qty} servers)` : ""}</div>
+                      <PasswordField value={l.password} onChange={(v) => update(l.key, { password: v })} optionalHint="Leave empty to generate one — it's emailed to the customer when the server is ready" />
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setLines((ls) => [...ls, blank()])}
+            disabled={lines.length >= 20}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary-tint/60 py-3.5 text-sm font-extrabold text-primary-dark transition hover:border-primary hover:bg-primary-soft disabled:opacity-50"
+          >
+            <Icon name="add_circle" className="text-[20px]" />
+            Add another plan to this order
+          </button>
+
+          <Card title="3 · Promo code & payment">
+            <Field label="Promo code" className="max-w-xl">
+              <Select value={promo} onChange={(e) => setPromo(e.target.value)} disabled={!ready.length || promoOpts === null}>
+                <option value="">{!ready.length ? "Choose a plan first" : promoOpts === null ? "Checking promo codes…" : promoOpts.some((o) => o.applicable) ? "No promo code" : promoOpts.length ? "No promo code applies to this order" : "No promo codes set up"}</option>
+                {(promoOpts ?? []).map((o) => (
+                  <option key={o.code} value={o.code} disabled={!o.applicable}>
+                    {o.code} — {o.label}
+                    {o.applicable ? ` · saves ${money(o.discount, o.currency)}${o.recurring ? " every renewal" : " on the first payment"}` : ` · ${o.reason}`}
+                    {o.newOnly ? " · new customers" : ""}
+                    {o.usesLeft != null ? ` · ${o.usesLeft} left` : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {!client && promoOpts?.some((o) => o.newOnly) && <p className="mt-1.5 text-xs text-mute">Codes for new customers are checked against the customer once you choose one.</p>}
+            <div className="mt-5 border-t border-line pt-4">
+              <Toggle checked={markPaid} onChange={setMarkPaid} label="Mark the invoice as paid now (payment received offline) — setup starts right away" />
+              {markPaid && <Field label="Payment reference (optional)" className="mt-3 max-w-sm"><Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="UTR / cheque no." /></Field>}
+              {!markPaid && <p className="mt-2 text-xs text-mute">The customer gets one invoice for the whole order by email; setup starts when it's paid.</p>}
             </div>
-          </Card>
-
-          {isVps && (
-            <Card title="3 · Server setup">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Hostname"><Input value={hostname} onChange={(e) => setHostname(e.target.value.toLowerCase().trim())} placeholder="server1.example.com" /></Field>
-                <Field label="Operating system">
-                  <Select value={os} onChange={(e) => setOs(e.target.value)}>{oses.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select>
-                </Field>
-              </div>
-              {oses.find((o: any) => o.id === os) && <div className="mt-2 flex items-center gap-2 text-xs text-mute"><OsLogo os={oses.find((o: any) => o.id === os)} size={20} />{oses.find((o: any) => o.id === os).name}</div>}
-              <div className="mt-4">
-                <div className="mb-1.5 text-sm font-bold text-ink">Root password{qty > 1 ? ` (used for all ${qty} servers)` : ""}</div>
-                <PasswordField value={password} onChange={setPassword} optionalHint="Leave empty to generate one — it's emailed to the customer when the server is ready" />
-              </div>
-            </Card>
-          )}
-
-          <Card title={isVps ? "4 · Payment" : "3 · Payment"}>
-            <Toggle checked={markPaid} onChange={setMarkPaid} label="Mark the invoice as paid now (payment received offline) — setup starts right away" />
-            {markPaid && <Field label="Payment reference (optional)" className="mt-3 max-w-sm"><Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="UTR / cheque no." /></Field>}
-            {!markPaid && <p className="mt-2 text-xs text-mute">The customer gets the invoice by email; setup starts when it's paid.</p>}
             <Field label="Note on the order (optional)" className="mt-4"><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
           </Card>
         </div>
@@ -156,12 +237,30 @@ function NewOrder() {
           <Card title="Summary" className="xl:sticky xl:top-24">
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between gap-3"><dt className="text-mute">Customer</dt><dd className="truncate text-right font-semibold">{client?.email ?? "—"}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-mute">Plan</dt><dd className="text-right font-semibold">{p?.name ?? "—"}{qty > 1 ? ` × ${qty}` : ""}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-mute">Price</dt><dd className="text-right font-semibold">{price ? `${money(price.price * qty, "INR")} ${CYCLES[cycle]?.toLowerCase() ?? ""}` : "—"}</dd></div>
-              {isVps && <div className="flex justify-between gap-3"><dt className="text-mute">Root password</dt><dd className={cx("text-right font-semibold", password ? "text-emerald-700" : "text-mute")}>{password ? "Set by staff" : "Generated"}</dd></div>}
+              {lines.map((l, n) => {
+                const p = productOf(l);
+                const pr = priceOf(l);
+                return (
+                  <div key={l.key} className="flex justify-between gap-3">
+                    <dt className="min-w-0 text-mute"><span className="block truncate">{p ? `${p.name}${l.qty > 1 ? ` × ${l.qty}` : ""}` : lines.length > 1 ? `Plan ${n + 1} — not chosen` : "Plan"}</span>{pr && <span className="text-[11px]">{CYCLES[l.cycle] ?? l.cycle}</span>}</dt>
+                    <dd className="shrink-0 text-right font-semibold">{pr ? money(pr.price * l.qty, "INR") : "—"}</dd>
+                  </div>
+                );
+              })}
+              {ready.length > 0 && (
+                <div className="flex justify-between gap-3 border-t border-line pt-2"><dt className="text-mute">Subtotal</dt><dd className="text-right font-semibold">{money(subtotal, "INR")}</dd></div>
+              )}
+              {chosenPromo && (
+                <>
+                  <div className="flex justify-between gap-3 text-emerald-700"><dt>Promo {chosenPromo.code}</dt><dd className="text-right font-semibold">−{money(chosenPromo.discount, chosenPromo.currency)}</dd></div>
+                  <div className="flex justify-between gap-3 border-t border-line pt-2"><dt className="font-bold text-ink">First payment</dt><dd className="text-right font-extrabold text-ink">{money(chosenPromo.total, chosenPromo.currency)} <span className="text-xs font-semibold text-mute">+ tax</span></dd></div>
+                  <p className="text-xs text-mute">{chosenPromo.recurring ? "The discount also applies to every renewal." : "Renewals are at the normal price."}</p>
+                </>
+              )}
+              {anyVps && <div className="flex justify-between gap-3"><dt className="text-mute">Root password</dt><dd className={cx("text-right font-semibold", lines.every((l) => !isVpsP(productOf(l)) || l.password) ? "text-emerald-700" : "text-mute")}>{lines.every((l) => !isVpsP(productOf(l)) || l.password) ? "Set by staff" : "Generated where empty"}</dd></div>}
             </dl>
             <p className="mt-3 text-xs text-mute">Tax and the final total are worked out by the invoice, as in the shop.</p>
-            <Button className="mt-4 w-full" icon="shopping_cart_checkout" loading={busy} onClick={submit}>Create order</Button>
+            <Button className="mt-4 w-full" icon="shopping_cart_checkout" loading={busy} onClick={submit}>{lines.length > 1 ? `Create order (${lines.length} plans)` : "Create order"}</Button>
             {!client && <Alert className="mt-3" tone="info">Choose a customer first.</Alert>}
           </Card>
         </aside>

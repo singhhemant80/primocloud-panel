@@ -676,8 +676,64 @@ adminCore.post(
       const out = await applyPayment({ invoiceId: inv.id, amount: inv.total - inv.amountPaid, gateway: "manual", gatewayTxnId: b.paymentReference || `staff-${r.orderId}`, description: `Recorded by staff with the order` });
       paid = out.paid;
     }
-    await audit({ actorId: req.user!.id, userId: u.id, action: "order.created_by_staff", entity: "order", entityId: r.orderId, details: { items: b.items.map((i) => ({ productId: i.productId, cycle: i.cycle, hostname: i.hostname, osTemplateId: i.osTemplateId, passwordChosen: !!i.rootPassword })), markPaid: b.markPaid } });
+    await audit({ actorId: req.user!.id, userId: u.id, action: "order.created_by_staff", entity: "order", entityId: r.orderId, details: { items: b.items.map((i) => ({ productId: i.productId, cycle: i.cycle, hostname: i.hostname, osTemplateId: i.osTemplateId, passwordChosen: !!i.rootPassword })), markPaid: b.markPaid, promoCode: b.promoCode ?? null } });
     res.status(201).json({ ...r, paid });
+  }),
+);
+
+/**
+ * Promo codes for the staff "New order" page: every enabled code, checked against this customer and the
+ * order's items (plan, cycle, quantity — one or several) with the same pricing the checkout uses — applicable ones with the exact saving,
+ * the rest with the reason they don't apply.
+ */
+adminCore.post(
+  "/orders/promo-options",
+  requireStaff("orders.manage"),
+  ah(async (req, res) => {
+    const b = parse(
+      z.object({
+        userId: z.string().optional().nullable(),
+        items: z.array(z.object({ productId: z.string(), cycle: z.string(), quantity: z.number().int().min(1).max(10).default(1) })).min(1).max(20).optional(),
+        // single-item form
+        productId: z.string().optional(),
+        cycle: z.string().optional(),
+        quantity: z.number().int().min(1).max(10).default(1),
+      }),
+      req.body,
+    );
+    const rows = b.items ?? (b.productId && b.cycle ? [{ productId: b.productId, cycle: b.cycle, quantity: b.quantity }] : []);
+    if (!rows.length) throw badRequest("Choose a plan");
+    const { priceCart } = await import("../orders/pricing");
+    const codes = await prisma.promoCode.findMany({ where: { enabled: true }, orderBy: { createdAt: "desc" }, take: 200 });
+    const items = rows.map((x) => ({ ...x, config: {}, addonIds: [] }));
+    const base = await priceCart({ items, domains: [], currency: "INR" } as never, { userId: b.userId ?? null }).catch(() => null);
+    const subtotal = base ? base.lines.reduce((t, l) => t + l.amount, 0) : null;
+    const now = new Date();
+    const options = await Promise.all(
+      codes.map(async (pc) => {
+        const label = pc.type === "PERCENT" ? `${pc.value}% off` : `${(pc.value / 100).toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 })} off`;
+        const info = {
+          code: pc.code,
+          label,
+          recurring: pc.recurring,
+          newOnly: pc.newOnly,
+          expiresAt: pc.expiresAt,
+          usesLeft: pc.maxUses ? Math.max(0, pc.maxUses - pc.uses) : null,
+        };
+        if (pc.startsAt && pc.startsAt > now) return { ...info, applicable: false, reason: `Starts ${pc.startsAt.toISOString().slice(0, 10)}` };
+        if (pc.expiresAt && pc.expiresAt < now) return { ...info, applicable: false, reason: "Expired" };
+        if (pc.maxUses && pc.uses >= pc.maxUses) return { ...info, applicable: false, reason: "All uses taken" };
+        try {
+          const r = await priceCart({ items, domains: [], promoCode: pc.code, currency: "INR" } as never, { userId: b.userId ?? null });
+          return { ...info, applicable: true, reason: null, discount: r.promo?.discount ?? 0, currency: r.currency, total: r.lines.reduce((t, l) => t + l.amount, 0), subtotal };
+        } catch (e) {
+          // pricing explains why: not for this plan / cycle, new customers only…
+          return { ...info, applicable: false, reason: (e as Error).message.replace(/^This promo code /, "").replace(/^./, (c) => c.toUpperCase()) };
+        }
+      }),
+    );
+    options.sort((x, y) => Number(y.applicable) - Number(x.applicable) || ((y as { discount?: number }).discount ?? 0) - ((x as { discount?: number }).discount ?? 0));
+    res.json({ options, subtotal, currency: base?.currency ?? "INR" });
   }),
 );
 

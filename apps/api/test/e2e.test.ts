@@ -422,3 +422,80 @@ test("Proxmox client: real REST flow against a mock PVE API (clone → config �
   assert.ok(calls.includes("PUT /nodes/pve1/qemu/123/resize"));
   assert.ok(calls.includes("POST /nodes/pve1/qemu/123/status/start"));
 });
+
+test("staff New order: promo codes offered for the customer + plan + cycle, and applied to the order", async () => {
+  const bcrypt = (await import("bcryptjs")).default;
+  const role = await prisma.role.findUniqueOrThrow({ where: { name: "Administrator" } });
+  await prisma.user.create({ data: { type: "STAFF", email: `boss-${RUN}@t.test`, firstName: "Boss", passwordHash: await bcrypt.hash("Boss@123456", 10), roleId: role.id } });
+  const staff = new Session();
+  assert.equal((await staff.req("POST", "/api/auth/login", { email: `boss-${RUN}@t.test`, password: "Boss@123456", portal: "admin" })).status, 200);
+  const cust = new Session();
+  await registerClient(cust, `promo-${RUN}@t.test`);
+  const custId = (await prisma.user.findUniqueOrThrow({ where: { email: `promo-${RUN}@t.test` } })).id;
+  const other = await prisma.product.findUniqueOrThrow({ where: { slug: "shared-basic" } });
+  const C = (x: string) => `${x}${RUN}`.toUpperCase();
+  await prisma.promoCode.createMany({
+    data: [
+      { code: C("ALL10"), type: "PERCENT", value: 10 },
+      { code: C("NEWBIE"), type: "PERCENT", value: 20, newOnly: true, recurring: true },
+      { code: C("OTHERPLAN"), type: "PERCENT", value: 50, productIds: [other.id] },
+      { code: C("OLD"), type: "PERCENT", value: 30, expiresAt: new Date(Date.now() - 86400_000) },
+      { code: C("YEARLY"), type: "PERCENT", value: 15, cycles: ["ANNUAL"] },
+    ],
+  });
+  try {
+    const r = await staff.req("POST", "/api/admin/orders/promo-options", { userId: custId, productId, cycle: "MONTHLY", quantity: 2 });
+    assert.equal(r.status, 200);
+    const mine = Object.fromEntries((r.body.options as any[]).filter((o) => o.code.endsWith(RUN.toUpperCase())).map((o) => [o.code, o]));
+    assert.equal(mine[C("ALL10")].applicable, true);
+    assert.equal(mine[C("ALL10")].discount, 10980); // 10% of 2 × ₹549
+    assert.equal(mine[C("NEWBIE")].applicable, true, "a customer with no paid invoices is new");
+    assert.equal(mine[C("OTHERPLAN")].applicable, false);
+    assert.match(mine[C("OTHERPLAN")].reason, /doesn't apply/i);
+    assert.equal(mine[C("OLD")].applicable, false);
+    assert.equal(mine[C("OLD")].reason, "Expired");
+    assert.equal(mine[C("YEARLY")].applicable, false, "annual-only code on a monthly order");
+    // applicable codes come first, biggest saving first
+    const order = (r.body.options as any[]).filter((o) => o.code.endsWith(RUN.toUpperCase())).map((o) => o.code);
+    assert.deepEqual(order.slice(0, 2), [C("NEWBIE"), C("ALL10")]);
+
+    // place the order with the code: the invoice carries the discount
+    const placed = await staff.req("POST", "/api/admin/orders", {
+      userId: custId,
+      items: [{ productId, cycle: "MONTHLY", quantity: 1, hostname: `promo-${RUN}.example.com`, osTemplateId: (await prisma.productOs.findFirstOrThrow({ where: { productId } })).osTemplateId, config: {}, addonIds: [] }],
+      domains: [],
+      promoCode: C("ALL10"),
+    });
+    assert.equal(placed.status, 201, JSON.stringify(placed.body));
+    const inv = await prisma.invoice.findUniqueOrThrow({ where: { id: placed.body.invoiceId }, include: { items: true } });
+    const promoLine = inv.items.find((i) => i.type === "PROMO");
+    assert.ok(promoLine, "promo line on the invoice");
+    assert.equal(promoLine!.unitPrice, -5490);
+    assert.equal((await prisma.promoCode.findUniqueOrThrow({ where: { code: C("ALL10") } })).uses, 1);
+
+    // several plans in one order: promo checked across all items, one order + one invoice, a service each
+    const os = (await prisma.productOs.findFirstOrThrow({ where: { productId } })).osTemplateId;
+    const multi = await staff.req("POST", "/api/admin/orders/promo-options", { userId: custId, items: [{ productId, cycle: "MONTHLY", quantity: 1 }, { productId: other.id, cycle: "MONTHLY", quantity: 1 }] });
+    const mm = Object.fromEntries((multi.body.options as any[]).map((o) => [o.code, o]));
+    assert.equal(mm[C("OTHERPLAN")].applicable, true, "applies once the other plan is in the order");
+    assert.equal(mm[C("OTHERPLAN")].discount, 2450); // 50% of ₹49 (shared-basic only)
+    assert.equal(mm[C("ALL10")].discount, 5490 + 490);
+    const two = await staff.req("POST", "/api/admin/orders", {
+      userId: custId,
+      items: [
+        { productId, cycle: "MONTHLY", quantity: 1, hostname: `multi-${RUN}.example.com`, osTemplateId: os, config: {}, addonIds: [] },
+        { productId: other.id, cycle: "MONTHLY", quantity: 1, hostname: `multi-${RUN}.example.in`, config: {}, addonIds: [] },
+      ],
+      domains: [],
+      promoCode: C("OTHERPLAN"),
+    });
+    assert.equal(two.status, 201, JSON.stringify(two.body));
+    const ord = await prisma.order.findUniqueOrThrow({ where: { id: two.body.orderId }, include: { services: true } });
+    assert.equal(ord.services.length, 2);
+    assert.deepEqual(new Set(ord.services.map((x) => x.productId)), new Set([productId, other.id]));
+    const inv2 = await prisma.invoice.findUniqueOrThrow({ where: { id: two.body.invoiceId }, include: { items: true } });
+    assert.equal(inv2.items.find((i) => i.type === "PROMO")!.unitPrice, -2450);
+  } finally {
+    await prisma.promoCode.deleteMany({ where: { code: { endsWith: RUN.toUpperCase() } } });
+  }
+});
