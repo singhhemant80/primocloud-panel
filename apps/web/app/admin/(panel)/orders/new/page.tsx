@@ -56,6 +56,26 @@ function NewOrder() {
   const cyclesOf = (p: any) => (p?.pricing ?? []).filter((x: any) => x.currency === "INR" && x.enabled);
   const osesOf = (p: any) => (p?.osTemplates ?? []).map((x: any) => x.osTemplate).filter((o: any) => o.enabled);
   const ready = lines.filter((l) => l.productId && l.cycle);
+  // the plan list in shop order: each group under its own heading (group order, then cheapest first);
+  // plans hidden from the shop (old / retired) last, so they're still there for existing customers
+  const monthly = (p: any) => {
+    const c = cyclesOf(p);
+    return Number((c.find((x: any) => x.cycle === "MONTHLY") ?? c[0])?.price ?? Number.MAX_SAFE_INTEGER);
+  };
+  const byPlan = (a: any, b: any) => monthly(a) - monthly(b) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.name).localeCompare(String(b.name), undefined, { numeric: true });
+  const planGroups: { label: string; items: any[] }[] = [];
+  {
+    const shown = products.filter((p: any) => !p.hidden && !p.group?.hidden);
+    const groups = new Map<string, { label: string; order: number; items: any[] }>();
+    for (const p of shown) {
+      const k = p.group?.id ?? "-";
+      if (!groups.has(k)) groups.set(k, { label: p.group?.name ?? "Other", order: p.group?.sortOrder ?? 0, items: [] });
+      groups.get(k)!.items.push(p);
+    }
+    for (const g of [...groups.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))) planGroups.push({ label: g.label, items: g.items.sort(byPlan) });
+    const old = products.filter((p: any) => p.hidden || p.group?.hidden).sort((a: any, b: any) => String(a.group?.name).localeCompare(String(b.group?.name)) || byPlan(a, b));
+    if (old.length) planGroups.push({ label: "Hidden from the shop (old plans)", items: old });
+  }
 
   const update = (key: number, patch: Partial<Line>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const choosePlan = (key: number, productId: string) => {
@@ -168,7 +188,14 @@ function NewOrder() {
                   <Field label="Plan">
                     <Select value={l.productId} onChange={(e) => choosePlan(l.key, e.target.value)}>
                       <option value="">Choose…</option>
-                      {products.map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                      {planGroups.map((g) => (
+                        <optgroup key={g.label} label={g.label}>
+                          {g.items.map((x: any) => {
+                            const m = monthly(x);
+                            return <option key={x.id} value={x.id}>{x.name}{m < Number.MAX_SAFE_INTEGER ? ` — ${money(m, "INR")}/mo` : ""}{g.label.startsWith("Hidden") && x.group?.name ? ` · ${x.group.name}` : ""}</option>;
+                          })}
+                        </optgroup>
+                      ))}
                     </Select>
                   </Field>
                   <Field label="Billing cycle">
