@@ -8,7 +8,7 @@ export default function Downloads() {
       <PageHeader title="Downloads" />
       <Card pad={false}>
         {loading ? <Loading /> : !data?.downloads.length ? <Empty icon="download" title="Nothing to download yet" /> : (
-          <ul className="divide-y divide-[#f3effb]">
+          <ul className="divide-y divide-[#effbf5]">
             {data.downloads.map((d: any) => (
               <li key={d.id} className="flex items-center justify-between gap-4 px-5 py-4">
                 <div><div className="font-bold text-ink">{d.title}</div><div className="text-sm text-mute">{d.category}{d.description ? ` · ${d.description}` : ""}</div></div>

@@ -200,7 +200,7 @@ export function CampaignEditor({ initial, onChanged }: { initial: any; onChanged
       <ScheduleModal open={modal === "schedule"} onClose={() => setModal(null)} count={aud?.count ?? 0} onSchedule={(at) => act("send", { scheduledAt: at }, `Scheduled for ${ist(at)}`)} />
       <Modal open={modal === "send"} onClose={() => setModal(null)} title="Send this campaign now?">
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-xl bg-[#faf7ff] p-4">
+          <div className="flex items-center gap-3 rounded-xl bg-[#f7fffb] p-4">
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-white"><Icon name="rocket_launch" className="text-[24px]" /></div>
             <div>
               <div className="text-2xl font-extrabold tabular-nums text-ink">{fmt(aud?.count ?? 0)}</div>
@@ -235,7 +235,7 @@ const Title = ({ icon, children }: { icon: string; children: ReactNode }) => (
 );
 
 function SaveState({ s }: { s: string }) {
-  const m: Record<string, [string, string, string]> = { saved: ["cloud_done", "Saved", "text-emerald-200"], saving: ["sync", "Saving…", "text-violet-100"], dirty: ["edit", "Editing…", "text-violet-100"], error: ["error", "Not saved", "text-rose-200"] };
+  const m: Record<string, [string, string, string]> = { saved: ["cloud_done", "Saved", "text-emerald-200"], saving: ["sync", "Saving…", "text-emerald-100"], dirty: ["edit", "Editing…", "text-emerald-100"], error: ["error", "Not saved", "text-rose-200"] };
   const [i, t, c] = m[s];
   return <span className={cx("inline-flex items-center gap-1 text-[12.5px] font-bold", c)}><Icon name={i} className={cx("text-[16px]", s === "saving" && "animate-spin")} />{t}</span>;
 }
@@ -255,7 +255,7 @@ function VarInput({ value, onChange, placeholder }: { value: string; onChange: (
   };
   return (
     <div className="flex gap-2">
-      <input ref={ref} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} maxLength={200} className="h-11 min-w-0 flex-1 rounded-xl border border-[#e6dcf8] bg-white px-3.5 text-[14.5px] text-ink outline-none transition placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/15" />
+      <input ref={ref} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} maxLength={200} className="h-11 min-w-0 flex-1 rounded-xl border border-[#dcf8ea] bg-white px-3.5 text-[14.5px] text-ink outline-none transition placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/15" />
       <VarMenu onPick={insert} />
     </div>
   );
@@ -265,7 +265,7 @@ function VarMenu({ onPick, compact }: { onPick: (v: string) => void; compact?: b
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title="Insert a personal detail" className={cx("inline-flex items-center gap-1 rounded-xl border border-[#e6dcf8] bg-white px-3 text-[13px] font-bold text-primary-dark hover:border-primary", compact ? "h-8 rounded-lg px-2" : "h-11")}>
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title="Insert a personal detail" className={cx("inline-flex items-center gap-1 rounded-xl border border-[#dcf8ea] bg-white px-3 text-[13px] font-bold text-primary-dark hover:border-primary", compact ? "h-8 rounded-lg px-2" : "h-11")}>
         <Icon name="data_object" className="text-[18px]" />{!compact && <span className="hidden sm:inline">Personalise</span>}
       </button>
       {open && (
@@ -340,7 +340,7 @@ function RichEditor({ value, onChange }: { value: string; onChange: (v: string) 
     if (!url) return;
     const safe = url.replace(/"/g, "&quot;");
     const text = (ins.text.trim() || url).replace(/</g, "&lt;");
-    if (ins.kind === "link") exec("insertHTML", `<a href="${safe}" style="color:#7c3aed">${text}</a>`);
+    if (ins.kind === "link") exec("insertHTML", `<a href="${safe}" style="color:#008a49">${text}</a>`);
     if (ins.kind === "button") exec("insertHTML", CTA(text, safe));
     if (ins.kind === "image") exec("insertHTML", `<p><img src="${safe}" alt="${(ins.text || "").replace(/"/g, "&quot;")}" style="max-width:100%;height:auto;border-radius:12px" /></p>`);
     setIns(null);
@@ -354,8 +354,8 @@ function RichEditor({ value, onChange }: { value: string; onChange: (v: string) 
   const Sep = () => <span className="mx-0.5 h-5 w-px shrink-0 bg-slate-200" />;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#e6dcf8] bg-white focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-line bg-[#fbf9ff] px-1.5 py-1">
+    <div className="overflow-hidden rounded-xl border border-[#dcf8ea] bg-white focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-line bg-[#f6fbf8] px-1.5 py-1">
         {mode === "visual" ? (
           <>
             <Btn icon="format_bold" title="Bold" active={on("bold")} onClick={() => exec("bold")} />
@@ -371,7 +371,7 @@ function RichEditor({ value, onChange }: { value: string; onChange: (v: string) 
             <Btn icon="link" title="Link" onClick={() => openInsert("link")} />
             <Btn icon="smart_button" title="Button" onClick={() => openInsert("button")} />
             <Btn icon="image" title="Image (from a web address)" onClick={() => openInsert("image")} />
-            <Btn icon="horizontal_rule" title="Divider" onClick={() => exec("insertHTML", '<hr style="border:0;border-top:1px solid #ece4fb;margin:20px 0" />')} />
+            <Btn icon="horizontal_rule" title="Divider" onClick={() => exec("insertHTML", '<hr style="border:0;border-top:1px solid #dcefe3;margin:20px 0" />')} />
             <Btn icon="format_clear" title="Clear formatting" onClick={() => exec("removeFormat")} />
             <Sep />
             <VarMenu compact onPick={(v) => exec("insertText", v)} />
@@ -386,10 +386,10 @@ function RichEditor({ value, onChange }: { value: string; onChange: (v: string) 
         </div>
       </div>
       {ins && (
-        <div className="flex flex-col gap-2 border-b border-line bg-[#faf7ff] p-2.5 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 border-b border-line bg-[#f7fffb] p-2.5 sm:flex-row sm:items-center">
           <Icon name={ins.kind === "button" ? "smart_button" : ins.kind === "image" ? "image" : "link"} className="hidden text-[20px] text-primary sm:block" />
-          <input autoFocus value={ins.kind === "image" ? ins.url : ins.text} onChange={(e) => setIns({ ...ins, ...(ins.kind === "image" ? { url: e.target.value } : { text: e.target.value }) })} placeholder={ins.kind === "image" ? "Image address (https://…)" : ins.kind === "button" ? "Button text" : "Link text"} className="h-9 min-w-0 flex-1 rounded-lg border border-[#e6dcf8] px-3 text-[13.5px] outline-none focus:border-primary" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doInsert())} />
-          <input value={ins.kind === "image" ? ins.text : ins.url} onChange={(e) => setIns({ ...ins, ...(ins.kind === "image" ? { text: e.target.value } : { url: e.target.value }) })} placeholder={ins.kind === "image" ? "Description (for screen readers)" : "Web address"} className="h-9 min-w-0 flex-1 rounded-lg border border-[#e6dcf8] px-3 text-[13.5px] outline-none focus:border-primary" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doInsert())} />
+          <input autoFocus value={ins.kind === "image" ? ins.url : ins.text} onChange={(e) => setIns({ ...ins, ...(ins.kind === "image" ? { url: e.target.value } : { text: e.target.value }) })} placeholder={ins.kind === "image" ? "Image address (https://…)" : ins.kind === "button" ? "Button text" : "Link text"} className="h-9 min-w-0 flex-1 rounded-lg border border-[#dcf8ea] px-3 text-[13.5px] outline-none focus:border-primary" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doInsert())} />
+          <input value={ins.kind === "image" ? ins.text : ins.url} onChange={(e) => setIns({ ...ins, ...(ins.kind === "image" ? { text: e.target.value } : { url: e.target.value }) })} placeholder={ins.kind === "image" ? "Description (for screen readers)" : "Web address"} className="h-9 min-w-0 flex-1 rounded-lg border border-[#dcf8ea] px-3 text-[13.5px] outline-none focus:border-primary" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doInsert())} />
           <div className="flex gap-1.5">
             <Button size="sm" onClick={doInsert}>Insert</Button>
             <Button size="sm" variant="ghost" onClick={() => setIns(null)}>Cancel</Button>
@@ -506,7 +506,7 @@ function AudienceBuilder({ kind, value: a, onChange }: { kind: string; value: Au
           <Field label="Customers">
             <div className="grid gap-2 sm:grid-cols-3">
               {([["all", "All customers", "group"], ["with_active", "With an active service", "verified"], ["without_active", "Without an active service", "person_off"]] as const).map(([k, label, icon]) => (
-                <button key={k} type="button" onClick={() => set({ clients: k })} className={cx("flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[13px] font-bold transition", a.clients === k ? "border-primary bg-[#faf7ff] text-primary-dark ring-2 ring-primary/15" : "border-line text-slate-600 hover:border-primary/50")}>
+                <button key={k} type="button" onClick={() => set({ clients: k })} className={cx("flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[13px] font-bold transition", a.clients === k ? "border-primary bg-[#f7fffb] text-primary-dark ring-2 ring-primary/15" : "border-line text-slate-600 hover:border-primary/50")}>
                   <Icon name={icon} className="text-[19px]" />{label}
                 </button>
               ))}
@@ -536,7 +536,7 @@ function AudienceBuilder({ kind, value: a, onChange }: { kind: string; value: Au
               <div className="mt-2 max-h-56 space-y-0.5 overflow-y-auto">
                 {products.map((p) => (
                   <label key={p.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] hover:bg-slate-50">
-                    <input type="checkbox" className="h-4 w-4 accent-[#7c3aed]" checked={a.productIds.includes(p.id)} onChange={() => set({ productIds: toggle(a.productIds, p.id) })} />
+                    <input type="checkbox" className="h-4 w-4 accent-[#008a49]" checked={a.productIds.includes(p.id)} onChange={() => set({ productIds: toggle(a.productIds, p.id) })} />
                     <span className="min-w-0 flex-1 truncate font-semibold text-ink">{p.name}</span>
                     <span className="shrink-0 text-[11.5px] text-slate-400">{typeLabel(p.type)}</span>
                   </label>
@@ -580,7 +580,7 @@ function AudienceSize({ aud, kind }: { aud: { count: number; optedOut: number; s
   const b = aud?.breakdown;
   return (
     <>
-    <div className={cx("mt-5 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center", aud?.count ? "bg-[linear-gradient(135deg,#f5f0ff,#ede4ff)]" : "bg-amber-50")}>
+    <div className={cx("mt-5 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center", aud?.count ? "bg-[linear-gradient(135deg,#f0fff8,#e4fff2)]" : "bg-amber-50")}>
       <div className="flex items-center gap-3">
         <div className={cx("grid h-12 w-12 place-items-center rounded-xl text-white", aud?.count ? "bg-primary" : "bg-amber-500")}><Icon name={aud?.count ? "groups" : "group_off"} className="text-[24px]" /></div>
         <div>
@@ -799,7 +799,7 @@ export function CampaignReport({ id, data, reload }: { id: string; data: any; re
         title={c.name}
         subtitle={c.subject}
         badge={<Badge status={c.status} />}
-        meta={<span className="text-[12.5px] text-violet-100/80">{c.startedAt ? <>Started {ist(c.startedAt)}</> : null}{c.finishedAt ? <> · finished {ist(c.finishedAt)}</> : null}{data.createdBy ? <> · by {data.createdBy.firstName || data.createdBy.email}</> : null}</span>}
+        meta={<span className="text-[12.5px] text-emerald-100/80">{c.startedAt ? <>Started {ist(c.startedAt)}</> : null}{c.finishedAt ? <> · finished {ist(c.finishedAt)}</> : null}{data.createdBy ? <> · by {data.createdBy.firstName || data.createdBy.email}</> : null}</span>}
         actions={
           <div className="flex flex-wrap gap-2">
             {c.status === "SENDING" && <Button variant="secondary" icon="pause" onClick={() => act("pause", "Paused")}>Pause</Button>}
@@ -833,7 +833,7 @@ export function CampaignReport({ id, data, reload }: { id: string; data: any; re
             <div className="text-right text-[12.5px] text-slate-500">{left > 0 && c.status === "SENDING" ? <>About {Math.max(1, Math.ceil(left / c.perMinute))} min left at {c.perMinute}/min</> : null}</div>
           </div>
           <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
-            <div className={cx("h-full rounded-full transition-all", c.status === "PAUSED" ? "bg-amber-500" : "bg-[linear-gradient(90deg,#a365fe,#7c3aed)]")} style={{ width: `${progress}%` }} />
+            <div className={cx("h-full rounded-full transition-all", c.status === "PAUSED" ? "bg-amber-500" : "bg-[linear-gradient(90deg,#0baf60,#008a49)]")} style={{ width: `${progress}%` }} />
           </div>
         </Card>
       )}
@@ -851,7 +851,7 @@ export function CampaignReport({ id, data, reload }: { id: string; data: any; re
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2">
                     {r.userId ? <a href={`/admin/clients/${r.userId}`} className="truncate text-[13.5px] font-bold text-ink hover:text-primary-dark">{r.name || r.email}</a> : <span className="truncate text-[13.5px] font-bold text-ink">{r.name || r.email}</span>}
-                    {r.openedAt && <span className="inline-flex items-center gap-0.5 rounded-md bg-violet-50 px-1.5 text-[11px] font-bold text-violet-700"><Icon name="drafts" className="text-[13px]" />opened</span>}
+                    {r.openedAt && <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 text-[11px] font-bold text-emerald-700"><Icon name="drafts" className="text-[13px]" />opened</span>}
                     {r.unsubscribedAt && <span className="rounded-md bg-amber-50 px-1.5 text-[11px] font-bold text-amber-700">unsubscribed</span>}
                   </div>
                   <div className="truncate text-[12px] text-slate-500">{r.email}{r.error ? <span className={r.status === "FAILED" ? "text-rose-600" : ""}> · {r.error}</span> : null}</div>

@@ -7,32 +7,50 @@ provisioning with **customer-selected IPv4 addresses**.
 
 ```
 primocloud-panel/
-├─ public-site/        the primocloud.in website, served as-is by Nginx (placeholder until the site is added)
+├─ apps/site/          the primocloud.in website — React 19 + Vite + Tailwind 4 (all pages, theme, chat widget)
+│                      `npm run build` → public-site/ (served by Nginx) + public-site/site-chrome.js
+├─ public-site/        build output of apps/site (not in git; deploy/install.sh builds it)
 ├─ apps/api/           Express + TypeScript + Prisma 7 (PostgreSQL) + BullMQ (Redis)  → :4000
-│   ├─ prisma/         schema.prisma, migrations, seed.ts (your catalogue with the website's WHMCS pids)
+│   ├─ prisma/         schema.prisma, migrations, seed.ts, catalog.ts (the website's plans and prices)
 │   ├─ src/server.ts   REST API            src/worker.ts   provisioning / email / billing worker
 │   └─ test/           end-to-end tests (real Postgres + Redis)
 ├─ apps/web/           Next.js 14 + Tailwind — /client, /order, /admin                → :3000
 └─ deploy/             install.sh (Ubuntu 24.04), nginx config, PM2 ecosystem, backup.sh
 ```
 
-## How the three interfaces connect
+## How the website and the panel connect
 
 | URL | Served by | Notes |
 |---|---|---|
-| `/`, `/linux-vps-hosting.html`, … | Nginx (static `public-site/`) | Your website, unchanged |
-| `/client/*` | Next.js | Uses your site's exact header (header.css/header.js) and footer |
-| `/order/*` | Next.js | Catalogue → configure (IP picker) → cart → pay |
-| `/admin/*` | Next.js | Separate SaaS-style admin with PrimoCloud branding |
+| `/`, `/vps/linux-vps`, `/hosting/shared-hosting`, … | Nginx (`public-site/`, built from `apps/site`) | The PrimoCloud website. Single-page app: unknown paths serve `index.html` |
+| `/client/*` | Next.js | Client area. Sign-in / register pages carry the website's own header and footer |
+| `/order/*` | Next.js | Catalogue → configure (IP picker) → cart → pay, with the website's header and footer |
+| `/admin/*` | Next.js | Staff admin, PrimoCloud green |
 | `/api/*` | Express | REST API, webhooks, reseller API (`/api/v1/reseller`) |
 
-**The website needs no edits.** Nginx 301-redirects the old WHMCS links:
-`/clientarea/index.php?rp=/login` → `/client/login`, `/clientarea/cart.php?a=add&pid=2` → `/order/configure?pid=2`
-(products keep their WHMCS `pid`), `?rp=/store/minecraft-vps-hosting/sapling-4gb` → that plan, `cart.php?a=add&domain=register` → domain search.
+What ties them together:
 
-> **Status:** `public-site/` holds a placeholder page and temporary PrimoCloud logos. The real primocloud.in
-> website, its logo, and a plan catalogue matched to its WHMCS `pid`s still need to be added. Until then `seed.ts`
-> carries the plan catalogue inherited from the Crapplet panel.
+- **Order buttons.** Every plan card's "Deploy …" / "Order Now" button links to
+  `/order/configure?product=<slug>` (`&cycle=ANNUAL` when the page's yearly toggle is on). The slugs are set on
+  the plan objects in `apps/site/src/screens/**` and match `apps/api/prisma/catalog.ts`. "Contact …" buttons go to `/contact`.
+- **Sign-in.** The website's Login pop-up and `/login` page sign in through `/api/auth/login` (and `/login/2fa`
+  when two-factor is on), then open the client area; "Forgot password?" asks the panel to email a reset link and
+  "Create an account" opens `/client/register`. A visitor who is already signed in goes straight to `/client`.
+- **Same header and footer.** `apps/site/src/chrome.jsx` builds the website's real top bar and footer into
+  `public-site/site-chrome.js` as `<primo-site-header>` / `<primo-site-footer>`; the panel's order and sign-in
+  pages load it (`apps/web/components/site-chrome.tsx`). They render in a shadow root, so the two apps' styles never mix.
+- **Prices.** The website shows USD and converts to INR at a fixed **₹88 = $1** (`INR_RATE` in
+  `apps/site/src/context/CurrencyContext.jsx`). The panel is seeded with the same numbers — exact USD prices and
+  INR at the same rate (`USD_TO_INR` in `seed.ts`) — so the price on the website is the price on the invoice.
+  The ₹/$ switch is shared too (`localStorage.primocloud_currency`). **If you change a price in Admin → Products,
+  change it on the website page as well** (or the other way round).
+- **Old WHMCS links** redirect (Nginx): `index.php?rp=/login` → `/client/login`, `?rp=/store/<group>/<plan>` → that plan,
+  `clientarea.php?action=invoices` → `/client/invoices`, `register.php`, `pwreset.php`, `submitticket.php`, `cart.php?…`, …
+
+Company details shown on the website (legal name, GSTIN, address, phone, emails, WhatsApp) are in
+`apps/site/src/data/company.js`; the panel's are in **Admin → Settings**.
+
+Website development: `cd apps/site && npm install && npm run dev` (Vite proxies `/api` to a local API on :4000).
 
 ## Install (Ubuntu 24.04, no Docker) — one command
 
@@ -79,9 +97,10 @@ Development: `npm install`, set `apps/api/.env` (see `.env.example`, `PROVISION_
    and/or LXC template volume. Windows templates should use cloudbase-init.
 3. **Admin → IP Management → Import CIDR range** (e.g. `103.x.x.0/26`, gateway, server). Or import CSV.
 4. **Admin → Products**: assign servers to each VPS plan (the IP picker shows that server's pool).
-   All 30+ plans from your website are pre-seeded with their prices; quarterly/semi-annual/annual prices are
-   seeded as simple multiples — adjust any discounts you offer. WordPress, Dedicated and GPU groups exist but
-   have no plans yet (no prices on the site).
+   All 52 plans on the website (13 groups) are pre-seeded with monthly and annual prices in USD and INR
+   (annual = the website's yearly price, 20% off); colocation plans carry their setup fee on monthly billing.
+   Shared, reseller, WordPress, dedicated, GPU and colocation plans are set up manually (or attach a cPanel/WHM
+   server to the hosting plans).
 5. **Admin → Payment Gateways**: Razorpay (key id/secret + webhook secret), Cashfree, PayU, Stripe, UPI VPA,
    bank details. Point each gateway's webhook at the URL shown on its card.
 6. **Admin → Settings**: company/GST details (pre-filled: GSTIN 23AAHCC8426G1ZR, Gwalior MP), invoice
@@ -162,7 +181,14 @@ always do a dry run against your real one first.
   the domain active). DNS records are stored but not pushed to a DNS server (PowerDNS/Cloudflare not wired).
 - **Multi-currency checkout**: the data model stores prices per currency, but checkout and invoices currently
   run in INR. International customers get zero-rated GST and can pay with Stripe in INR.
-- **GPU hourly billing** isn't supported (billing cycles start at monthly).
+- **GPU hourly billing** isn't supported (billing cycles start at monthly). The GPU page's "Hourly" toggle only
+  changes the displayed price; its order buttons always order monthly.
+- **WHMCS plans after migration**: the website's plans have no WHMCS `pid`s, so the importer creates your old
+  WHMCS products as separate (hidden-if-hidden-in-WHMCS) plans and attaches migrated services to them. Move
+  customers to the new plans with **Change plan**, or set a plan's legacy pid in Admin → Products before importing
+  to merge them.
+- **Website page content** (status page, blog, knowledge base, API docs, support stats) is the design's static
+  content; it isn't connected to the panel's tickets/KB/announcements.
 - **Email piping** is an HTTP endpoint (`POST /api/webhooks/email/inbound` with `X-Inbound-Secret`) — connect it
   from your mail provider's inbound webhook; there is no IMAP poller.
 - **Live hypervisors**: Proxmox code is tested against a mock PVE API and dry-run mode, not a real cluster;

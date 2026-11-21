@@ -13,7 +13,7 @@ export default function Templates() {
       <PageHeader title="Email templates" subtitle="Use {{placeholders}} such as {{name}}, {{invoiceNumber}}, {{total}}, {{hostname}}, {{ip}}, {{password}}, {{company.brand}}." />
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
         <Card pad={false}>
-          <ul className="divide-y divide-[#f3effb]">
+          <ul className="divide-y divide-[#effbf5]">
             {data.templates.map((t: any) => (
               <li key={t.key}><button onClick={() => { setSel({ ...t }); setPreview(null); }} className={cx("flex w-full items-center justify-between px-4 py-3 text-left text-sm", sel?.key === t.key ? "bg-primary-soft font-bold text-primary-dark" : "hover:bg-primary-tint")}>
                 <span>{t.name}<div className="font-mono text-[11px] text-mute">{t.key}</div></span>{t.customized && <Badge>custom</Badge>}

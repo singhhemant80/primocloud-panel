@@ -21,9 +21,9 @@ export function Button({ variant = "primary", size = "md", loading, icon, href, 
     size === "sm" && "h-9 px-3.5 text-[13px]",
     size === "md" && "h-11 px-5 text-sm",
     size === "lg" && "h-12 px-6 text-[15px]",
-    variant === "primary" && "bg-gradient-to-br from-primary to-primary-dark text-white shadow-glow hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(124,58,237,.4)]",
-    variant === "secondary" && "bg-primary-soft text-primary-dark hover:bg-[#ead9ff]",
-    variant === "outline" && "border border-[#e6dcf8] bg-white text-slate-700 hover:border-primary hover:text-primary-dark",
+    variant === "primary" && "bg-gradient-to-br from-primary to-primary-dark text-white shadow-glow hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(0,138,73,.4)]",
+    variant === "secondary" && "bg-primary-soft text-primary-dark hover:bg-[#d9ffed]",
+    variant === "outline" && "border border-[#dcf8ea] bg-white text-slate-700 hover:border-primary hover:text-primary-dark",
     variant === "ghost" && "text-slate-600 hover:bg-primary-tint hover:text-primary-dark",
     variant === "danger" && "bg-rose-600 text-white hover:bg-rose-700",
     className,
@@ -63,7 +63,7 @@ export function Card({ children, className, title, action, pad = true }: { child
 export function Stat({ label, value, icon, tone = "purple", href, hint }: { label: string; value: ReactNode; icon: string; tone?: "purple" | "green" | "amber" | "rose" | "sky" | "slate"; href?: string; hint?: string }) {
   const tones = { purple: "bg-primary-soft text-primary-dark", green: "bg-emerald-50 text-emerald-600", amber: "bg-amber-50 text-amber-600", rose: "bg-rose-50 text-rose-600", sky: "bg-sky-50 text-sky-600", slate: "bg-slate-100 text-slate-600" };
   const body = (
-    <div className="flex h-full flex-col items-start gap-2.5 rounded-2xl border border-line bg-white p-3.5 shadow-card transition hover:border-[#dccafb] sm:flex-row sm:items-center sm:gap-4 sm:p-5">
+    <div className="flex h-full flex-col items-start gap-2.5 rounded-2xl border border-line bg-white p-3.5 shadow-card transition hover:border-[#cafbe3] sm:flex-row sm:items-center sm:gap-4 sm:p-5">
       <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl sm:h-12 sm:w-12", tones[tone])}>
         <Icon name={icon} className="text-[24px]" />
       </span>
@@ -88,13 +88,13 @@ const STATUS: Record<string, string> = {
   RUNNING: "bg-sky-50 text-sky-700 ring-sky-200",
   running: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   PENDING: "bg-amber-50 text-amber-700 ring-amber-200",
-  PROVISIONING: "bg-violet-50 text-violet-700 ring-violet-200",
+  PROVISIONING: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   UNPAID: "bg-amber-50 text-amber-700 ring-amber-200",
   OPEN: "bg-amber-50 text-amber-700 ring-amber-200",
   CUSTOMER_REPLY: "bg-orange-50 text-orange-700 ring-orange-200",
-  IN_PROGRESS: "bg-violet-50 text-violet-700 ring-violet-200",
-  RESERVED: "bg-violet-50 text-violet-700 ring-violet-200",
-  PENDING_REVIEW: "bg-violet-50 text-violet-700 ring-violet-200",
+  IN_PROGRESS: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  RESERVED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  PENDING_REVIEW: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   PENDING_TRANSFER: "bg-amber-50 text-amber-700 ring-amber-200",
   ALLOCATED: "bg-sky-50 text-sky-700 ring-sky-200",
   SUSPENDED: "bg-orange-50 text-orange-700 ring-orange-200",
@@ -103,7 +103,7 @@ const STATUS: Record<string, string> = {
   SENT: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   DRAFT: "bg-slate-100 text-slate-600 ring-slate-200",
   CANCELLED: "bg-slate-200 text-slate-600 ring-slate-300",
-  SCHEDULED: "bg-violet-50 text-violet-700 ring-violet-200",
+  SCHEDULED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   SENDING: "bg-sky-50 text-sky-700 ring-sky-200",
   PAUSED: "bg-amber-50 text-amber-700 ring-amber-200",
   QUEUED: "bg-slate-100 text-slate-600 ring-slate-200",
@@ -118,10 +118,10 @@ const STATUS: Record<string, string> = {
   DECLINED: "bg-rose-50 text-rose-700 ring-rose-200",
   ACCEPTED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   INVOICED: "bg-sky-50 text-sky-700 ring-sky-200",
-  NOW: "bg-violet-50 text-violet-700 ring-violet-200",
+  NOW: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   NEXT_INVOICE: "bg-slate-100 text-slate-600 ring-slate-200",
   ON_DATE: "bg-sky-50 text-sky-700 ring-sky-200",
-  RECURRING: "bg-violet-50 text-violet-700 ring-violet-200",
+  RECURRING: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   URGENT: "bg-rose-50 text-rose-700 ring-rose-200",
   HIGH: "bg-orange-50 text-orange-700 ring-orange-200",
   stopped: "bg-slate-100 text-slate-600 ring-slate-200",
@@ -145,7 +145,7 @@ export function Field({ label, hint, error, children, className }: { label?: Rea
     </label>
   );
 }
-const inputCls = "w-full rounded-xl border border-[#e6dcf8] bg-white px-3.5 text-[14.5px] text-ink placeholder:text-slate-400 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-slate-50";
+const inputCls = "w-full rounded-xl border border-[#dcf8ea] bg-white px-3.5 text-[14.5px] text-ink placeholder:text-slate-400 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-slate-50";
 export const Input = (p: InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={cx(inputCls, "h-11", p.className)} />;
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(p, ref) {
   return <textarea ref={ref} {...p} className={cx(inputCls, "py-2.5", p.className)} />;
@@ -167,7 +167,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
 }
 
 export function Alert({ tone = "info", children, className }: { tone?: "info" | "success" | "warn" | "error"; children: ReactNode; className?: string }) {
-  const t = { info: "bg-primary-tint border-[#e9d5ff] text-primary-deep", success: "bg-emerald-50 border-emerald-200 text-emerald-800", warn: "bg-amber-50 border-amber-200 text-amber-800", error: "bg-rose-50 border-rose-200 text-rose-800" };
+  const t = { info: "bg-primary-tint border-[#c9f5da] text-primary-deep", success: "bg-emerald-50 border-emerald-200 text-emerald-800", warn: "bg-amber-50 border-amber-200 text-amber-800", error: "bg-rose-50 border-rose-200 text-rose-800" };
   const i = { info: "info", success: "check_circle", warn: "warning", error: "error" };
   return (
     <div className={cx("flex items-start gap-3 rounded-xl border px-4 py-3 text-sm", t[tone], className)}>
@@ -219,7 +219,7 @@ export function PageHeader({ title, subtitle, actions, back, icon, badge, meta, 
         </Link>
       )}
       <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-        <div className="relative bg-gradient-to-br from-[#1e0b4b] via-[#3b0f7a] to-[#6d28d9] px-4 py-5 text-white sm:px-6">
+        <div className="relative bg-gradient-to-br from-[#0b4b2c] via-[#0f7a46] to-[#007a40] px-4 py-5 text-white sm:px-6">
           <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] [background-size:28px_28px]" />
           <div className="relative flex flex-wrap items-start gap-3 sm:items-center sm:gap-4">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-primary-dark shadow-lg sm:h-12 sm:w-12">
@@ -258,7 +258,7 @@ export function Table({ head, children, empty }: { head: ReactNode[]; children: 
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
-          <tr className="border-b border-line bg-[#fbf9ff] text-[11.5px] font-bold uppercase tracking-wider text-mute">
+          <tr className="border-b border-line bg-[#f6fbf8] text-[11.5px] font-bold uppercase tracking-wider text-mute">
             {head.map((h, i) => (
               <th key={i} className="whitespace-nowrap px-4 py-3">
                 {h}
@@ -266,7 +266,7 @@ export function Table({ head, children, empty }: { head: ReactNode[]; children: 
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#f3effb]">{children}</tbody>
+        <tbody className="divide-y divide-[#effbf5]">{children}</tbody>
       </table>
       {empty}
     </div>

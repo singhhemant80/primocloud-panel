@@ -15,7 +15,7 @@ const STATE_BY_CODE: Record<string, string> = {
   "22": "Chhattisgarh", "23": "Madhya Pradesh", "24": "Gujarat", "26": "Dadra and Nagar Haveli and Daman and Diu", "27": "Maharashtra", "29": "Karnataka", "30": "Goa", "31": "Lakshadweep", "32": "Kerala",
   "33": "Tamil Nadu", "34": "Puducherry", "35": "Andaman and Nicobar Islands", "36": "Telangana", "37": "Andhra Pradesh", "38": "Ladakh",
 };
-const selectCls = "h-12 w-full appearance-none rounded-xl border border-[#e6dcf8] bg-[#fcfaff] pl-11 pr-10 text-[15px] text-ink outline-none transition hover:border-[#d8c6fb] focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/15";
+const selectCls = "h-12 w-full appearance-none rounded-xl border border-[#dcf8ea] bg-[#fafffd] pl-11 pr-10 text-[15px] text-ink outline-none transition hover:border-[#c6fbe1] focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/15";
 
 function IconSelect({ icon, children, ...p }: React.SelectHTMLAttributes<HTMLSelectElement> & { icon: string }) {
   return (
@@ -93,9 +93,9 @@ function RegisterForm() {
 
       <div>
         <SectionTitle n={2} title="Billing details" hint="Printed on your GST invoices." />
-        <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#f6f1ff] p-1.5">
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#f1fff8] p-1.5">
           {[[false, "person", "Individual"], [true, "apartment", "Business (GST)"]].map(([b, ic, l]) => (
-            <button key={String(b)} type="button" onClick={() => setBusiness(b as boolean)} className={cx("flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-extrabold transition", business === b ? "bg-white text-primary-dark shadow-[0_4px_14px_rgba(124,58,237,.15)]" : "text-slate-500 hover:text-primary-dark")}>
+            <button key={String(b)} type="button" onClick={() => setBusiness(b as boolean)} className={cx("flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-extrabold transition", business === b ? "bg-white text-primary-dark shadow-[0_4px_14px_rgba(0,138,73,.15)]" : "text-slate-500 hover:text-primary-dark")}>
               <Icon name={ic as string} className="text-[19px]" /> {l as string}
             </button>
           ))}
@@ -129,10 +129,10 @@ function RegisterForm() {
         </div>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-[#fcfaff] p-4 text-sm text-slate-600">
-        <input type="checkbox" required checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#7c3aed]" />
+      <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-[#fafffd] p-4 text-sm text-slate-600">
+        <input type="checkbox" required checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#008a49]" />
         <span>
-          I agree to the <a href="/terms-and-conditions.html" target="_blank" className="font-bold text-primary-dark underline">Terms &amp; Conditions</a>, <a href="/privacy-and-policy.html" target="_blank" className="font-bold text-primary-dark underline">Privacy Policy</a> and <a href="/refund-policy.html" target="_blank" className="font-bold text-primary-dark underline">Refund Policy</a>.
+          I agree to the <a href="/terms-conditions" target="_blank" className="font-bold text-primary-dark underline">Terms &amp; Conditions</a>, <a href="/privacy-policy" target="_blank" className="font-bold text-primary-dark underline">Privacy Policy</a> and <a href="/refund-policy" target="_blank" className="font-bold text-primary-dark underline">Refund Policy</a>.
         </span>
       </label>
 

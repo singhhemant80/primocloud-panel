@@ -242,7 +242,7 @@ export default function ProductEditor() {
               </>}
             </>}
             {p.type === "COLOCATION" && <>
-              <div className="sm:col-span-2 rounded-xl bg-[#faf7ff] p-3 text-xs text-mute ring-1 ring-[#ede4ff]">Colocation: the customer brings their own server, so the order page asks about their equipment instead of an OS, and the service page shows rack, power and network details instead of VM resources.</div>
+              <div className="sm:col-span-2 rounded-xl bg-[#f7fffb] p-3 text-xs text-mute ring-1 ring-[#e4fff2]">Colocation: the customer brings their own server, so the order page asks about their equipment instead of an OS, and the service page shows rack, power and network details instead of VM resources.</div>
               <Field label="Rack space (U)"><Input type="number" min={1} max={48} value={p.moduleConfig.colo?.rackUnits ?? ""} onChange={(e) => mc("colo", "rackUnits", e.target.value)} placeholder="1" /></Field>
               <Field label="Power included (watts)"><Input type="number" min={0} value={p.moduleConfig.colo?.powerW ?? ""} onChange={(e) => mc("colo", "powerW", e.target.value)} placeholder="e.g. 300" /></Field>
               <Field label="Network port"><Input value={p.moduleConfig.colo?.portSpeed ?? ""} onChange={(e) => mc("colo", "portSpeed", e.target.value)} placeholder="e.g. 1 Gbps shared / 100 Mbps dedicated" /></Field>
@@ -270,7 +270,7 @@ export default function ProductEditor() {
         <Card title={hostingPlan ? "Order page & free domain" : "Order page"}>
           <div className="space-y-4">
             {!isNew && (
-              <div className="space-y-1.5 rounded-xl bg-[#faf7ff] p-3 ring-1 ring-[#ede4ff]">
+              <div className="space-y-1.5 rounded-xl bg-[#f7fffb] p-3 ring-1 ring-[#e4fff2]">
                 <div className="text-[12px] font-bold uppercase tracking-wider text-mute">Links for your website</div>
                 <CopyLink label="This plan" path={`/order/configure?product=${p.slug}`} />
                 {group && <div><CopyLink label="Its group" path={`/order?group=${group.slug}`} /></div>}
@@ -445,7 +445,7 @@ function VirtualizorPlacement({ serverIds, value, onChange }: { serverIds: strin
   const chosen: string[] = value.nodeIds ?? (value.slaveServerId !== undefined && value.slaveServerId !== null && value.slaveServerId !== "" ? [String(value.slaveServerId)] : []);
   const toggle = (id: string) => onChange({ placement: mode, nodeIds: mode === "fixed" ? [id] : chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id], slaveServerId: undefined });
   return (
-    <div className="space-y-3 rounded-2xl border border-line bg-[#fbf9ff] p-4 sm:col-span-2">
+    <div className="space-y-3 rounded-2xl border border-line bg-[#f6fbf8] p-4 sm:col-span-2">
       <div className="flex items-center gap-2 text-sm font-extrabold text-ink"><Icon name="hub" className="text-primary-dark" /> Node placement</div>
       <div className="grid gap-2 sm:grid-cols-3">
         {[
@@ -490,7 +490,7 @@ function VirtualizorPlacement({ serverIds, value, onChange }: { serverIds: strin
           </div>
         </div>
       )}
-      <div className="rounded-xl bg-[#faf6ff] px-4 py-3 text-xs text-slate-600 ring-1 ring-[#efe4ff]">
+      <div className="rounded-xl bg-[#f6fffb] px-4 py-3 text-xs text-slate-600 ring-1 ring-[#e4fff2]">
         <b className="text-ink">IPv4 addresses come from Virtualizor.</b> The panel asks for the plan's number of IPs, Virtualizor assigns them from the node's pool, and IP Management mirrors Virtualizor (every 10 minutes and after each change).
       </div>
       <Field label="Advanced: extra Virtualizor parameters" hint="One key=value per line, sent when the VPS is created — e.g. vnc=1, nic_type=virtio, kvm_cache=writeback. # starts a comment.">

@@ -59,7 +59,7 @@ function OffersPref({ on, onChanged }: { on: boolean; onChanged: () => Promise<v
   return (
     <Card className="mt-6">
       <div className="flex flex-wrap items-center gap-4">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-fuchsia-50 text-fuchsia-600"><Icon name="sell" /></span>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-600"><Icon name="sell" /></span>
         <div className="min-w-0 flex-1">
           <div className="text-[15px] font-extrabold text-ink">Offers &amp; news by email</div>
           <div className="text-[13px] text-mute">Discounts, new products and locations — a few emails a month at most. Emails about your services and invoices are always sent.</div>

@@ -25,7 +25,7 @@ function AutoPayCard() {
   return (
     <Card className="mb-5">
       <div className="flex flex-wrap items-start gap-4">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-400 to-violet-600 text-white"><Icon name="autorenew" className="text-[22px]" /></span>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-400 to-emerald-600 text-white"><Icon name="autorenew" className="text-[22px]" /></span>
         <div className="min-w-0 flex-1">
           <div className="text-base font-extrabold text-ink">UPI AutoPay</div>
           {list.length ? (

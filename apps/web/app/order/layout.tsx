@@ -7,7 +7,7 @@ export default function OrderLayout({ children }: { children: React.ReactNode })
   return (
     <SessionProvider>
       <SiteHeader />
-      <div className="min-h-[60vh] bg-gradient-to-b from-[#f6f0ff] via-[#fbf9ff] to-[#fbf9ff]">{children}</div>
+      <div className="min-h-[60vh] bg-gradient-to-b from-[#eefaf3] via-[#f6fbf8] to-[#f6fbf8]">{children}</div>
       <SiteFooter />
       <WhatsAppFab />
     </SessionProvider>

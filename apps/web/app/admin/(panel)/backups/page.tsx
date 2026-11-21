@@ -432,7 +432,7 @@ function RestoreModal({ run, onClose, onStarted }: { run: any; onClose: () => vo
     <Modal open={!!run} onClose={onClose} title={<span className="inline-flex items-center gap-2"><Icon name="settings_backup_restore" className="text-[22px] text-rose-600" />Restore this backup?</span>}>
       {run && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-line bg-[#faf8fe] p-3.5">
+          <div className="rounded-xl border border-line bg-[#f8fefb] p-3.5">
             <div className="font-bold text-ink">{when(run.startedAt)}</div>
             <div className="mt-0.5 font-mono text-[12px] text-slate-500">{run.fileName} · {size(run.sizeBytes)}</div>
           </div>
@@ -446,7 +446,7 @@ function RestoreModal({ run, onClose, onStarted }: { run: any; onClose: () => vo
           </div>
           {run.includesUploads && (
             <label className="flex cursor-pointer items-start gap-2.5 text-[13.5px]">
-              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#7c3aed]" checked={withFiles} onChange={(e) => setWithFiles(e.target.checked)} />
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#008a49]" checked={withFiles} onChange={(e) => setWithFiles(e.target.checked)} />
               <span><b className="text-ink">Also restore uploaded files</b><span className="block text-[12.5px] text-slate-500">Ticket attachments, customer files and logos from the backup are put back (newer files are kept).</span></span>
             </label>
           )}
@@ -498,8 +498,8 @@ function RestoreProgress({ token, onClose }: { token: string; onClose: () => voi
   const at = s?.phase ? steps.findIndex((x) => s.phase.startsWith(x)) : -1;
   return (
     <div className="grid min-h-[70vh] place-items-center">
-      <div className="w-full max-w-[520px] overflow-hidden rounded-3xl border border-line bg-white shadow-[0_24px_60px_-24px_rgba(76,29,149,.35)]">
-        <div className={cx("px-7 pb-6 pt-7 text-white", failed ? "bg-[linear-gradient(135deg,#7f1d1d,#b91c1c)]" : done ? "bg-[linear-gradient(135deg,#065f46,#059669)]" : "bg-[linear-gradient(135deg,#1f0f4a,#3b1a87)]")}>
+      <div className="w-full max-w-[520px] overflow-hidden rounded-3xl border border-line bg-white shadow-[0_24px_60px_-24px_rgba(0,81,42,.35)]">
+        <div className={cx("px-7 pb-6 pt-7 text-white", failed ? "bg-[linear-gradient(135deg,#7f1d1d,#b91c1c)]" : done ? "bg-[linear-gradient(135deg,#065f46,#059669)]" : "bg-[linear-gradient(135deg,#0f4a2d,#1a8752)]")}>
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">
             <Icon name={failed ? "error" : done ? "task_alt" : "progress_activity"} className={cx("text-[30px]", !done && !failed && "animate-spin")} />
           </div>
@@ -629,7 +629,7 @@ function TimesEditor({ times, onChange }: { times: string[]; onChange: (t: strin
     return timeOptions("", times).find((o) => o && !times.includes(o)) ?? "00:00";
   };
   return (
-    <div className="rounded-xl border border-line bg-[#fbf9ff] p-3.5">
+    <div className="rounded-xl border border-line bg-[#f6fbf8] p-3.5">
       <div className="mb-2.5 flex items-center justify-between">
         <span className="text-[13px] font-bold text-ink">Backup times (IST)</span>
         <span className="text-[12px] font-semibold text-mute">{times.length}/24</span>

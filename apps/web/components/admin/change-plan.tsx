@@ -56,7 +56,7 @@ export function ChangePlanModal({ serviceId, onClose, onDone }: { serviceId: str
     <Modal open onClose={onClose} title="Change plan" wide>
       {!data ? <Loading /> : (
         <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#fbf9ff] px-4 py-3 text-sm ring-1 ring-[#f0e6ff]">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#f6fbf8] px-4 py-3 text-sm ring-1 ring-[#e6fff3]">
             <Icon name="inventory_2" className="text-[22px] text-primary-dark" />
             <div className="min-w-0 flex-1"><b className="text-ink">Now: {s.productName}</b> · {CYCLES[s.billingCycle]} · {money(s.recurringAmount, s.currency)}<div className="text-xs text-mute">{specLine(s.spec) || "—"}{s.nextDueDate && ` · next due ${date(s.nextDueDate)}`}</div></div>
           </div>

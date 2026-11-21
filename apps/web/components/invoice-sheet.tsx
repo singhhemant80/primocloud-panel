@@ -48,25 +48,25 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
   const payments = (inv.transactions ?? []).filter((t: any) => t.type === "PAYMENT" || t.type === "CREDIT_APPLIED" || t.type === "REFUND");
 
   return (
-    <article className="min-w-0 overflow-hidden rounded-[22px] border border-line bg-white shadow-[0_24px_60px_rgba(46,16,101,.08)]">
+    <article className="min-w-0 overflow-hidden rounded-[22px] border border-line bg-white shadow-[0_24px_60px_rgba(0,57,27,.08)]">
       {/* letterhead */}
-      <header className="relative overflow-hidden bg-[linear-gradient(135deg,#8b5cf6_0%,#6d28d9_55%,#3b0f7a_100%)] px-6 py-6 text-white sm:px-8">
+      <header className="relative overflow-hidden bg-[linear-gradient(135deg,#0a9d56_0%,#007a40_55%,#0f7a46_100%)] px-6 py-6 text-white sm:px-8">
         <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute inset-0 opacity-[.06] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:24px_24px]" />
         <div className="relative flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
             <img src="/Primocloud_logo.png" alt={c.brand ?? "PrimoCloud"} className="h-9 w-auto brightness-0 invert" />
             <div className="mt-3 text-sm font-bold">{c.legalName}</div>
-            <div className="max-w-xs text-xs text-violet-100/85">{c.address}</div>
-            <div className="mt-1 text-xs text-violet-100/85">
+            <div className="max-w-xs text-xs text-emerald-100/85">{c.address}</div>
+            <div className="mt-1 text-xs text-emerald-100/85">
               GSTIN <span className="font-mono font-bold text-white">{c.gstin}</span>
               {c.pan && <> · PAN <span className="font-mono">{c.pan}</span></>}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-[11px] font-extrabold uppercase tracking-[.22em] text-violet-200">{kind}</div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[.22em] text-emerald-200">{kind}</div>
             <div className="mt-1 font-mono text-2xl font-black tracking-tight sm:text-[28px]">{inv.number ?? inv.proformaNumber}</div>
-            {inv.number && <div className="text-xs text-violet-200">Proforma {inv.proformaNumber}</div>}
+            {inv.number && <div className="text-xs text-emerald-200">Proforma {inv.proformaNumber}</div>}
             <span className={cx("mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider shadow", st.cls)}>
               <Icon name={st.icon} className="text-[15px]" /> {st.label}
             </span>
@@ -75,7 +75,7 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
       </header>
 
       {/* dates & amounts strip */}
-      <div className="grid grid-cols-2 divide-line border-b border-line bg-[#fbf9ff] text-sm sm:grid-cols-4 sm:divide-x">
+      <div className="grid grid-cols-2 divide-line border-b border-line bg-[#f6fbf8] text-sm sm:grid-cols-4 sm:divide-x">
         {[
           ["Issued", date(inv.issueDate)],
           [inv.status === "PAID" ? "Paid on" : "Due date", inv.status === "PAID" ? date(inv.paidAt) : date(inv.dueDate)],
@@ -126,7 +126,7 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
         <div className="overflow-x-auto rounded-2xl ring-1 ring-line">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
-              <tr className="bg-[#f6f1ff] text-left text-[11px] font-extrabold uppercase tracking-wider text-primary-dark">
+              <tr className="bg-[#f1fff8] text-left text-[11px] font-extrabold uppercase tracking-wider text-primary-dark">
                 <th className="w-10 px-4 py-3">#</th>
                 <th className="px-4 py-3">Description</th>
                 <th className="px-4 py-3">SAC</th>
@@ -137,7 +137,7 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
             </thead>
             <tbody>
               {inv.items.map((it: any, n: number) => (
-                <tr key={it.id} className="border-t border-[#f1ecfb] align-top">
+                <tr key={it.id} className="border-t border-[#ecfbf4] align-top">
                   <td className="px-4 py-3.5 text-xs font-bold text-mute">{String(n + 1).padStart(2, "0")}</td>
                   <td className="px-4 py-3.5">
                     <div className={cx("font-semibold", it.amount < 0 ? "text-emerald-700" : "text-ink")}>{it.description.split("\n")[0]}</div>
@@ -177,7 +177,7 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
           )}
           {inv.notes && <div className="rounded-xl bg-amber-50 p-3.5 text-amber-900 ring-1 ring-amber-100"><b>Note:</b> {inv.notes}</div>}
         </div>
-        <div className="rounded-2xl bg-[#fbf9ff] p-5 ring-1 ring-[#ece4fb]">
+        <div className="rounded-2xl bg-[#f6fbf8] p-5 ring-1 ring-[#dcefe3]">
           <dl className="space-y-2 text-sm">
             <Line l="Subtotal" v={m(inv.subtotal)} />
             {inv.discount > 0 && <Line l="Discount" v={m(-inv.discount)} green />}
@@ -187,8 +187,8 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
             {inv.igst > 0 && <Line l={`IGST @ ${inv.gstRate}%`} v={m(inv.igst)} />}
             {exportInv && <Line l="IGST" v="0.00 (LUT)" />}
           </dl>
-          <div className="mt-4 flex items-end justify-between rounded-xl bg-[linear-gradient(120deg,#8b5cf6,#6d28d9)] px-4 py-3.5 text-white shadow-[0_10px_24px_rgba(109,40,217,.28)]">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-violet-100">Total</span>
+          <div className="mt-4 flex items-end justify-between rounded-xl bg-[linear-gradient(120deg,#0a9d56,#007a40)] px-4 py-3.5 text-white shadow-[0_10px_24px_rgba(0,122,64,.28)]">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-100">Total</span>
             <span className="text-2xl font-black tracking-tight">{m(inv.total)}</span>
           </div>
           {(inv.amountPaid > 0 || inv.status === "UNPAID") && (
@@ -196,7 +196,7 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
               {inv.amountPaid > 0 && <Line l="Paid" v={m(inv.amountPaid)} green />}
               {inv.creditApplied > 0 && <Line l="  incl. account credit" v={m(inv.creditApplied)} />}
               {inv.status === "UNPAID" && (
-                <div className="flex justify-between border-t border-[#ece4fb] pt-2 text-base font-black text-primary-dark">
+                <div className="flex justify-between border-t border-[#dcefe3] pt-2 text-base font-black text-primary-dark">
                   <dt>Balance due</dt>
                   <dd>{m(due)}</dd>
                 </div>
@@ -238,7 +238,7 @@ export function InvoiceSheet({ data, admin, footer }: { data: any; admin?: boole
 
       {footer}
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-[#fbf9ff] px-6 py-4 text-xs text-mute sm:px-8">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-[#f6fbf8] px-6 py-4 text-xs text-mute sm:px-8">
         <span>{data.footerNote ?? "This is a computer generated invoice and does not require a signature."}</span>
         <span className="font-semibold">{c.website?.replace(/^https?:\/\//, "")} · {c.billingEmail ?? c.email}</span>
       </footer>

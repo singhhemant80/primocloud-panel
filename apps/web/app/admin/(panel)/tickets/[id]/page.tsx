@@ -33,7 +33,7 @@ export default function AdminTicket() {
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           {t.messages.map((m: any) => (
-            <div key={m.id} className={cx("rounded-2xl border p-5", m.isNote ? "border-amber-200 bg-amber-50" : m.isStaff ? "border-[#e9d5ff] bg-primary-tint" : "border-line bg-white")}>
+            <div key={m.id} className={cx("rounded-2xl border p-5", m.isNote ? "border-amber-200 bg-amber-50" : m.isStaff ? "border-[#c9f5da] bg-primary-tint" : "border-line bg-white")}>
               <div className="mb-2 flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 font-extrabold text-ink"><Icon name={m.isNote ? "sticky_note_2" : m.isStaff ? "support_agent" : "person"} />{m.author ? `${m.author.firstName} ${m.author.lastName}` : m.fromEmail}{m.isNote && <Badge>internal note</Badge>}</span>
                 <span className="text-mute">{date(m.createdAt, true)}</span>

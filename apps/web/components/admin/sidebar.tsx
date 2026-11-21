@@ -222,10 +222,10 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
           aria-current={on ? "page" : undefined}
           className={cx(
             "flex items-center gap-[11px] rounded-xl border px-2.5 py-2 transition",
-            on ? "border-[#ebe3fd] bg-white text-ink shadow-[0_8px_20px_-14px_rgba(76,29,149,.45)]" : "border-transparent text-slate-700 hover:border-[#efeafb] hover:bg-white/70",
+            on ? "border-[#e3fdf0] bg-white text-ink shadow-[0_8px_20px_-14px_rgba(0,81,42,.45)]" : "border-transparent text-slate-700 hover:border-[#eafbf3] hover:bg-white/70",
           )}
         >
-          <span className={cx("grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[10px] transition", on ? "bg-gradient-to-br from-[#a365fe] to-[#7c3aed] text-white shadow-[0_6px_14px_-6px_#7c3aed]" : "bg-[#f1ecfd] text-[#7c3aed] group-hover/row:bg-[#ebe3fd]")}>
+          <span className={cx("grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[10px] transition", on ? "bg-gradient-to-br from-[#0baf60] to-[#008a49] text-white shadow-[0_6px_14px_-6px_#008a49]" : "bg-[#ecfdf5] text-[#008a49] group-hover/row:bg-[#e3fdf0]")}>
             <Icon name={i.icon} className="text-[18px]" fill={on} />
           </span>
           <span className="min-w-0 flex-1 leading-tight">
@@ -241,8 +241,8 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
             title={isPinned ? "Unpin from Home" : "Pin to Home"}
             aria-label={isPinned ? `Unpin ${i.label}` : `Pin ${i.label}`}
             className={cx(
-              "absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg bg-white text-slate-400 shadow-sm ring-1 ring-[#ece8f8] transition hover:text-[#7c3aed]",
-              isPinned ? "text-[#7c3aed] opacity-0 group-hover/row:opacity-100" : "opacity-0 focus:opacity-100 group-hover/row:opacity-100",
+              "absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg bg-white text-slate-400 shadow-sm ring-1 ring-[#e8f8f0] transition hover:text-[#008a49]",
+              isPinned ? "text-[#008a49] opacity-0 group-hover/row:opacity-100" : "opacity-0 focus:opacity-100 group-hover/row:opacity-100",
               n > 0 && "right-11",
             )}
           >
@@ -253,16 +253,16 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
     );
   };
 
-  const heading = (t: string, first?: boolean) => <div className={cx("px-2.5 pb-2 text-[10.5px] font-extrabold uppercase tracking-[.14em] text-[#a0a5bd]", !first && "mt-3 border-t border-[#eeebf8] pt-4")}>{t}</div>;
+  const heading = (t: string, first?: boolean) => <div className={cx("px-2.5 pb-2 text-[10.5px] font-extrabold uppercase tracking-[.14em] text-[#a0a5bd]", !first && "mt-3 border-t border-[#ebf8f2] pt-4")}>{t}</div>;
 
   const listPane = (
-    <div className={cx("flex h-full flex-col border-r border-[#eceaf5] bg-[#faf9ff]", mobile ? "min-w-0 flex-1" : "w-[252px]")}>
+    <div className={cx("flex h-full flex-col border-r border-[#eaf5f0] bg-[#f9fffc]", mobile ? "min-w-0 flex-1" : "w-[252px]")}>
       <div className="shrink-0 px-3 pb-3 pt-[18px]">
         <Link href="/admin" className="block px-2 pb-4" aria-label="PrimoCloud — Dashboard">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/Primocloud_logo.png" alt="PrimoCloud" className="h-[30px] w-auto" />
         </Link>
-        <label className="flex h-10 items-center gap-2 rounded-[11px] border border-[#e9e6f5] bg-white px-3 transition focus-within:border-[#c4b5fd] focus-within:ring-2 focus-within:ring-[#ede9fe]">
+        <label className="flex h-10 items-center gap-2 rounded-[11px] border border-[#e6f5ee] bg-white px-3 transition focus-within:border-[#93e9b8] focus-within:ring-2 focus-within:ring-[#dcf7e7]">
           <Icon name="search" className="text-[18px] text-slate-400" />
           <input
             value={q}
@@ -278,7 +278,7 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
         </label>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-[3px] overflow-y-auto px-3 pb-4" style={{ scrollbarWidth: "thin", scrollbarColor: "#e4def5 transparent" }}>
+      <nav className="min-h-0 flex-1 space-y-[3px] overflow-y-auto px-3 pb-4" style={{ scrollbarWidth: "thin", scrollbarColor: "#def5ea transparent" }}>
         {q ? (
           <>
             {heading(`${results.length} match${results.length === 1 ? "" : "es"}`, true)}
@@ -287,7 +287,7 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
           </>
         ) : current ? (
           <>
-            <div className="px-2.5 pb-2.5 text-[11px] font-extrabold uppercase tracking-[.14em] text-[#7c3aed]">{current.group}</div>
+            <div className="px-2.5 pb-2.5 text-[11px] font-extrabold uppercase tracking-[.14em] text-[#008a49]">{current.group}</div>
             {current.items.map((i) => row(i, { pinnable: current.key !== "home" }))}
             {current.key === "home" && (
               <>
@@ -310,9 +310,9 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
       </nav>
 
       <div className="shrink-0 p-3 [@media(max-height:760px)]:hidden">
-        <div className="rounded-[14px] border border-[#e6dcff] bg-gradient-to-br from-[#f5f0ff] to-[#eef4ff] p-3 text-[12px] leading-snug text-slate-600">
+        <div className="rounded-[14px] border border-[#dcffee] bg-gradient-to-br from-[#f0fff8] to-[#eef4ff] p-3 text-[12px] leading-snug text-slate-600">
           <b className="mb-0.5 block text-[13px] text-ink">Need a hand?</b>
-          Press <kbd className="rounded border border-[#ddd3fb] bg-white px-1 text-[11px] font-bold text-ink">Ctrl K</kbd> to find any client, service or invoice.
+          Press <kbd className="rounded border border-[#d3fbe8] bg-white px-1 text-[11px] font-bold text-ink">Ctrl K</kbd> to find any client, service or invoice.
         </div>
       </div>
     </div>
@@ -321,8 +321,8 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
   return (
     <div className="relative flex h-full bg-white">
       {/* section column */}
-      <div className="flex h-full w-[92px] shrink-0 flex-col items-center gap-1 border-r border-[#eceaf5] bg-white pb-3.5 pt-4">
-        <Link href="/admin" className="mb-3.5 grid h-[50px] w-[50px] shrink-0 place-items-center rounded-[15px] bg-gradient-to-br from-[#f3edff] to-[#e9e1ff] ring-1 ring-inset ring-[#e4d8ff]" aria-label="Dashboard">
+      <div className="flex h-full w-[92px] shrink-0 flex-col items-center gap-1 border-r border-[#eaf5f0] bg-white pb-3.5 pt-4">
+        <Link href="/admin" className="mb-3.5 grid h-[50px] w-[50px] shrink-0 place-items-center rounded-[15px] bg-gradient-to-br from-[#edfff6] to-[#e1fff0] ring-1 ring-inset ring-[#d8ffec]" aria-label="Dashboard">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/Primocloud_Icon.png" alt="" className="h-[34px] w-[34px]" />
         </Link>
@@ -337,35 +337,35 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
                 aria-pressed={on}
                 className={cx(
                   "relative flex w-[78px] shrink-0 flex-col items-center gap-[5px] rounded-[14px] pb-2 pt-2.5 text-[11px] font-bold transition",
-                  on ? "bg-gradient-to-br from-[#a365fe] to-[#7c3aed] text-white shadow-[0_10px_22px_-10px_#7c3aed]" : "text-[#7a7f99] hover:bg-[#f5f2fd] hover:text-[#5b21b6]",
+                  on ? "bg-gradient-to-br from-[#0baf60] to-[#008a49] text-white shadow-[0_10px_22px_-10px_#008a49]" : "text-[#7a7f99] hover:bg-[#f2fdf8] hover:text-[#006d39]",
                 )}
               >
                 <Icon name={g.icon} className="text-[22px]" fill={on} />
                 {g.short}
-                {waiting(g) && <span className={cx("absolute right-4 top-[7px] h-[9px] w-[9px] rounded-full bg-rose-500 ring-2", on ? "ring-[#8b4cf6]" : "ring-white")} />}
+                {waiting(g) && <span className={cx("absolute right-4 top-[7px] h-[9px] w-[9px] rounded-full bg-rose-500 ring-2", on ? "ring-[#4cf6a4]" : "ring-white")} />}
               </button>
             );
           })}
         </div>
         <div className="mt-2 flex shrink-0 flex-col items-center gap-2.5">
           {!mobile && (
-            <button onClick={() => { setPeek(false); onToggleRail(); }} title={slim ? "Show page list" : "Hide page list"} aria-label={slim ? "Show page list" : "Hide page list"} className="grid h-9 w-9 place-items-center rounded-lg text-[#9aa0b8] transition hover:bg-[#f5f2fd] hover:text-[#5b21b6]">
+            <button onClick={() => { setPeek(false); onToggleRail(); }} title={slim ? "Show page list" : "Hide page list"} aria-label={slim ? "Show page list" : "Hide page list"} className="grid h-9 w-9 place-items-center rounded-lg text-[#9aa0b8] transition hover:bg-[#f2fdf8] hover:text-[#006d39]">
               <Icon name={slim ? "left_panel_open" : "left_panel_close"} className="text-[20px]" />
             </button>
           )}
           <div ref={menuRef} className="relative">
-            <button onClick={() => setMenu((m) => !m)} title={`${me?.firstName ?? ""} ${me?.lastName ?? ""}`.trim()} aria-label="Account menu" aria-expanded={menu} className="relative grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#a365fe] to-[#6d28d9] text-[13px] font-extrabold text-white">
+            <button onClick={() => setMenu((m) => !m)} title={`${me?.firstName ?? ""} ${me?.lastName ?? ""}`.trim()} aria-label="Account menu" aria-expanded={menu} className="relative grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#0baf60] to-[#007a40] text-[13px] font-extrabold text-white">
               {initials}
               <span className="absolute -bottom-0.5 -right-0.5 h-[11px] w-[11px] rounded-full bg-emerald-500 ring-2 ring-white" />
             </button>
             {menu && (
-              <div className="fixed bottom-4 left-[100px] z-[80] w-[230px] rounded-2xl border border-[#eceaf5] bg-white p-2 shadow-[0_24px_48px_-16px_rgba(46,16,101,.35)]">
+              <div className="fixed bottom-4 left-[100px] z-[80] w-[230px] rounded-2xl border border-[#eaf5f0] bg-white p-2 shadow-[0_24px_48px_-16px_rgba(0,57,27,.35)]">
                 <div className="px-2.5 pb-2 pt-1.5">
                   <div className="truncate text-[13.5px] font-extrabold text-ink">{me?.firstName} {me?.lastName}</div>
                   <div className="truncate text-[12px] font-semibold text-slate-400">{me?.role?.name ?? "Staff"}</div>
                 </div>
-                <div className="border-t border-[#f1eff8] pt-1">
-                  <Link href="/admin/security" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-[#f5f2fd]"><Icon name="shield_lock" className="text-[18px] text-[#7c3aed]" />My Security</Link>
+                <div className="border-t border-[#eff8f4] pt-1">
+                  <Link href="/admin/security" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-[#f2fdf8]"><Icon name="shield_lock" className="text-[18px] text-[#008a49]" />My Security</Link>
                   <button onClick={async () => { await logout(); router.replace("/admin/login"); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-600"><Icon name="logout" className="text-[18px]" />Sign out</button>
                 </div>
               </div>
@@ -379,7 +379,7 @@ export function Sidebar({ rail, onToggleRail, mobile }: { rail: boolean; onToggl
       {slim && peek && (
         <>
           <div className="fixed inset-0 z-[55]" onClick={() => setPeek(false)} />
-          <div className="fixed inset-y-0 left-[92px] z-[60] shadow-[24px_0_48px_-24px_rgba(46,16,101,.35)]">{listPane}</div>
+          <div className="fixed inset-y-0 left-[92px] z-[60] shadow-[24px_0_48px_-24px_rgba(0,57,27,.35)]">{listPane}</div>
         </>
       )}
     </div>

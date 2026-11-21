@@ -77,7 +77,7 @@ export function detailsTable(rows: Row[]) {
   const tr = rows
     .filter(([, v]) => v !== undefined && v !== null && v !== "")
     .map(([k, v, href]) => {
-      const val = href ? `<a href="${esc(href)}" style="color:#6d28d9">${esc(v)}</a>` : esc(v).replace(/\n/g, "<br>");
+      const val = href ? `<a href="${esc(href)}" style="color:#007a40">${esc(v)}</a>` : esc(v).replace(/\n/g, "<br>");
       return `<tr><td style="padding:7px 12px 7px 0;color:#64748b;white-space:nowrap;vertical-align:top">${esc(k)}</td><td style="padding:7px 0;color:#0f172a;font-weight:600">${val}</td></tr>`;
     })
     .join("");

@@ -67,14 +67,14 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
   const P = 26; // inner padding
   const ink = "#0f172a";
   const mute = "#64748b";
-  const purple = "#6d28d9";
-  const line = "#ece4fb";
-  const tint = "#fbf9ff";
+  const purple = "#007a40";
+  const line = "#dcefe3";
+  const tint = "#f6fbf8";
 
   // page background + card outline
   // light page, white rounded card (continuation pages get the same card)
   const card = (top: number) => {
-    doc.rect(0, 0, PW, PH).fill("#f5f3fb");
+    doc.rect(0, 0, PW, PH).fill("#f3fbf7");
     doc.roundedRect(X, top, W, PH - 28 - top, 18).fill("#ffffff");
   };
   const newPage = () => {
@@ -90,7 +90,7 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
   doc.save();
   doc.roundedRect(X, HY, W, HH + 20, 18).clip();
   const g = doc.linearGradient(X, HY, X + W, HY + HH);
-  g.stop(0, "#8b5cf6").stop(0.55, "#6d28d9").stop(1, "#3b0f7a");
+  g.stop(0, "#0a9d56").stop(0.55, "#007a40").stop(1, "#0f7a46");
   doc.rect(X, HY, W, HH).fill(g);
   // grid texture and soft glow
   doc.lineWidth(0.4).strokeColor("#ffffff").strokeOpacity(0.07);
@@ -106,13 +106,13 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
   if (fs.existsSync(logo)) doc.image(logo, X + P, HY + 24, { height: 30 });
   else if (fs.existsSync(logoColour)) doc.image(logoColour, X + P, HY + 24, { height: 30 });
   doc.font("B").fontSize(11).fillColor("#ffffff").text(c.legalName, X + P, HY + 66, { width: 280 });
-  doc.font("R").fontSize(8.2).fillColor("#ede9fe").text(c.address ?? "", X + P, HY + 81, { width: 270, lineGap: 1 });
-  doc.font("R").fontSize(8.2).fillColor("#ede9fe").text(`GSTIN `, X + P, doc.y + 3, { continued: true }).font("B").fillColor("#ffffff").text(c.gstin ?? "", { continued: !!c.pan }).font("R").fillColor("#ede9fe").text(c.pan ? `  ·  PAN ${c.pan}` : "");
+  doc.font("R").fontSize(8.2).fillColor("#dcf7e7").text(c.address ?? "", X + P, HY + 81, { width: 270, lineGap: 1 });
+  doc.font("R").fontSize(8.2).fillColor("#dcf7e7").text(`GSTIN `, X + P, doc.y + 3, { continued: true }).font("B").fillColor("#ffffff").text(c.gstin ?? "", { continued: !!c.pan }).font("R").fillColor("#dcf7e7").text(c.pan ? `  ·  PAN ${c.pan}` : "");
 
   const RX = X + W - P - 240;
-  doc.font("B").fontSize(8).fillColor("#ddd6fe").text(kind.toUpperCase(), RX, HY + 26, { width: 240, align: "right", characterSpacing: 2.2 });
+  doc.font("B").fontSize(8).fillColor("#c4f2d6").text(kind.toUpperCase(), RX, HY + 26, { width: 240, align: "right", characterSpacing: 2.2 });
   doc.font("B").fontSize(21).fillColor("#ffffff").text(inv.number ?? inv.proformaNumber, RX - 40, HY + 40, { width: 280, align: "right" });
-  if (inv.number && inv.proformaNumber) doc.font("R").fontSize(8.5).fillColor("#ddd6fe").text(`Proforma ${inv.proformaNumber}`, RX, HY + 68, { width: 240, align: "right" });
+  if (inv.number && inv.proformaNumber) doc.font("R").fontSize(8.5).fillColor("#c4f2d6").text(`Proforma ${inv.proformaNumber}`, RX, HY + 68, { width: 240, align: "right" });
   const ST: Record<string, [string, string, string]> = {
     PAID: ["PAID", "#10b981", "#ffffff"],
     UNPAID: ["UNPAID", "#fbbf24", "#451a03"],
@@ -140,7 +140,7 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
     [inv.status === "UNPAID" ? "AMOUNT DUE" : "TOTAL", inv.status === "UNPAID" ? m(due) : m(inv.total)],
   ];
   const cw = W / 4;
-  doc.rect(X + cw * 3, y, cw, SH).fill("#f3ecff");
+  doc.rect(X + cw * 3, y, cw, SH).fill("#ecfff6");
   facts.forEach(([l, v], i) => {
     const cx = X + cw * i;
     if (i) doc.moveTo(cx, y).lineTo(cx, y + SH).lineWidth(0.6).strokeColor(line).stroke();
@@ -200,9 +200,9 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
   const tableTop = y;
   doc.save();
   doc.roundedRect(TX, y, TW, 26, 10).clip();
-  doc.rect(TX, y, TW, 26).fill("#f6f1ff");
+  doc.rect(TX, y, TW, 26).fill("#f1fff8");
   doc.restore();
-  doc.rect(TX, y + 13, TW, 13).fill("#f6f1ff");
+  doc.rect(TX, y + 13, TW, 13).fill("#f1fff8");
   let x = TX;
   for (const col of cols) {
     doc.font("B").fontSize(7.5).fillColor(purple).text(col.k, x + 10, y + 9, { width: col.w - 20, align: col.a, characterSpacing: 0.8 });
@@ -221,7 +221,7 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
       doc.moveTo(TX, y).lineTo(TX + TW, y).lineWidth(0.6).strokeColor(line).stroke();
       y = newPage();
     }
-    doc.moveTo(TX, y).lineTo(TX + TW, y).lineWidth(0.6).strokeColor("#f1ecfb").stroke();
+    doc.moveTo(TX, y).lineTo(TX + TW, y).lineWidth(0.6).strokeColor("#ecfbf4").stroke();
     x = TX;
     doc.font("B").fontSize(8).fillColor(mute).text(String(idx + 1).padStart(2, "0"), x + 10, y + 10, { width: cols[0].w - 12 });
     x += cols[0].w;
@@ -300,10 +300,10 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
   ty += 6;
   doc.save();
   const tg = doc.linearGradient(totX + 12, ty, totX + TOTW - 12, ty + 38);
-  tg.stop(0, "#8b5cf6").stop(1, "#6d28d9");
+  tg.stop(0, "#0a9d56").stop(1, "#007a40");
   doc.roundedRect(totX + 12, ty, TOTW - 24, 38, 9).fill(tg);
   doc.restore();
-  doc.font("B").fontSize(8).fillColor("#ede9fe").text("TOTAL", totX + 24, ty + 15, { characterSpacing: 1 });
+  doc.font("B").fontSize(8).fillColor("#dcf7e7").text("TOTAL", totX + 24, ty + 15, { characterSpacing: 1 });
   doc.font("B").fontSize(16).fillColor("#ffffff").text(m(inv.total), totX + 24, ty + 10, { width: TOTW - 48, align: "right" });
   ty += 46;
   if (after.length) {
@@ -363,7 +363,7 @@ export async function renderInvoicePdf(invoiceId: string): Promise<Buffer> {
   doc.moveTo(X, fy).lineTo(X + W, fy).lineWidth(0.6).strokeColor("#eef0f4").stroke();
   doc.font("R").fontSize(7.4).fillColor(mute).text(`${s.invoice.footerNote ?? "This is a computer generated invoice and does not require a signature."} Tax payable on reverse charge: No.`, X + P, fy + 10, { width: W * 0.62 });
   doc.font("S").fontSize(7.6).fillColor(mute).text(`${(c.website ?? "").replace(/^https?:\/\//, "")} · ${c.billingEmail ?? c.email ?? ""}`, X + W * 0.62, fy + 15, { width: W * 0.38 - P, align: "right" });
-  doc.lineWidth(0.8).strokeColor("#e9e4f5").roundedRect(X, 28, W, PH - 56, 18).stroke();
+  doc.lineWidth(0.8).strokeColor("#e4f5ed").roundedRect(X, 28, W, PH - 56, 18).stroke();
 
   doc.end();
   return done;

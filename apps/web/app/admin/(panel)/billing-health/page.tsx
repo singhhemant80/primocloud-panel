@@ -79,7 +79,7 @@ export default function BillingHealth() {
                     <table className="w-full min-w-[560px] text-[13px]">
                       <tbody className="divide-y divide-line">
                         {c.rows.map((r: any) => (
-                          <tr key={r.id} className="hover:bg-[#fcfaff]">
+                          <tr key={r.id} className="hover:bg-[#fafffd]">
                             <td className="px-5 py-2.5"><Link href={r.href} className="font-bold text-primary-dark hover:underline">{r.label}</Link></td>
                             <td className="px-3 py-2.5 text-mute">{r.customer ?? ""}</td>
                             <td className="px-5 py-2.5 text-right text-slate-700">{r.detail}</td>

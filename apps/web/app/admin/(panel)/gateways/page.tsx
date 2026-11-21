@@ -92,7 +92,7 @@ function SurchargeCredits() {
       {open && (
         <div className="mt-4 overflow-x-auto rounded-xl border border-line">
           <table className="w-full min-w-[620px] text-[13px]">
-            <thead className="bg-[#faf7ff] text-left text-[11px] font-bold uppercase tracking-wider text-mute"><tr><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Payments</th><th className="px-3 py-2 text-right">Fee credited</th><th className="px-3 py-2 text-right">Still unused</th><th className="px-3 py-2 text-right">Already used</th></tr></thead>
+            <thead className="bg-[#f7fffb] text-left text-[11px] font-bold uppercase tracking-wider text-mute"><tr><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Payments</th><th className="px-3 py-2 text-right">Fee credited</th><th className="px-3 py-2 text-right">Still unused</th><th className="px-3 py-2 text-right">Already used</th></tr></thead>
             <tbody className="divide-y divide-line">
               {list.map((c) => (
                 <tr key={c.userId}>

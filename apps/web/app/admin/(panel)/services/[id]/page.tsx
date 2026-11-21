@@ -59,7 +59,7 @@ export default function AdminService() {
 
       {/* ── header ── */}
       <section className="mb-6 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-        <div className="relative bg-gradient-to-br from-[#1e0b4b] via-[#3b0f7a] to-[#6d28d9] px-4 py-5 text-white sm:px-6 sm:py-6">
+        <div className="relative bg-gradient-to-br from-[#0b4b2c] via-[#0f7a46] to-[#007a40] px-4 py-5 text-white sm:px-6 sm:py-6">
           <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] [background-size:28px_28px]" />
           <div className="relative flex flex-wrap items-start gap-4 sm:gap-5">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white shadow-lg sm:h-16 sm:w-16 sm:rounded-2xl [&_img]:max-h-8 sm:[&_img]:max-h-10">
@@ -194,7 +194,7 @@ export default function AdminService() {
                 {s.ips.length ? (
                   <div className="overflow-x-auto rounded-xl border border-line">
                     <table className="w-full min-w-[520px] text-[13px]">
-                      <thead className="bg-[#faf7ff] text-left text-[11px] font-bold uppercase tracking-wider text-mute"><tr><th className="px-3 py-2">Address</th><th className="px-3 py-2">Subnet</th><th className="px-3 py-2">Gateway</th><th className="px-3 py-2">Reverse DNS</th></tr></thead>
+                      <thead className="bg-[#f7fffb] text-left text-[11px] font-bold uppercase tracking-wider text-mute"><tr><th className="px-3 py-2">Address</th><th className="px-3 py-2">Subnet</th><th className="px-3 py-2">Gateway</th><th className="px-3 py-2">Reverse DNS</th></tr></thead>
                       <tbody className="divide-y divide-line">
                         {s.ips.map((i: any) => (
                           <tr key={i.id}>
@@ -263,7 +263,7 @@ export default function AdminService() {
           </Card>
 
           <Card title="Activity log" pad={false}>
-            <ul className="max-h-96 divide-y divide-[#f3effb] overflow-y-auto text-sm">
+            <ul className="max-h-96 divide-y divide-[#effbf5] overflow-y-auto text-sm">
               {s.logs.map((l: any) => (
                 <li key={l.id} className="flex gap-3 px-5 py-2.5">
                   <Icon name={l.success ? "check_circle" : "error"} className={cx("mt-0.5 text-[19px]", l.success ? "text-emerald-500" : "text-rose-500")} />

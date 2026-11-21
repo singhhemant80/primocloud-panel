@@ -24,13 +24,13 @@ export function Sparkline({ values, suffix = "", height = 90, labels }: { values
       >
         <defs>
           <linearGradient id="spark" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#a365fe" stopOpacity=".35" />
-            <stop offset="100%" stopColor="#a365fe" stopOpacity="0" />
+            <stop offset="0%" stopColor="#0baf60" stopOpacity=".35" />
+            <stop offset="100%" stopColor="#0baf60" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={`${line} L${W},${height} L0,${height} Z`} fill="url(#spark)" />
-        <path d={line} fill="none" stroke="#7c3aed" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        {hover !== null && <line x1={pts[hover][0]} x2={pts[hover][0]} y1="0" y2={height} stroke="#7c3aed" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
+        <path d={line} fill="none" stroke="#008a49" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        {hover !== null && <line x1={pts[hover][0]} x2={pts[hover][0]} y1="0" y2={height} stroke="#008a49" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
       </svg>
       <div className="pointer-events-none absolute right-3 top-2 rounded-md bg-white/90 px-1.5 text-xs font-bold text-primary-dark">
         {hover !== null ? `${labels?.[hover] ? labels[hover] + " · " : ""}${fmt(values[hover])}` : `peak ${fmt(max)}`}

@@ -52,16 +52,16 @@ export default function Servers() {
               </div>
               {s.type === "CPANEL" ? (
               <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-                <div className="rounded-xl bg-[#fbf9ff] p-2"><div className="text-xs text-mute">Panel accounts</div><b>{s._count.services}</b>{s.maxServices ? ` / ${s.maxServices}` : ""}</div>
-                <div className="rounded-xl bg-[#fbf9ff] p-2"><div className="text-xs text-mute">All on WHM</div><b>{s.lastStatus?.accounts ?? "—"}</b></div>
-                <div className="rounded-xl bg-[#fbf9ff] p-2"><div className="text-xs text-mute">Load (1 min)</div><b>{s.lastStatus?.load ?? "—"}</b></div>
-                {s.nameservers?.length > 0 && <div className="col-span-3 truncate rounded-xl bg-[#fbf9ff] p-2 text-xs"><span className="text-mute">Nameservers </span><b>{s.nameservers.join(", ")}</b></div>}
+                <div className="rounded-xl bg-[#f6fbf8] p-2"><div className="text-xs text-mute">Panel accounts</div><b>{s._count.services}</b>{s.maxServices ? ` / ${s.maxServices}` : ""}</div>
+                <div className="rounded-xl bg-[#f6fbf8] p-2"><div className="text-xs text-mute">All on WHM</div><b>{s.lastStatus?.accounts ?? "—"}</b></div>
+                <div className="rounded-xl bg-[#f6fbf8] p-2"><div className="text-xs text-mute">Load (1 min)</div><b>{s.lastStatus?.load ?? "—"}</b></div>
+                {s.nameservers?.length > 0 && <div className="col-span-3 truncate rounded-xl bg-[#f6fbf8] p-2 text-xs"><span className="text-mute">Nameservers </span><b>{s.nameservers.join(", ")}</b></div>}
               </div>
               ) : (
               <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-                <div className="rounded-xl bg-[#fbf9ff] p-2"><div className="text-xs text-mute">Live services</div><b>{s._count.services}</b></div>
-                <div className="rounded-xl bg-[#fbf9ff] p-2"><div className="text-xs text-mute">Free IPs</div><b>{s.freeIps}</b> / {s._count.ips}</div>
-                <div className="rounded-xl bg-[#fbf9ff] p-2"><div className="text-xs text-mute">Thresholds</div><b className="text-xs">CPU {s.maxCpuPct}% · RAM {s.maxRamPct}%</b></div>
+                <div className="rounded-xl bg-[#f6fbf8] p-2"><div className="text-xs text-mute">Live services</div><b>{s._count.services}</b></div>
+                <div className="rounded-xl bg-[#f6fbf8] p-2"><div className="text-xs text-mute">Free IPs</div><b>{s.freeIps}</b> / {s._count.ips}</div>
+                <div className="rounded-xl bg-[#f6fbf8] p-2"><div className="text-xs text-mute">Thresholds</div><b className="text-xs">CPU {s.maxCpuPct}% · RAM {s.maxRamPct}%</b></div>
               </div>
               )}
               {s.imported && (

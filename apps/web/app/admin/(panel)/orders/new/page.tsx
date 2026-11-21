@@ -90,7 +90,7 @@ function NewOrder() {
         <div className="space-y-5">
           <Card title="1 · Customer">
             {client ? (
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-primary-tint px-4 py-3 ring-1 ring-[#e9d5ff]">
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-primary-tint px-4 py-3 ring-1 ring-[#c9f5da]">
                 <div><div className="font-bold text-ink">{[client.firstName, client.lastName].filter(Boolean).join(" ") || client.email}</div><div className="text-xs text-mute">{client.email}</div></div>
                 <Button size="sm" variant="ghost" onClick={() => setClient(null)}>Change</Button>
               </div>
@@ -100,7 +100,7 @@ function NewOrder() {
                 {found.length > 0 && (
                   <div className="mt-2 divide-y divide-line overflow-hidden rounded-xl border border-line">
                     {found.map((c) => (
-                      <button key={c.id} type="button" onClick={() => { setClient(c); setQ(""); setFound([]); }} className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-[#fbf9ff]">
+                      <button key={c.id} type="button" onClick={() => { setClient(c); setQ(""); setFound([]); }} className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-[#f6fbf8]">
                         <span><b className="text-sm text-ink">{[c.firstName, c.lastName].filter(Boolean).join(" ") || "—"}</b><span className="ml-2 text-xs text-mute">{c.email}</span></span>
                         <Icon name="chevron_right" className="text-mute" />
                       </button>

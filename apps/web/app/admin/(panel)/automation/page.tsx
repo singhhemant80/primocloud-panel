@@ -180,7 +180,7 @@ function StatusTab({ data }: { data: any }) {
                   </span>
                   <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                     {top.length ? top.map(([k, n]: any) => (
-                      <span key={k} className={cx("rounded-md px-2 py-0.5 text-[11.5px] font-bold", k === "error" ? "bg-rose-50 text-rose-700" : "bg-[#f4effd] text-primary-dark")}>{n} {(data.actions[k] ?? k).toLowerCase()}</span>
+                      <span key={k} className={cx("rounded-md px-2 py-0.5 text-[11.5px] font-bold", k === "error" ? "bg-rose-50 text-rose-700" : "bg-[#effdf6] text-primary-dark")}>{n} {(data.actions[k] ?? k).toLowerCase()}</span>
                     )) : <span className="text-xs text-mute">Nothing was due</span>}
                   </span>
                   <Badge status={r.status === "RUNNING" ? "PROVISIONING" : r.summary?.error ? "SUSPENDED" : "ACTIVE"}>{r.status === "RUNNING" ? "Running" : r.summary?.error ? "With errors" : "Completed"}</Badge>

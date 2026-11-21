@@ -32,7 +32,7 @@ export function OsChooser({ options, value, onChange }: { options: Os[]; value: 
             onKeyDown={(e) => e.key === "Enter" && !active && onChange(list[0].id)}
             className={cx(
               "group relative cursor-pointer rounded-2xl border bg-white p-3.5 transition",
-              active ? "border-primary ring-2 ring-primary/25 shadow-[0_8px_24px_rgba(124,58,237,.12)]" : "border-line hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md",
+              active ? "border-primary ring-2 ring-primary/25 shadow-[0_8px_24px_rgba(0,138,73,.12)]" : "border-line hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md",
             )}
           >
             <div className="flex items-center gap-3">

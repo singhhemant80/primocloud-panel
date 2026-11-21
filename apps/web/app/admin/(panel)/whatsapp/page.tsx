@@ -167,13 +167,13 @@ function Notifications({ c, events, onSaved }: { c: any; events: Record<string, 
                     <Button size="sm" variant="ghost" icon={open === k ? "expand_less" : "edit"} onClick={() => setOpen(open === k ? null : k)}>{open === k ? "Close" : "Edit"}</Button>
                   </div>
                   {open === k && (
-                    <div className="mt-4 grid gap-4 rounded-xl bg-[#fbf9ff] p-4 lg:grid-cols-2">
+                    <div className="mt-4 grid gap-4 rounded-xl bg-[#f6fbf8] p-4 lg:grid-cols-2">
                       <Field label="Message" className="lg:col-span-2" hint="Used for gateways, and for Meta when no template is set">
                         <Textarea rows={3} value={e.text} onChange={(x) => upd(k, { text: x.target.value })} />
                       </Field>
                       <div className="flex flex-wrap gap-1.5 lg:col-span-2">
                         {[...meta.vars, "companyName", "clientAreaLink", ...(meta.vars.includes("invoiceNumber") ? ["payLink"] : [])].filter((v, i, a) => a.indexOf(v) === i).map((v: string) => (
-                          <button key={v} type="button" onClick={() => upd(k, { text: `${e.text} {{${v}}}` })} className="rounded-md bg-white px-2 py-1 font-mono text-[11px] font-bold text-primary-dark ring-1 ring-[#e6dcf8] hover:bg-primary-soft">{`{{${v}}}`}</button>
+                          <button key={v} type="button" onClick={() => upd(k, { text: `${e.text} {{${v}}}` })} className="rounded-md bg-white px-2 py-1 font-mono text-[11px] font-bold text-primary-dark ring-1 ring-[#dcf8ea] hover:bg-primary-soft">{`{{${v}}}`}</button>
                         ))}
                       </div>
                       {c.provider === "meta" && (

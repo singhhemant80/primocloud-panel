@@ -142,7 +142,7 @@ function NodeCard({ n, server, onChanged, storage }: { n: Node & { enabled: bool
           <span>Accept new VPS{n.externalId ? <span className="ml-1 font-mono text-mute">#{n.externalId}</span> : null}</span>
           <input
             type="checkbox"
-            className="h-4 w-4 accent-[#7c3aed]"
+            className="h-4 w-4 accent-[#008a49]"
             checked={n.enabled}
             onChange={(e) =>
               api(`/admin/monitoring/nodes/${n.id}`, { method: "PATCH", body: { enabled: e.target.checked } })
@@ -274,7 +274,7 @@ export default function Monitoring() {
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[560px] text-left text-sm">
                       <thead><tr className="text-[11px] font-bold uppercase tracking-wider text-mute"><th className="py-2 pr-3">Storage</th><th className="pr-3">Type</th><th className="pr-3">Free / size</th><th className="pr-3">Primary</th><th>Nodes</th></tr></thead>
-                      <tbody className="divide-y divide-[#f3effb]">
+                      <tbody className="divide-y divide-[#effbf5]">
                         {r.storages!.map((x) => (
                           <tr key={x.stid}>
                             <td className="py-2 pr-3 font-semibold">{x.name} <span className="font-mono text-xs text-mute">#{x.stid}</span></td>

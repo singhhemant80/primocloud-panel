@@ -8,6 +8,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
+import { ensureTestCatalog } from "./legacy-catalog";
 import { config } from "../src/config";
 import { encryptJson, hmacHex } from "../src/lib/crypto";
 import { updateSettings, clearSettingsCache } from "../src/lib/settings";
@@ -46,6 +47,7 @@ class Session {
 }
 
 before(async () => {
+  await ensureTestCatalog();
   config.provisionDryRun = true;
   server = createApp().listen(0);
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

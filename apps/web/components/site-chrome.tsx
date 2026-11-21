@@ -1,24 +1,29 @@
 "use client";
-import { useEffect } from "react";
-import Script from "next/script";
-import { SITE_FOOTER_HTML, SITE_HEADER_HTML } from "./site-markup";
+import { createElement, useEffect } from "react";
 
-/** The exact primocloud.in header (markup + header.css + header.js) so the client area feels like the website. */
-export function SiteHeader() {
+/**
+ * The primocloud.in website's own header and footer (the React components from apps/site),
+ * loaded from /site-chrome.js — built by `npm run build` in apps/site and served from public-site/.
+ * They render inside shadow roots, so the website's styles and the panel's never mix.
+ */
+function useSiteChrome() {
   useEffect(() => {
-    // header.js is loaded once; each client-side navigation renders a fresh <header>, so bind it again
-    (window as unknown as { primocloudHeaderInit?: () => void }).primocloudHeaderInit?.();
-  });
-  return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/header.css" />
-      <div dangerouslySetInnerHTML={{ __html: SITE_HEADER_HTML }} />
-      <Script src="/header.js?v=3" strategy="afterInteractive" onLoad={() => (window as unknown as { primocloudHeaderInit?: () => void }).primocloudHeaderInit?.()} />
-    </>
-  );
+    if (customElements.get("primo-site-header") || document.querySelector("script[data-site-chrome]")) return;
+    const s = document.createElement("script");
+    s.type = "module";
+    s.src = "/site-chrome.js";
+    s.dataset.siteChrome = "1";
+    document.head.appendChild(s);
+  }, []);
+}
+
+export function SiteHeader() {
+  useSiteChrome();
+  // until the script loads, hold the header's height so the page doesn't jump
+  return createElement("primo-site-header", { class: "block min-h-[64px] xl:min-h-[148px]", suppressHydrationWarning: true });
 }
 
 export function SiteFooter() {
-  return <div className="bg-white" dangerouslySetInnerHTML={{ __html: SITE_FOOTER_HTML }} />;
+  useSiteChrome();
+  return createElement("primo-site-footer", { class: "block", suppressHydrationWarning: true });
 }

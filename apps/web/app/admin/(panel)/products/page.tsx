@@ -84,15 +84,15 @@ export default function Products() {
         {loading && !data ? <Loading /> : !groups.length ? (
           <Empty icon="inventory_2" title="No plans match"><p className="text-sm text-mute">Try another tab or search.</p></Empty>
         ) : (
-          <div className="divide-y-8 divide-[#f6f3fc]">
+          <div className="divide-y-8 divide-[#f3fcf8]">
             {groups.map(([g, list]) => {
               const gIds = list.map((p) => p.id);
               const all = gIds.every((id) => sel.has(id));
               const page = WEBSITE_PAGE[list[0].type];
               return (
                 <section key={g}>
-                  <header className="flex flex-wrap items-center gap-3 bg-[#fbf9ff] px-4 py-2.5 sm:px-5">
-                    <input type="checkbox" aria-label={`Select all in ${g}`} checked={all} onChange={(e) => toggleMany(gIds, e.target.checked)} className="h-4 w-4 accent-[#7c3aed]" />
+                  <header className="flex flex-wrap items-center gap-3 bg-[#f6fbf8] px-4 py-2.5 sm:px-5">
+                    <input type="checkbox" aria-label={`Select all in ${g}`} checked={all} onChange={(e) => toggleMany(gIds, e.target.checked)} className="h-4 w-4 accent-[#008a49]" />
                     <span className="text-[13.5px] font-extrabold text-ink">{g}</span>
                     <span className="text-[12px] text-mute">{list.length} plan{list.length === 1 ? "" : "s"}</span>
                     {page && <a href={page} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 text-[12px] font-bold text-primary-dark hover:underline"><Icon name="open_in_new" className="text-[15px]" />{page.slice(1)}</a>}
@@ -110,9 +110,9 @@ export default function Products() {
       </ListShell>
 
       {ids.length > 0 && (
-        <div className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-4xl flex-wrap items-center gap-2 rounded-2xl bg-[#1d1033] p-2.5 pl-4 text-white shadow-2xl ring-1 ring-white/10 sm:bottom-5">
+        <div className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-4xl flex-wrap items-center gap-2 rounded-2xl bg-[#103322] p-2.5 pl-4 text-white shadow-2xl ring-1 ring-white/10 sm:bottom-5">
           <span className="mr-1 text-[13.5px] font-extrabold">{ids.length} selected</span>
-          <button onClick={() => setSel(new Set())} className="mr-auto text-[12px] font-bold text-violet-200 hover:text-white">Clear</button>
+          <button onClick={() => setSel(new Set())} className="mr-auto text-[12px] font-bold text-emerald-200 hover:text-white">Clear</button>
           <BulkBtn icon="visibility" onClick={() => apply(ids, "show", "shown on the website")} busy={busy === "show"}>Show</BulkBtn>
           <BulkBtn icon="visibility_off" onClick={() => apply(ids, "hide", "hidden")} busy={busy === "hide"}>Hide</BulkBtn>
           <BulkBtn icon="inventory_2" onClick={() => apply(ids, "out_of_stock", "marked out of stock")} busy={busy === "out_of_stock"} tone="amber">Out of stock</BulkBtn>
@@ -158,7 +158,7 @@ function Row({ p, checked, onCheck, apply }: { p: any; checked: boolean; onCheck
   const oos = isOos(p);
   return (
     <li className={cx("grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-3 transition sm:px-5 xl:grid-cols-[auto_minmax(0,2.2fr)_110px_minmax(0,1.3fr)_70px_150px_160px_40px]", checked && "bg-primary-tint/60", !p.enabled && "opacity-60")}>
-      <input type="checkbox" aria-label={`Select ${p.name}`} checked={checked} onChange={onCheck} className="h-4 w-4 accent-[#7c3aed]" />
+      <input type="checkbox" aria-label={`Select ${p.name}`} checked={checked} onChange={onCheck} className="h-4 w-4 accent-[#008a49]" />
       <Link href={`/admin/products/${p.id}`} className="flex min-w-0 items-center gap-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary-dark"><Icon name={planIcon(p.type, p.provisioner)} className="text-[19px]" /></span>
         <span className="min-w-0">

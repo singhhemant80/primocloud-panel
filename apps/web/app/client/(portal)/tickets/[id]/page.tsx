@@ -25,7 +25,7 @@ export default function TicketView() {
         actions={t.status !== "CLOSED" && <Button variant="outline" size="sm" onClick={() => api(`/client/tickets/${id}/close`, { body: {} }).then(reload)}>Close ticket</Button>} />
       <div className="space-y-4">
         {t.messages.map((m: any) => (
-          <div key={m.id} className={cx("rounded-2xl border p-5", m.isStaff ? "border-[#e9d5ff] bg-primary-tint" : "border-line bg-white")}>
+          <div key={m.id} className={cx("rounded-2xl border p-5", m.isStaff ? "border-[#c9f5da] bg-primary-tint" : "border-line bg-white")}>
             <div className="mb-2 flex items-center justify-between text-sm">
               <span className="flex items-center gap-2 font-extrabold text-ink">
                 <Icon name={m.isStaff ? "support_agent" : "person"} className="text-primary-dark" />

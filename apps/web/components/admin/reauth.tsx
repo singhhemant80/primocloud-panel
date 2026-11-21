@@ -69,7 +69,7 @@ function ConfirmForm({ onDone, onCancel, autoFocus = true, compact }: { onDone: 
   };
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div className="flex items-center gap-2 rounded-xl bg-[#f6f2fd] px-3 py-2 text-[13px] text-mute">
+      <div className="flex items-center gap-2 rounded-xl bg-[#f2fdf8] px-3 py-2 text-[13px] text-mute">
         <Icon name="account_circle" className="text-[18px] text-primary-dark" />
         <span className="truncate">Signed in as <b className="text-ink">{me?.email}</b></span>
       </div>
@@ -82,7 +82,7 @@ function ConfirmForm({ onDone, onCancel, autoFocus = true, compact }: { onDone: 
             autoFocus={autoFocus}
             value={pw}
             onChange={(e) => setPw(e.target.value)}
-            className={cx("h-11 w-full rounded-xl border bg-white px-3.5 pr-11 text-[14.5px] text-ink outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15", err ? "border-rose-300" : "border-[#e6dcf8]")}
+            className={cx("h-11 w-full rounded-xl border bg-white px-3.5 pr-11 text-[14.5px] text-ink outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15", err ? "border-rose-300" : "border-[#dcf8ea]")}
             placeholder="Enter your admin password"
           />
           <button type="button" onClick={() => setShow((v) => !v)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-slate-400 hover:text-ink" aria-label={show ? "Hide password" : "Show password"}>
@@ -148,7 +148,7 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
         createPortal(
           <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 pt-[12vh] backdrop-blur-sm" role="dialog" aria-modal="true" onKeyDown={(e) => e.key === "Escape" && finish(false)}>
             <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl fade-up">
-              <div className="flex items-start gap-3 border-b border-line bg-[linear-gradient(135deg,#faf7ff,#f3ecff)] px-5 py-4">
+              <div className="flex items-start gap-3 border-b border-line bg-[linear-gradient(135deg,#f7fffb,#ecfff6)] px-5 py-4">
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary-dark"><Icon name="shield_lock" className="text-[24px]" fill /></div>
                 <div className="min-w-0">
                   <h3 className="text-base font-extrabold text-ink">Confirm it&apos;s you</h3>
@@ -192,12 +192,12 @@ export function AreaGate({ path, children }: { path: string; children: ReactNode
   if (!area || active || passed === key) return <>{children}</>;
   return (
     <div className="grid min-h-[70vh] place-items-center">
-      <div className="w-full max-w-[420px] overflow-hidden rounded-3xl border border-line bg-white shadow-[0_24px_60px_-24px_rgba(76,29,149,.35)]">
-        <div className="relative overflow-hidden bg-[linear-gradient(135deg,#1f0f4a,#3b1a87)] px-7 pb-7 pt-8 text-white">
+      <div className="w-full max-w-[420px] overflow-hidden rounded-3xl border border-line bg-white shadow-[0_24px_60px_-24px_rgba(0,81,42,.35)]">
+        <div className="relative overflow-hidden bg-[linear-gradient(135deg,#0f4a2d,#1a8752)] px-7 pb-7 pt-8 text-white">
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20"><Icon name="lock" className="text-[30px]" fill /></div>
           <h2 className="mt-4 text-xl font-extrabold">Confirm your password</h2>
-          <p className="mt-1 text-[13.5px] leading-relaxed text-violet-100/85">
+          <p className="mt-1 text-[13.5px] leading-relaxed text-emerald-100/85">
             <span className="inline-flex items-center gap-1 rounded-md bg-white/10 px-1.5 py-0.5 font-bold text-white"><Icon name={area.icon} className="text-[15px]" />{area.label}</span>{" "}
             is a protected area. You won&apos;t be asked again for {minutes} minutes.
           </p>

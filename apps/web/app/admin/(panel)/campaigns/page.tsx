@@ -80,16 +80,16 @@ export default function CampaignsPage() {
               const when = c.status === "SCHEDULED" ? c.scheduledAt : c.finishedAt ?? c.startedAt ?? c.updatedAt;
               return (
                 <li key={c.id}>
-                  <Link href={`/admin/campaigns/${c.id}`} className="grid gap-3 px-4 py-4 transition hover:bg-[#faf8fe] sm:px-5 md:grid-cols-[minmax(0,1fr)_180px_200px] md:items-center">
+                  <Link href={`/admin/campaigns/${c.id}`} className="grid gap-3 px-4 py-4 transition hover:bg-[#f8fefb] sm:px-5 md:grid-cols-[minmax(0,1fr)_180px_200px] md:items-center">
                     <div className="flex min-w-0 items-start gap-3">
-                      <div className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl", c.kind === "OFFER" ? "bg-fuchsia-50 text-fuchsia-600" : "bg-sky-50 text-sky-600")}>
+                      <div className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl", c.kind === "OFFER" ? "bg-teal-50 text-teal-600" : "bg-sky-50 text-sky-600")}>
                         <Icon name={c.kind === "OFFER" ? "sell" : "info"} className="text-[22px]" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="truncate font-extrabold text-ink">{c.name}</span>
                           <Badge status={c.status} />
-                          <span className={cx("rounded-md px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide", c.kind === "OFFER" ? "bg-fuchsia-50 text-fuchsia-700" : "bg-sky-50 text-sky-700")}>{c.kind === "OFFER" ? "Offer" : "Information"}</span>
+                          <span className={cx("rounded-md px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide", c.kind === "OFFER" ? "bg-teal-50 text-teal-700" : "bg-sky-50 text-sky-700")}>{c.kind === "OFFER" ? "Offer" : "Information"}</span>
                         </div>
                         <div className="mt-0.5 truncate text-[13px] text-slate-500">{c.subject}</div>
                         {c.lastError && ["PAUSED", "SENDING"].includes(c.status) && <div className="mt-1 truncate text-[12px] font-semibold text-amber-700">{c.lastError}</div>}
@@ -97,7 +97,7 @@ export default function CampaignsPage() {
                     </div>
                     <div className="text-[12.5px] text-slate-500 md:text-right">
                       {c.status === "SCHEDULED" ? (
-                        <><div className="font-bold text-violet-700">Sends {new Date(c.scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}</div><Ago at={when} /></>
+                        <><div className="font-bold text-emerald-700">Sends {new Date(c.scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}</div><Ago at={when} /></>
                       ) : c.status === "DRAFT" ? (
                         <>Edited <Ago at={c.updatedAt} /></>
                       ) : (
@@ -130,8 +130,8 @@ export default function CampaignsPage() {
       <Modal open={picker} onClose={() => setPicker(false)} title="Start a campaign" wide>
         <div className="grid gap-3 sm:grid-cols-2">
           {STARTERS.map((t) => (
-            <button key={t.key} disabled={!!creating} onClick={() => create(t.key)} className="group flex items-start gap-3 rounded-2xl border border-line p-4 text-left transition hover:border-primary hover:bg-[#faf7ff] disabled:opacity-60">
-              <div className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl", t.kind === "OFFER" ? "bg-fuchsia-50 text-fuchsia-600" : "bg-sky-50 text-sky-600", t.key === "blank" && "bg-slate-100 text-slate-500")}>
+            <button key={t.key} disabled={!!creating} onClick={() => create(t.key)} className="group flex items-start gap-3 rounded-2xl border border-line p-4 text-left transition hover:border-primary hover:bg-[#f7fffb] disabled:opacity-60">
+              <div className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl", t.kind === "OFFER" ? "bg-teal-50 text-teal-600" : "bg-sky-50 text-sky-600", t.key === "blank" && "bg-slate-100 text-slate-500")}>
                 <Icon name={creating === t.key ? "progress_activity" : t.icon} className={cx("text-[22px]", creating === t.key && "animate-spin")} />
               </div>
               <div className="min-w-0">

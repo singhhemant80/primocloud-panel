@@ -99,7 +99,7 @@ export async function renderCampaign(c: { kind: string; subject: string; prehead
   const u = urls(token);
   const footer =
     c.kind === "OFFER"
-      ? `You're receiving this because you agreed to hear about offers and news from ${esc(settings.company.brand)}. <a href="${esc(u.unsubscribeUrl)}" style="color:#7c3aed">Unsubscribe</a> — you'll still get emails about your services and invoices.`
+      ? `You're receiving this because you agreed to hear about offers and news from ${esc(settings.company.brand)}. <a href="${esc(u.unsubscribeUrl)}" style="color:#008a49">Unsubscribe</a> — you'll still get emails about your services and invoices.`
       : `This is a service announcement about your ${esc(settings.company.brand)} account.`;
   const pre = c.preheader ? render(c.preheader, vars) : htmlToText(bodyHtml).split("\n").find((l) => l.trim() && !/^(hi|hello|dear)\b/i.test(l))?.slice(0, 140) ?? "";
   let html = layout(bodyHtml, settings.company, pre, footer);

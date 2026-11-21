@@ -58,7 +58,7 @@ export default function AdminOrder() {
           {o.services.map((s: any) => <ServiceItem key={s.id} s={s} currency={o.currency} onSaved={reload} />)}
           {o.domains.length > 0 && (
             <Card title="Domains" pad={false}>
-              <ul className="divide-y divide-[#f3effb]">
+              <ul className="divide-y divide-[#effbf5]">
                 {o.domains.map((d: any) => (
                   <li key={d.id} className="flex items-center justify-between px-5 py-3 text-sm">
                     <span className="flex min-w-0 items-center gap-3"><Icon name={d.action === "transfer" ? "swap_horiz" : "public"} className="text-primary-dark" /><b className="truncate">{d.name}</b><span className="capitalize text-mute">{d.action} · {d.years} yr</span></span>
@@ -145,7 +145,7 @@ function ServiceItem({ s, currency, onSaved }: { s: any; currency: string; onSav
       action={<span className="flex items-center gap-3">{["ACTIVE", "SUSPENDED"].includes(s.status) && <ChangePlanButton serviceId={s.id} onDone={onSaved} />}<Link href={`/admin/services/${s.id}`} className="inline-flex items-center gap-1 text-sm font-bold text-primary-dark hover:underline">Manage <Icon name="arrow_forward" className="text-[16px]" /></Link></span>}
     >
       {vps && ["PENDING", "PROVISIONING", "FAILED"].includes(s.status) && (
-        <div className="mb-4 rounded-xl bg-[#fbf9ff] px-3 py-2.5 ring-1 ring-[#f0e6ff]">
+        <div className="mb-4 rounded-xl bg-[#f6fbf8] px-3 py-2.5 ring-1 ring-[#e6fff3]">
           <ProvisioningTracker path={`/admin/services/${s.id}/provisioning`} audience="admin" compact onChange={onSaved} />
         </div>
       )}
@@ -304,7 +304,7 @@ function CustomerCard({ u, orderId }: { u: any; orderId: string }) {
   const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-br from-[#faf7ff] to-white p-5">
+      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-br from-[#f7fffb] to-white p-5">
         <Avatar name={initialsOf(u.firstName, u.lastName, u.email)} seed={u.id} size={48} />
         <div className="min-w-0">
           <Link href={`/admin/clients/${u.id}`} className="block truncate text-[15px] font-extrabold text-ink hover:text-primary-dark">{name}</Link>
@@ -341,7 +341,7 @@ function SummaryCard({ inv, promo }: { inv: any; promo?: string | null }) {
         </div>
         <Badge status={inv.status} />
       </header>
-      <ul className="divide-y divide-[#f3effb] px-5">
+      <ul className="divide-y divide-[#effbf5] px-5">
         {inv.items.map((it: any) => (
           <li key={it.id} className="flex justify-between gap-3 py-2.5 text-[13px]">
             <span className="min-w-0 text-slate-700">{it.description}{it.quantity > 1 && <span className="text-mute"> × {it.quantity}</span>}</span>
@@ -356,7 +356,7 @@ function SummaryCard({ inv, promo }: { inv: any; promo?: string | null }) {
         {inv.sgst > 0 && <div className="flex justify-between"><dt className="text-mute">SGST 9%</dt><dd className="tabular-nums">{cm(inv.sgst)}</dd></div>}
         {inv.igst > 0 && <div className="flex justify-between"><dt className="text-mute">IGST 18%</dt><dd className="tabular-nums">{cm(inv.igst)}</dd></div>}
       </dl>
-      <div className="mx-5 mb-4 flex items-end justify-between rounded-xl bg-[#faf7ff] px-4 py-3 ring-1 ring-[#ede4ff]">
+      <div className="mx-5 mb-4 flex items-end justify-between rounded-xl bg-[#f7fffb] px-4 py-3 ring-1 ring-[#e4fff2]">
         <div><div className="text-[11px] font-bold uppercase tracking-wider text-mute">Total</div><div className="text-[12px] text-mute">{due ? <span className="font-bold text-amber-700">{cm(due)} still due</span> : `paid ${inv.paidAt ? date(inv.paidAt) : ""}`}</div></div>
         <div className="text-xl font-extrabold tabular-nums text-primary-dark">{cm(inv.total)}</div>
       </div>

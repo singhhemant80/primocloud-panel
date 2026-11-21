@@ -99,7 +99,7 @@ function InvoiceView() {
           prefill: r.prefill,
           // UPI AutoPay: this payment also approves the mandate for renewals
           ...(r.recurring ? { customer_id: r.customerId, recurring: 1 } : {}),
-          theme: { color: "#7c3aed" },
+          theme: { color: "#008a49" },
           handler: async (resp: any) => {
             setVerifying(true);
             try {
@@ -227,7 +227,7 @@ function InvoiceView() {
                   {methods.data?.methods?.map((m: any) => (
                     <label key={m.code} className={cx("block cursor-pointer rounded-xl border p-3.5 transition", method === m.code ? "border-primary bg-primary-tint ring-2 ring-primary/20" : "border-line hover:border-primary/40")}>
                       <span className="flex items-center gap-3">
-                        <input type="radio" className="accent-[#7c3aed]" checked={method === m.code} onChange={() => setMethod(m.code)} />
+                        <input type="radio" className="accent-[#008a49]" checked={method === m.code} onChange={() => setMethod(m.code)} />
                         <Icon name={m.autopay ? "autorenew" : m.code === "upi" ? "qr_code_2" : m.code === "bank" || m.code === "wire" ? "account_balance" : m.code === "stripe" ? "credit_card" : m.code === "paypal" ? "account_balance_wallet" : m.offline ? "payments" : "bolt"} className="text-primary-dark" />
                         <span className="flex-1 text-sm font-semibold text-ink">{m.name}</span>
                         {m.recommended && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide text-emerald-700">Recommended</span>}

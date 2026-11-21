@@ -259,7 +259,7 @@ function Configure() {
             <div className="text-sm">New orders open again as soon as capacity is added. Choose another plan or ask us to hold one for you.</div>
           </div>
           <Button size="sm" variant="outline" icon="grid_view" href="/order">See other plans</Button>
-          <Button size="sm" variant="ghost" icon="support_agent" href="/contact.html">Contact sales</Button>
+          <Button size="sm" variant="ghost" icon="support_agent" href="/contact">Contact sales</Button>
         </div>
       )}
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -273,20 +273,20 @@ function Configure() {
             <p className="mt-1 text-mute">{p.tagline}</p>
             {p.isHosting && p.features?.length > 0 && (
               <ul className="mt-4 flex flex-wrap gap-2 text-[12.5px] font-semibold text-slate-700">
-                {p.features.slice(0, 6).map((f: string) => <li key={f} className="inline-flex items-center gap-1.5 rounded-lg bg-[#faf7ff] px-2.5 py-1 ring-1 ring-[#ede4ff]"><Icon name="check" className="text-[16px] text-primary-dark" />{f}</li>)}
+                {p.features.slice(0, 6).map((f: string) => <li key={f} className="inline-flex items-center gap-1.5 rounded-lg bg-[#f7fffb] px-2.5 py-1 ring-1 ring-[#e4fff2]"><Icon name="check" className="text-[16px] text-primary-dark" />{f}</li>)}
               </ul>
             )}
             {p.isColo && (
               <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold text-slate-700">
                 {[["dns", `${p.colo?.rackUnits ?? 1}U rack space`], ["bolt", p.colo?.powerW ? `${p.colo.powerW} W power` : "Power as agreed"], ["settings_ethernet", p.colo?.portSpeed ?? "1 Gbps port"], ["swap_vert", `${bandwidth(p.specs.bandwidthGb)} bandwidth`], ["public", `${p.specs.ipv4Count || 1} × IPv4`], ...(p.colo?.datacenter ? [["location_on", p.colo.datacenter]] : [])].map(([i, t]) => (
-                  <span key={t} className="inline-flex items-center gap-1.5 rounded-lg bg-[#faf7ff] px-3 py-1.5 ring-1 ring-[#ede4ff]"><Icon name={i} className="text-[18px] text-primary-dark" />{t}</span>
+                  <span key={t} className="inline-flex items-center gap-1.5 rounded-lg bg-[#f7fffb] px-3 py-1.5 ring-1 ring-[#e4fff2]"><Icon name={i} className="text-[18px] text-primary-dark" />{t}</span>
                 ))}
               </div>
             )}
             {p.isVps && (
               <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold text-slate-700">
                 {[["developer_board", `${p.specs.cpuCores} vCPU`], ["memory", gb(p.specs.ramMb)], ["database", `${p.specs.diskGb} GB SSD`], ...(p.specs.bandwidthGb != null ? [["swap_vert", `${bandwidth(p.specs.bandwidthGb)} bandwidth`]] : []), ["public", `${p.specs.ipv4Count} × IPv4`]].map(([i, t]) => (
-                  <span key={t} className="inline-flex items-center gap-1.5 rounded-lg bg-[#faf7ff] px-3 py-1.5 ring-1 ring-[#ede4ff]"><Icon name={i} className="text-[18px] text-primary-dark" />{t}</span>
+                  <span key={t} className="inline-flex items-center gap-1.5 rounded-lg bg-[#f7fffb] px-3 py-1.5 ring-1 ring-[#e4fff2]"><Icon name={i} className="text-[18px] text-primary-dark" />{t}</span>
                 ))}
               </div>
             )}
@@ -333,7 +333,7 @@ function Configure() {
           {p.allowIpSelection && serverId && (
             <Step n={num("ip")} title="Choose your IPv4 address" sub="Optional — skip it and we'll assign one." action={reservation && countdown && <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700 ring-1 ring-amber-200"><Icon name="timer" className="text-[16px]" />held {countdown.label}</span>}>
               {reservation ? (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-primary-soft to-white p-4 ring-1 ring-[#e9d5ff]">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-primary-soft to-white p-4 ring-1 ring-[#c9f5da]">
                   <div className="flex items-center gap-3">
                     <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary-dark text-white"><Icon name="lock" /></span>
                     <div><div className="font-mono text-lg font-extrabold text-ink">{reservation.address}</div><div className="text-xs text-mute">Reserved for you — complete payment within the hold time.</div></div>
@@ -403,13 +403,13 @@ function Configure() {
                     ) : o.type === "QUANTITY" ? (
                       <Input type="number" min={o.minQty} max={o.maxQty} value={cfg[o.key] ?? o.minQty} onChange={(e) => setCfg({ ...cfg, [o.key]: Number(e.target.value) })} />
                     ) : (
-                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[#7c3aed]" checked={!!cfg[o.key]} onChange={(e) => setCfg({ ...cfg, [o.key]: e.target.checked })} /> +{cm(pick(o.unitPrices, currency, o.unitMonthly))}/mo</label>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[#008a49]" checked={!!cfg[o.key]} onChange={(e) => setCfg({ ...cfg, [o.key]: e.target.checked })} /> +{cm(pick(o.unitPrices, currency, o.unitMonthly))}/mo</label>
                     )}
                   </Field>
                 ))}
                 {p.addons.map((a: any) => (
                   <label key={a.id} className={cx("flex cursor-pointer items-start gap-3 rounded-xl border p-3", addons.includes(a.id) ? "border-primary bg-primary-tint" : "border-line")}>
-                    <input type="checkbox" className="mt-1 accent-[#7c3aed]" checked={addons.includes(a.id)} onChange={(e) => setAddons(e.target.checked ? [...addons, a.id] : addons.filter((x) => x !== a.id))} />
+                    <input type="checkbox" className="mt-1 accent-[#008a49]" checked={addons.includes(a.id)} onChange={(e) => setAddons(e.target.checked ? [...addons, a.id] : addons.filter((x) => x !== a.id))} />
                     <span><span className="block text-sm font-bold text-ink">{a.name} · {cm(pick(a.prices?.monthly, currency, a.monthly))}/mo</span><span className="text-xs text-mute">{a.description}</span></span>
                   </label>
                 ))}
@@ -422,7 +422,7 @@ function Configure() {
 
         <aside>
           <div className="sticky top-[150px] overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-            <div className="bg-gradient-to-br from-[#2e1065] via-[#4c1d95] to-[#6d28d9] px-5 py-4 text-white">
+            <div className="bg-gradient-to-br from-[#00391b] via-[#00512a] to-[#007a40] px-5 py-4 text-white">
               <div className="text-[11px] font-bold uppercase tracking-wider text-white/60">Order summary</div>
               <div className="mt-0.5 text-lg font-extrabold">{p.name}</div>
               <div className="text-xs text-white/70">{p.group?.name} · {CYCLES[cycle]}</div>
@@ -449,7 +449,7 @@ function Configure() {
                 <div className="flex justify-between"><dt className="text-mute">Subtotal</dt><dd className="font-semibold text-ink">{cm(total)}</dd></div>
                 {currency === "INR" && <div className="flex justify-between"><dt className="text-mute">GST 18% <span className="text-[11px]">(estimate)</span></dt><dd className="font-semibold text-ink">{cm(gst)}</dd></div>}
               </dl>
-              <div className="mt-4 flex items-end justify-between rounded-xl bg-[#faf7ff] px-4 py-3 ring-1 ring-[#ede4ff]">
+              <div className="mt-4 flex items-end justify-between rounded-xl bg-[#f7fffb] px-4 py-3 ring-1 ring-[#e4fff2]">
                 <div><div className="text-[11px] font-bold uppercase tracking-wider text-mute">Due today</div><div className="text-[11px] text-mute">{currency === "INR" ? "incl. GST" : "no Indian GST"}</div></div>
                 <div className="text-2xl font-extrabold tracking-tight text-primary-dark">{cm(total + gst)}</div>
               </div>

@@ -135,7 +135,7 @@ export default function ServicePage() {
             </div>
           </div>
           {live?.error && <Alert tone="warn" className="mt-4">Live figures aren't available right now: {live.error}</Alert>}
-          {!live && <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="h-[118px] animate-pulse rounded-xl bg-[#f6f3fd]" />)}</div>}
+          {!live && <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="h-[118px] animate-pulse rounded-xl bg-[#f3fdf8]" />)}</div>}
           {live && !live.error && (
             <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">
               <Meter label="CPU" value={`${fmtNum(live.cpuPct ?? 0)}%`} sub={`${live.cpus ?? svc.product.cpuCores} vCPU${live.cpuLimitMhz ? ` · ${live.cpuLimitMhz} MHz` : ""}`} pct={live.cpuPct ?? 0} icon="memory" />
@@ -157,11 +157,11 @@ export default function ServicePage() {
           )}
           {usage.length > 1 && (
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-[#f1edf9] p-4">
+              <div className="rounded-xl border border-[#edf9f3] p-4">
                 <div className="mb-1 text-xs font-bold text-mute">CPU — last 24 hours</div>
                 <Sparkline values={usage.map((p) => p.cpu * 100)} suffix="%" />
               </div>
-              <div className="rounded-xl border border-[#f1edf9] p-4">
+              <div className="rounded-xl border border-[#edf9f3] p-4">
                 <div className="mb-1 text-xs font-bold text-mute">Network out — last 24 hours</div>
                 <Sparkline values={usage.map((p) => p.netout / 1024)} suffix=" KB/s" />
               </div>
@@ -265,7 +265,7 @@ export default function ServicePage() {
 
         {data.logs.length > 0 && (
           <Card title="Recent activity" pad={false} className={isHosting ? "" : "lg:col-span-2"}>
-            <ul className="divide-y divide-[#f3effb] text-sm">
+            <ul className="divide-y divide-[#effbf5] text-sm">
               {data.logs.map((l: any, i: number) => (
                 <li key={i} className="flex items-center justify-between px-5 py-2.5">
                   <span className="flex items-center gap-2 font-semibold capitalize text-ink">
@@ -318,11 +318,11 @@ function speedStr(bps?: number) {
 
 function Meter({ label, value, sub, pct, icon }: { label: string; value: string; sub: string; pct?: number; icon: string }) {
   return (
-    <div className="rounded-xl border border-[#f1edf9] bg-[#fcfaff] p-4">
+    <div className="rounded-xl border border-[#edf9f3] bg-[#fafffd] p-4">
       <div className="flex items-center justify-between text-xs font-bold text-mute">{label}<Icon name={icon} className="text-[18px] text-primary" /></div>
       <div className="mt-1 text-xl font-extrabold text-ink">{value}</div>
       <div className="text-xs text-mute">{sub}</div>
-      {pct !== undefined && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#ede9fe]"><div className={cx("h-full rounded-full", pct > 85 ? "bg-rose-500" : pct > 65 ? "bg-amber-400" : "bg-primary")} style={{ width: `${Math.min(100, Math.max(3, pct))}%` }} /></div>}
+      {pct !== undefined && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#dcf7e7]"><div className={cx("h-full rounded-full", pct > 85 ? "bg-rose-500" : pct > 65 ? "bg-amber-400" : "bg-primary")} style={{ width: `${Math.min(100, Math.max(3, pct))}%` }} /></div>}
     </div>
   );
 }
@@ -331,13 +331,13 @@ function UsageBar({ label, used, limit, icon }: { label: string; used?: number |
   const pct = limit ? Math.min(100, Math.round(((used ?? 0) / limit) * 100)) : null;
   const fmt = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(mb >= 10240 ? 0 : 1)} GB` : `${mb} MB`);
   return (
-    <div className="rounded-xl border border-[#f1edf9] bg-[#fcfaff] p-4">
+    <div className="rounded-xl border border-[#edf9f3] bg-[#fafffd] p-4">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2 text-[13px] font-bold text-ink"><Icon name={icon} className="text-[18px] text-primary" />{label}</span>
         <span className="text-xs font-bold text-mute">{pct !== null ? `${pct}%` : "Unlimited"}</span>
       </div>
       <div className="mt-2 text-lg font-extrabold text-ink">{fmt(used ?? 0)} <span className="text-xs font-semibold text-mute">of {limit ? fmt(limit) : "unlimited"}</span></div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#ede9fe]"><div className={cx("h-full rounded-full", pct === null ? "bg-emerald-400" : pct > 90 ? "bg-rose-500" : pct > 75 ? "bg-amber-400" : "bg-gradient-to-r from-primary to-primary-dark")} style={{ width: `${pct ?? 6}%` }} /></div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#dcf7e7]"><div className={cx("h-full rounded-full", pct === null ? "bg-emerald-400" : pct > 90 ? "bg-rose-500" : pct > 75 ? "bg-amber-400" : "bg-gradient-to-r from-primary to-primary-dark")} style={{ width: `${pct ?? 6}%` }} /></div>
     </div>
   );
 }
@@ -355,13 +355,13 @@ function HostingPanels({ id, svc, live, cred, showPassword, onPassword }: { id: 
     <div className="mb-6 space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
         {tiles.map(([svcName, icon, title, text]) => (
-          <button key={svcName} type="button" onClick={() => openLogin(id, svcName)} className="group flex items-center gap-3 rounded-2xl border border-[#ece7f7] bg-white p-4 text-left shadow-card transition hover:-translate-y-0.5 hover:border-[#dccafb]">
+          <button key={svcName} type="button" onClick={() => openLogin(id, svcName)} className="group flex items-center gap-3 rounded-2xl border border-[#e7f7ef] bg-white p-4 text-left shadow-card transition hover:-translate-y-0.5 hover:border-[#cafbe3]">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-md"><Icon name={icon} className="text-[22px]" /></span>
             <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-extrabold text-ink group-hover:text-primary-dark">{title}</span><span className="block truncate text-xs text-mute">{text}</span></span>
             <Icon name="open_in_new" className="text-[18px] text-mute group-hover:text-primary-dark" />
           </button>
         ))}
-        <a href={`http://${svc.hostname}`} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-2xl border border-[#ece7f7] bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:border-[#dccafb]">
+        <a href={`http://${svc.hostname}`} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-2xl border border-[#e7f7ef] bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:border-[#cafbe3]">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-md"><Icon name="public" className="text-[22px]" /></span>
           <span className="min-w-0 flex-1"><span className="block text-[14.5px] font-extrabold text-ink group-hover:text-primary-dark">Visit website</span><span className="block truncate text-xs text-mute">{svc.hostname}</span></span>
           <Icon name="arrow_outward" className="text-[18px] text-mute" />
@@ -375,7 +375,7 @@ function HostingPanels({ id, svc, live, cred, showPassword, onPassword }: { id: 
               <UsageBar label="Disk space" icon="hard_drive" used={live.disk.usedMb} limit={live.disk.limitMb} />
               <UsageBar label="Bandwidth this month" icon="swap_vert" used={live.bandwidth?.usedMb ?? 0} limit={live.bandwidth?.limitMb} />
             </div>
-          ) : live?.error ? <Alert tone="warn">{live.error}</Alert> : <div className="grid gap-3 sm:grid-cols-2"><div className="h-[104px] animate-pulse rounded-xl bg-[#f6f3fd]" /><div className="h-[104px] animate-pulse rounded-xl bg-[#f6f3fd]" /></div>}
+          ) : live?.error ? <Alert tone="warn">{live.error}</Alert> : <div className="grid gap-3 sm:grid-cols-2"><div className="h-[104px] animate-pulse rounded-xl bg-[#f3fdf8]" /><div className="h-[104px] animate-pulse rounded-xl bg-[#f3fdf8]" /></div>}
           <p className="mt-3 text-xs text-mute">Figures come straight from the cPanel server and refresh every minute.</p>
         </Card>
 
@@ -409,16 +409,16 @@ function HostingPanels({ id, svc, live, cred, showPassword, onPassword }: { id: 
             <p className="mt-1 text-xs text-mute">At your domain registrar, replace the nameservers for <b>{svc.hostname}</b> with:</p>
             {ns.length ? (
               <div className="mt-3 space-y-2">
-                {ns.map((n, i) => <div key={n} className="flex items-center justify-between rounded-xl border border-[#f1edf9] bg-[#fcfaff] px-3 py-2"><span className="text-xs text-mute">Nameserver {i + 1}</span><span className="flex items-center gap-1 font-mono text-[13px] font-semibold text-ink">{n}<Copy text={n} /></span></div>)}
+                {ns.map((n, i) => <div key={n} className="flex items-center justify-between rounded-xl border border-[#edf9f3] bg-[#fafffd] px-3 py-2"><span className="text-xs text-mute">Nameserver {i + 1}</span><span className="flex items-center gap-1 font-mono text-[13px] font-semibold text-ink">{n}<Copy text={n} /></span></div>)}
               </div>
-            ) : <p className="mt-3 rounded-xl bg-[#fcfaff] px-3 py-2 text-xs text-mute">Your nameservers are in the welcome email we sent when the account was set up.</p>}
+            ) : <p className="mt-3 rounded-xl bg-[#fafffd] px-3 py-2 text-xs text-mute">Your nameservers are in the welcome email we sent when the account was set up.</p>}
           </div>
           <div>
             <div className="text-[13px] font-bold text-ink">Option 2 — keep your DNS, add records</div>
             <p className="mt-1 text-xs text-mute">If your DNS is elsewhere (e.g. Cloudflare), point these records to the server:</p>
-            <div className="mt-3 overflow-hidden rounded-xl border border-[#f1edf9] text-[13px]">
+            <div className="mt-3 overflow-hidden rounded-xl border border-[#edf9f3] text-[13px]">
               {[["A", "@", live?.ip ?? "server IP"], ["A", "www", live?.ip ?? "server IP"], ["A", "mail", live?.ip ?? "server IP"]].map(([t, n, v]) => (
-                <div key={n} className="grid grid-cols-[48px_70px_1fr] items-center border-b border-[#f1edf9] px-3 py-2 last:border-0">
+                <div key={n} className="grid grid-cols-[48px_70px_1fr] items-center border-b border-[#edf9f3] px-3 py-2 last:border-0">
                   <span className="font-bold text-primary-dark">{t}</span><span className="font-mono text-slate-600">{n}</span><span className="flex items-center gap-1 font-mono text-ink">{v}{live?.ip && <Copy text={v} />}</span>
                 </div>
               ))}
@@ -530,7 +530,7 @@ function ServiceInvoices({ invoices }: { invoices: any[] }) {
   return (
     <Card pad={false} className="mt-6">
       <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f1ecfd] text-[#7c3aed]"><Icon name="receipt_long" className="text-[21px]" /></span>
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ecfdf5] text-[#008a49]"><Icon name="receipt_long" className="text-[21px]" /></span>
         <div className="min-w-0 flex-1">
           <h3 className="text-[15px] font-extrabold text-ink">Invoices for this service</h3>
           <p className="text-[12.5px] text-mute">{invoices.length ? `${invoices.length} invoice${invoices.length === 1 ? "" : "s"} · ${money(paid, cur)} paid so far` : "No invoices yet"}</p>
@@ -547,7 +547,7 @@ function ServiceInvoices({ invoices }: { invoices: any[] }) {
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-line bg-[#fbf9ff] text-[11.5px] font-bold uppercase tracking-wider text-mute">
+                <tr className="border-b border-line bg-[#f6fbf8] text-[11.5px] font-bold uppercase tracking-wider text-mute">
                   <th className="py-3 pl-5 pr-3">Invoice</th>
                   <th className="px-3 py-3">For</th>
                   <th className="px-3 py-3">Date</th>
@@ -559,7 +559,7 @@ function ServiceInvoices({ invoices }: { invoices: any[] }) {
               </thead>
               <tbody className="divide-y divide-line">
                 {shown.map((i) => (
-                  <tr key={i.id} className="transition hover:bg-[#fbf9ff]">
+                  <tr key={i.id} className="transition hover:bg-[#f6fbf8]">
                     <td className="py-3 pl-5 pr-3"><Link href={`/client/invoices/${i.id}`} className="font-mono text-[13px] font-bold text-primary-dark hover:underline">{invNo(i)}</Link></td>
                     <td className="max-w-[280px] truncate px-3 py-3 text-slate-600" title={i.items?.[0]?.description}>{i.items?.[0]?.description ?? "—"}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-slate-600">{date(i.createdAt)}</td>
@@ -597,7 +597,7 @@ function ServiceInvoices({ invoices }: { invoices: any[] }) {
             ))}
           </ul>
           {invoices.length > 6 && (
-            <button onClick={() => setAll(!all)} className="w-full border-t border-line py-3 text-[13px] font-bold text-primary-dark hover:bg-[#fbf9ff]">{all ? "Show fewer" : `Show all ${invoices.length} invoices`}</button>
+            <button onClick={() => setAll(!all)} className="w-full border-t border-line py-3 text-[13px] font-bold text-primary-dark hover:bg-[#f6fbf8]">{all ? "Show fewer" : `Show all ${invoices.length} invoices`}</button>
           )}
         </>
       ) : (

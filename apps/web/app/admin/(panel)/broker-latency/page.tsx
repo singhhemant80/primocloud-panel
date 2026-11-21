@@ -55,7 +55,7 @@ function Spark({ data }: { data: (number | null)[] }) {
   const max = Math.max(...pts.map(([, v]) => v)) * 1.15 || 1;
   const w = 110, h = 26, n = Math.max(data.length - 1, 1);
   const d = pts.map(([i, v], k) => `${k ? "L" : "M"}${((i / n) * w).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`).join(" ");
-  return <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible"><path d={d} fill="none" stroke="#7c3aed" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" /></svg>;
+  return <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible"><path d={d} fill="none" stroke="#008a49" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" /></svg>;
 }
 
 export default function BrokerLatency() {
@@ -117,7 +117,7 @@ export default function BrokerLatency() {
         subtitle="Live connection times from this server to brokers' trade servers — shown on the Forex VPS page."
         badge={<Badge status={enabled ? "ACTIVE" : "CANCELLED"}>{enabled ? "Live on website" : "Hidden"}</Badge>}
         actions={<>
-          <Button size="sm" variant="outline" icon="open_in_new" onClick={() => window.open("/forex-vps-hosting.html", "_blank")}>View page</Button>
+          <Button size="sm" variant="outline" icon="open_in_new" onClick={() => window.open("/vps/forex-vps", "_blank")}>View page</Button>
           <Button size="sm" icon="speed" loading={busy === "measure"} onClick={async () => { setBusy("measure"); try { await api("/admin/broker-latency/measure", { method: "POST" }); reload(); toast.success("Measured"); } catch (e: any) { toast.error(e.message); } finally { setBusy(null); } }}>Measure now</Button>
         </>}
         stats={[
@@ -161,7 +161,7 @@ export default function BrokerLatency() {
                     </div>
                     {!r.host && <p className="mt-3 flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700"><Icon name="hourglass_empty" className="text-[16px]" />Waiting for the trade server address — not measured or shown until it's added.</p>}
                     {(t || res) && (
-                      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-[#fbf9ff] px-3 py-2 text-[12.5px] ring-1 ring-[#f0e6ff]">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-[#f6fbf8] px-3 py-2 text-[12.5px] ring-1 ring-[#e6fff3]">
                         {t && <span className={cx("font-bold", t.ms != null ? "text-emerald-700" : "text-rose-600")}>Test: {t.ms != null ? `${t.ms} ms${t.ip && t.ip !== r.host ? ` (${t.ip})` : ""}` : t.error}</span>}
                         {res && (
                           <>

@@ -126,8 +126,13 @@ echo "    npm packages (2–5 minutes the first time)…"
 sudo -u "$APP_USER" bash -lc "cd '$ROOT' && npm ci --no-audit --no-fund --loglevel=error"
 echo "    compiling the API…"
 sudo -u "$APP_USER" bash -lc "cd '$ROOT/apps/api' && npx prisma generate && npx tsc -p tsconfig.json"
-echo "    building the website (2–4 minutes)…"
+echo "    building the client area and admin (2–4 minutes)…"
 sudo -u "$APP_USER" bash -lc "cd '$ROOT/apps/web' && NEXT_TELEMETRY_DISABLED=1 npx next build"
+echo "    building the public website (apps/site → public-site)…"
+# aaPanel marks public-site/.user.ini immutable; the build replaces the folder, so clear the flag first
+[ -e "$ROOT/public-site/.user.ini" ] && { chattr -i "$ROOT/public-site/.user.ini" 2>/dev/null || true; rm -f "$ROOT/public-site/.user.ini"; }
+mkdir -p "$ROOT/public-site" && chown "$APP_USER":"$APP_USER" "$ROOT/public-site"
+sudo -u "$APP_USER" bash -lc "cd '$ROOT/apps/site' && npm ci --no-audit --no-fund --loglevel=error && npm run build"
 
 log "Applying database migrations"
 sudo -u "$APP_USER" bash -lc "cd '$ROOT/apps/api' && npx prisma migrate deploy"

@@ -87,7 +87,7 @@ export default function AdminInvoice() {
             </dl>
           </Card>
           <Card title="Ledger" pad={false}>
-            <ul className="divide-y divide-[#f3effb] text-sm">{i.transactions.map((t: any) => <li key={t.id} className="flex justify-between px-5 py-2.5"><span><b className="uppercase">{t.gateway}</b> <span className="font-mono text-xs text-mute">{t.gatewayTxnId.slice(0, 22)}</span><div className="text-xs text-mute">{date(t.createdAt, true)} · {t.type}</div></span><b>{money(t.amount, t.currency)}</b></li>)}{!i.transactions.length && <li className="px-5 py-4 text-mute">None</li>}</ul>
+            <ul className="divide-y divide-[#effbf5] text-sm">{i.transactions.map((t: any) => <li key={t.id} className="flex justify-between px-5 py-2.5"><span><b className="uppercase">{t.gateway}</b> <span className="font-mono text-xs text-mute">{t.gatewayTxnId.slice(0, 22)}</span><div className="text-xs text-mute">{date(t.createdAt, true)} · {t.type}</div></span><b>{money(t.amount, t.currency)}</b></li>)}{!i.transactions.length && <li className="px-5 py-4 text-mute">None</li>}</ul>
           </Card>
           {i.creditNotes.length > 0 && <Card title="Credit notes" pad={false}><ul className="divide-y text-sm">{i.creditNotes.map((c: any) => <li key={c.id} className="flex justify-between px-5 py-2.5"><span>{c.number}<div className="text-xs text-mute">{c.reason}</div></span><b>{money(c.amount, i.currency)}</b></li>)}</ul></Card>}
           {i.paymentIntents.length > 0 && <Card title="Payment attempts" pad={false}><ul className="divide-y text-xs">{i.paymentIntents.map((p: any) => <li key={p.id} className="flex justify-between px-5 py-2"><span>{p.gateway} · {date(p.createdAt, true)}{p.reference && ` · ref ${p.reference}`}</span><Badge status={p.status} /></li>)}</ul></Card>}
@@ -174,7 +174,7 @@ function RefundModal({ open, onClose, id, onDone }: { open: boolean; onClose: ()
             </div>
           </div>
           <div className="overflow-hidden rounded-xl border border-line">
-            <div className="bg-[#fbf9ff] px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-mute">Payments on this invoice</div>
+            <div className="bg-[#f6fbf8] px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-mute">Payments on this invoice</div>
             {data.payments.map((p: any) => (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-sm">
                 <span className="min-w-0"><b className="uppercase">{p.gateway === "credit" ? "Account credit" : p.gateway}</b> <span className="font-mono text-xs text-mute">{p.reference.slice(0, 26)}</span>{p.gatewayNote && <span className="block text-[11.5px] text-mute">{p.gatewayNote}</span>}</span>

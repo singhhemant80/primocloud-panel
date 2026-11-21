@@ -75,7 +75,7 @@ function readable(hex: string) {
 
 export function OsLogo({ os, size = 40, className }: { os: OsLike; size?: number; className?: string }) {
   const box = { width: size, height: size };
-  const tile = cx("grid shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-[#ece4fb] shadow-sm", className);
+  const tile = cx("grid shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-[#dcefe3] shadow-sm", className);
   if (os.logoUrl) {
     return (
       <span className={tile} style={box}>

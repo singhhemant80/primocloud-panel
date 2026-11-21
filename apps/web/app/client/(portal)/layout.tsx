@@ -68,7 +68,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f3fb]">
+    <div className="min-h-screen bg-[#f3fbf7]">
       {/* desktop sidebar */}
       <aside className={cx("fixed inset-y-0 left-0 z-40 hidden lg:block", rail ? "w-[92px]" : "w-[344px]")}>
         <ClientSidebar me={me} shell={shell} rail={rail} onToggleRail={toggle} onSignOut={signOut} />
@@ -82,7 +82,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       </div>
 
       <div className={rail ? "lg:pl-[92px]" : "lg:pl-[344px]"}>
-        <header className="sticky top-0 z-20 border-b border-[#ece7f7] bg-white/85 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-[#e7f7ef] bg-white/85 backdrop-blur-xl">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
             <button className="grid h-10 w-10 place-items-center rounded-xl border border-line text-slate-600 lg:hidden" onClick={() => setDrawer(true)} aria-label="Open menu">
               <Icon name="menu" />
@@ -94,7 +94,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <Link href="/order" className="hidden h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-4 text-[13px] font-bold text-white shadow-glow transition hover:-translate-y-px sm:inline-flex">
               <Icon name="rocket_launch" className="text-[18px]" /> Order new
             </Link>
-            <Link href="/order/cart" className="relative grid h-10 w-10 place-items-center rounded-xl border border-line text-slate-600 hover:border-[#dccafb] hover:text-primary-dark" aria-label="Cart">
+            <Link href="/order/cart" className="relative grid h-10 w-10 place-items-center rounded-xl border border-line text-slate-600 hover:border-[#cafbe3] hover:text-primary-dark" aria-label="Cart">
               <Icon name="shopping_cart" className="text-[21px]" />
               {cart > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-white ring-2 ring-white">{cart}</span>}
             </Link>
@@ -168,11 +168,11 @@ function Notifications({ shell, cur }: { shell: Shell | null; cur: string }) {
   const ref = useOutside(open, () => setOpen(false));
   const items: { icon: string; tone: string; title: string; text: string; href: string }[] = [];
   if (shell?.overdueInvoices) items.push({ icon: "warning", tone: "bg-rose-50 text-rose-600", title: `${shell.overdueInvoices} overdue invoice${shell.overdueInvoices > 1 ? "s" : ""}`, text: "Pay now to avoid suspension", href: "/client/invoices?status=UNPAID" });
-  else if (shell?.unpaidInvoices) items.push({ icon: "receipt_long", tone: "bg-violet-50 text-primary-dark", title: `${shell.unpaidInvoices} unpaid invoice${shell.unpaidInvoices > 1 ? "s" : ""}`, text: `${money(shell.outstanding, cur)} due`, href: "/client/invoices?status=UNPAID" });
+  else if (shell?.unpaidInvoices) items.push({ icon: "receipt_long", tone: "bg-emerald-50 text-primary-dark", title: `${shell.unpaidInvoices} unpaid invoice${shell.unpaidInvoices > 1 ? "s" : ""}`, text: `${money(shell.outstanding, cur)} due`, href: "/client/invoices?status=UNPAID" });
   if (shell?.ticketsAwaitingReply) items.push({ icon: "forum", tone: "bg-amber-50 text-amber-700", title: `${shell.ticketsAwaitingReply} ticket${shell.ticketsAwaitingReply > 1 ? "s" : ""} answered`, text: "Our team replied — take a look", href: "/client/tickets" });
   return (
     <div ref={ref} className="relative">
-      <button className="relative grid h-10 w-10 place-items-center rounded-xl border border-line text-slate-600 hover:border-[#dccafb] hover:text-primary-dark" onClick={() => setOpen(!open)} aria-label="Notifications">
+      <button className="relative grid h-10 w-10 place-items-center rounded-xl border border-line text-slate-600 hover:border-[#cafbe3] hover:text-primary-dark" onClick={() => setOpen(!open)} aria-label="Notifications">
         <Icon name="notifications" className="text-[21px]" />
         {items.length > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />}
       </button>

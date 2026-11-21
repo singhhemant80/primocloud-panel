@@ -54,7 +54,7 @@ function Services() {
         </Link>
       </div>
 
-      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#ece7f7] bg-white p-2 shadow-card md:flex-row md:items-center">
+      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#e7f7ef] bg-white p-2 shadow-card md:flex-row md:items-center">
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map(([k, l]) => (
             <Link key={k} href={k ? `/client/services?status=${k}` : "/client/services"} className={cx("inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-bold transition", status === k ? "bg-primary-dark text-white shadow" : "text-slate-600 hover:bg-primary-tint hover:text-primary-dark")}>
@@ -81,7 +81,7 @@ function Services() {
       {loading ? (
         <Loading />
       ) : !list.length ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#dccafb] bg-white px-6 py-14 text-center">
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-[#cafbe3] bg-white px-6 py-14 text-center">
           <span className="grid h-16 w-16 place-items-center rounded-2xl bg-primary-soft text-primary-dark"><Icon name={q ? "search_off" : "dns"} className="text-[32px]" /></span>
           <div className="mt-4 text-lg font-extrabold text-ink">{q ? "No matches" : "No services here"}</div>
           <p className="mt-1 max-w-sm text-sm text-mute">{q ? "Try another name, domain or IP address." : "Order a VPS or hosting plan — it's set up within minutes of payment."}</p>
@@ -92,14 +92,14 @@ function Services() {
           {list.map((s) => <ServiceCard key={s.id} s={s} st={live.states[s.id]} />)}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-[#ece7f7] bg-white shadow-card">
-          <ul className="divide-y divide-[#f1edf9]">
+        <div className="overflow-hidden rounded-2xl border border-[#e7f7ef] bg-white shadow-card">
+          <ul className="divide-y divide-[#edf9f3]">
             {list.map((s) => {
               const ip = s.ips.find((i: any) => i.isPrimary)?.address ?? s.ips[0]?.address;
               const kind = kindOf(s);
               return (
                 <li key={s.id}>
-                  <Link href={`/client/services/${s.id}`} className="group flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-[#fbf9ff] sm:flex-nowrap">
+                  <Link href={`/client/services/${s.id}`} className="group flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-[#f6fbf8] sm:flex-nowrap">
                     <KindIcon kind={kind} os={s.osTemplate} />
                     <span className="min-w-0 flex-1"><span className="block truncate font-bold text-ink group-hover:text-primary-dark">{s.product.name}</span><span className="block truncate text-xs text-mute">{s.hostname ?? "—"}</span></span>
                     <span className="hidden w-36 font-mono text-[12.5px] text-slate-700 md:block">{ip ?? "—"}</span>
@@ -141,8 +141,8 @@ function ServiceCard({ s, st }: { s: any; st?: { state: string; reason?: string 
         ? [["hard_drive", s.product.diskGb ? `${s.product.diskGb} GB disk` : "Unlimited disk"], ["swap_vert", s.product.bandwidthGb ? `${bandwidth(s.product.bandwidthGb)} bandwidth` : "Unmetered"], ["mail", "Email & SSL"]]
         : [];
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-[#ece7f7] bg-white shadow-card transition hover:-translate-y-0.5 hover:border-[#dccafb] hover:shadow-lg">
-      <div className={cx("h-1", s.status === "ACTIVE" ? "bg-gradient-to-r from-emerald-400 to-teal-400" : s.status === "SUSPENDED" ? "bg-gradient-to-r from-amber-400 to-orange-400" : setup ? "bg-gradient-to-r from-primary to-fuchsia-400" : "bg-slate-200")} />
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-[#e7f7ef] bg-white shadow-card transition hover:-translate-y-0.5 hover:border-[#cafbe3] hover:shadow-lg">
+      <div className={cx("h-1", s.status === "ACTIVE" ? "bg-gradient-to-r from-emerald-400 to-teal-400" : s.status === "SUSPENDED" ? "bg-gradient-to-r from-amber-400 to-orange-400" : setup ? "bg-gradient-to-r from-primary to-teal-400" : "bg-slate-200")} />
       <Link href={`/client/services/${s.id}`} className="flex items-start justify-between gap-3 p-5 pb-0">
         <div className="flex min-w-0 items-center gap-3">
           <KindIcon kind={kind} os={s.osTemplate} />
@@ -157,17 +157,17 @@ function ServiceCard({ s, st }: { s: any; st?: { state: string; reason?: string 
         </div>
       </Link>
       {setup ? (
-        <div className="mx-5 mt-4 rounded-xl bg-[#fbf9ff] px-3 py-2.5">
+        <div className="mx-5 mt-4 rounded-xl bg-[#f6fbf8] px-3 py-2.5">
           <ProvisioningTracker path={`/client/services/${s.id}/provisioning`} audience="client" compact />
         </div>
       ) : (
         specs.length > 0 && (
           <div className="mx-5 mt-4 flex flex-wrap gap-1.5">
-            {specs.map(([ic, t]) => <span key={t} className="inline-flex items-center gap-1 rounded-lg bg-[#f6f3fd] px-2 py-1 text-[11.5px] font-semibold text-slate-600"><Icon name={ic} className="text-[14px] text-primary" />{t}</span>)}
+            {specs.map(([ic, t]) => <span key={t} className="inline-flex items-center gap-1 rounded-lg bg-[#f3fdf8] px-2 py-1 text-[11.5px] font-semibold text-slate-600"><Icon name={ic} className="text-[14px] text-primary" />{t}</span>)}
           </div>
         )
       )}
-      <div className="mx-5 mt-4 grid grid-cols-2 gap-3 rounded-xl border border-[#f1edf9] p-3 text-xs">
+      <div className="mx-5 mt-4 grid grid-cols-2 gap-3 rounded-xl border border-[#edf9f3] p-3 text-xs">
         <div className="min-w-0">
           <div className="font-semibold text-mute">{kind === "hosting" ? "Domain" : "IP address"}</div>
           <div className="mt-0.5 flex items-center gap-1 truncate font-bold text-ink">{kind === "hosting" ? s.hostname ?? "—" : <><span className="truncate font-mono">{ip ?? "—"}</span>{ip && <Copy text={ip} />}</>}</div>

@@ -198,17 +198,17 @@ function Setup({ onCheck }: { onCheck: () => void }) {
 
 function RecordBox({ rec }: { rec: Rec }) {
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-[#e9d5ff] bg-[#fcfaff] text-sm">
-      <div className="grid grid-cols-[70px_1fr] border-b border-[#f0e6ff]">
+    <div className="mt-3 overflow-hidden rounded-xl border border-[#c9f5da] bg-[#fafffd] text-sm">
+      <div className="grid grid-cols-[70px_1fr] border-b border-[#e6fff3]">
         <span className="px-3 py-2 text-xs font-bold uppercase text-mute">Type</span><span className="px-3 py-2 font-mono font-bold">{rec.type}</span>
       </div>
-      <div className="grid grid-cols-[70px_1fr_auto] items-center border-b border-[#f0e6ff]">
+      <div className="grid grid-cols-[70px_1fr_auto] items-center border-b border-[#e6fff3]">
         <span className="px-3 py-2 text-xs font-bold uppercase text-mute">Host</span><span className="break-all px-3 py-2 font-mono">{rec.host}</span><span className="pr-2"><Copy text={rec.host} /></span>
       </div>
       <div className="grid grid-cols-[70px_1fr_auto] items-start">
         <span className="px-3 py-2 text-xs font-bold uppercase text-mute">Value</span><span className="min-w-0 break-all px-3 py-2 font-mono text-[12.5px]">{rec.value}</span><span className="pr-2 pt-1"><Copy text={rec.value} /></span>
       </div>
-      {rec.why && <div className="border-t border-[#f0e6ff] px-3 py-2 text-xs text-mute">{rec.why}</div>}
+      {rec.why && <div className="border-t border-[#e6fff3] px-3 py-2 text-xs text-mute">{rec.why}</div>}
     </div>
   );
 }
@@ -241,7 +241,7 @@ function Deliverability({ onSetup }: { onSetup: () => void }) {
         </div>
       </div>
       <Card pad={false}>
-        <ul className="divide-y divide-[#f3effb]">
+        <ul className="divide-y divide-[#effbf5]">
           {data.checks.map((c) => (
             <li key={c.key} className="flex gap-3 p-4 sm:p-5">
               <Icon name={TONE[c.status].icon} fill className={cx("mt-0.5 text-[22px]", TONE[c.status].cls)} />
@@ -295,7 +295,7 @@ function DeliveryLog() {
           <Table head={["When", "To", "Subject", "Status", ""]} empty={!data?.items?.length ? <Empty icon="outgoing_mail" title="No emails yet" /> : undefined}>
             {data?.items?.map((r: any) => (
               <Fragment key={r.id}>
-                <tr className="cursor-pointer hover:bg-[#fcfaff]" onClick={() => setOpen(open === r.id ? null : r.id)}>
+                <tr className="cursor-pointer hover:bg-[#fafffd]" onClick={() => setOpen(open === r.id ? null : r.id)}>
                   <Td className="whitespace-nowrap text-xs text-mute">{new Date(r.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</Td>
                   <Td className="font-semibold">{r.to}</Td>
                   <Td className="max-w-[320px] truncate">{r.subject}<div className="text-[11px] text-mute">{r.template}</div></Td>
@@ -306,7 +306,7 @@ function DeliveryLog() {
                 </tr>
                 {open === r.id && (
                   <tr>
-                    <td colSpan={5} className="bg-[#fcfaff] px-4 py-3 text-xs">
+                    <td colSpan={5} className="bg-[#fafffd] px-4 py-3 text-xs">
                       {r.error && <div className="mb-1 font-semibold text-rose-700">{r.error}</div>}
                       {r.response && <div className="font-mono text-slate-600">Server reply: {r.response}</div>}
                       {r.messageId && <div className="font-mono text-slate-500">Message-ID: {r.messageId}</div>}
@@ -382,7 +382,7 @@ function StaffAlerts() {
                 <div className="divide-y divide-line rounded-xl border border-line">
                   {data.alerts.filter((a) => a.group === g).map((a) => (
                     <label key={a.key} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-slate-50">
-                      <input type="checkbox" className="mt-1 h-4 w-4 accent-[#6d28d9]" checked={!!c.events[a.key]} onChange={(e) => setC({ ...c, events: { ...c.events, [a.key]: e.target.checked } })} />
+                      <input type="checkbox" className="mt-1 h-4 w-4 accent-[#007a40]" checked={!!c.events[a.key]} onChange={(e) => setC({ ...c, events: { ...c.events, [a.key]: e.target.checked } })} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-bold text-ink">{a.name}</span>
                         <span className="block text-[13px] text-mute">{a.hint}</span>

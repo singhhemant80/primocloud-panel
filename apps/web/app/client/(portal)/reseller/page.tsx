@@ -247,14 +247,14 @@ function ApiTab({ keys, newKey, setNewKey }: { keys: any; newKey: string | null;
         <p className="mt-2 text-xs text-mute">https only. Saving a URL creates a new signing secret.</p>
       </Card>
       <Card title="Quick start">
-        <div className="rounded-xl bg-ink p-4 font-mono text-[12.5px] leading-relaxed text-violet-100">
-          <div className="text-violet-300"># Plans you can sell, with your wholesale prices</div>
+        <div className="rounded-xl bg-ink p-4 font-mono text-[12.5px] leading-relaxed text-emerald-100">
+          <div className="text-emerald-300"># Plans you can sell, with your wholesale prices</div>
           curl -H &quot;Authorization: Bearer ck_…&quot; {origin}/api/v1/reseller/plans<br /><br />
-          <div className="text-violet-300"># Order (paid from your wallet; reference makes retries safe)</div>
+          <div className="text-emerald-300"># Order (paid from your wallet; reference makes retries safe)</div>
           curl -X POST -H &quot;Authorization: Bearer ck_…&quot; -H &quot;Content-Type: application/json&quot; \<br />
           &nbsp;&nbsp;-d &apos;{`{"planId":"PLAN_ID","cycle":"MONTHLY","hostname":"vps1.example.com","osTemplateId":"OS_ID","reference":"YOUR-ORDER-1001"}`}&apos; \<br />
           &nbsp;&nbsp;{origin}/api/v1/reseller/orders<br /><br />
-          <div className="text-violet-300"># Then: GET /services/:id · POST /services/:id/action · GET /invoices · POST /invoices/:id/pay</div>
+          <div className="text-emerald-300"># Then: GET /services/:id · POST /services/:id/action · GET /invoices · POST /invoices/:id/pay</div>
         </div>
       </Card>
     </div>

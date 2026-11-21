@@ -123,12 +123,12 @@ export function DumpUpload({ value, onChange }: { value: DumpState | null; onCha
       </Alert>
 
       {up ? (
-        <div className="rounded-2xl border border-line bg-[#fbf9ff] p-5">
+        <div className="rounded-2xl border border-line bg-[#f6fbf8] p-5">
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="flex min-w-0 items-center gap-2 font-bold text-ink"><Icon name="upload_file" className="text-primary-dark" /><span className="truncate">{up.name}</span></span>
             <span className="shrink-0 font-bold text-primary-dark">{pct}%</span>
           </div>
-          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#ece4fb]"><div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-dark transition-all" style={{ width: `${pct}%` }} /></div>
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#dcefe3]"><div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-dark transition-all" style={{ width: `${pct}%` }} /></div>
           <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-mute">
             <span>{size(up.sent)} of {size(up.total)} · {size(up.speed)}/s{up.speed > 0 && ` · about ${Math.max(1, Math.ceil((up.total - up.sent) / up.speed / 60))} min left`}</span>
             <button className="font-bold text-rose-600 hover:underline" onClick={() => (cancel.current = true)}>Cancel</button>
@@ -139,7 +139,7 @@ export function DumpUpload({ value, onChange }: { value: DumpState | null; onCha
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) upload(f); }}
-          className={cx("flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition", drag ? "border-primary bg-primary-tint" : "border-[#dccafb] bg-[#fdfbff] hover:border-primary hover:bg-primary-tint")}
+          className={cx("flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition", drag ? "border-primary bg-primary-tint" : "border-[#cafbe3] bg-[#fbfffd] hover:border-primary hover:bg-primary-tint")}
         >
           <span className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-glow"><Icon name="upload_file" className="text-[26px]" /></span>
           <span className="text-sm font-extrabold text-ink">Drop the WHMCS .sql file here, or click to choose</span>
@@ -176,15 +176,15 @@ export function DumpUpload({ value, onChange }: { value: DumpState | null; onCha
 function DumpStatus({ d }: { d: DumpState }) {
   if (d.status === "preparing")
     return (
-      <div className="flex items-center gap-3 rounded-xl bg-[#fbf9ff] p-4 text-sm">
-        <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[#e4d8fb] border-t-primary" />
+      <div className="flex items-center gap-3 rounded-xl bg-[#f6fbf8] p-4 text-sm">
+        <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[#d8fbea] border-t-primary" />
         <span><b className="text-ink">Reading {d.name}…</b> <span className="text-mute">{d.progress ? `${size(d.progress)} of SQL read` : "starting"} — large files take a minute or two.</span></span>
       </div>
     );
   if (d.status === "error") return <Alert tone="error"><b>{d.name} couldn&apos;t be read.</b> {d.error}</Alert>;
   if (d.status !== "ready" || !d.meta) return null;
   return (
-    <div className="rounded-xl bg-[#fbf9ff] p-4 text-sm">
+    <div className="rounded-xl bg-[#f6fbf8] p-4 text-sm">
       <div className="flex items-center gap-2 font-bold text-ink"><Icon name="check_circle" className="text-emerald-600" />{d.name} — WHMCS {d.meta.version}{d.meta.company && ` · ${d.meta.company}`}</div>
       <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-5">
         {SHOW.map((t) => <div key={t}><span className="text-mute">{t.replace("tbl", "")}</span> <b>{d.meta!.counts[t] ?? 0}</b></div>)}

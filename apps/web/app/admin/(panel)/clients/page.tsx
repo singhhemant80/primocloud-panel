@@ -109,7 +109,7 @@ function Clients() {
               <table className="w-full table-fixed text-left text-sm">
                 <colgroup><col style={{ width: "44px" }} /><col style={{ width: "22%" }} /><col style={{ width: "19%" }} /><col style={{ width: "14%" }} /><col style={{ width: "8%" }} /><col style={{ width: "15%" }} /><col style={{ width: "10%" }} /><col style={{ width: "12%" }} /></colgroup>
                 <thead>
-                  <tr className="border-b border-line bg-[#fbf9ff] text-[11.5px] font-bold uppercase tracking-wider text-mute">
+                  <tr className="border-b border-line bg-[#f6fbf8] text-[11.5px] font-bold uppercase tracking-wider text-mute">
                     <th className="py-3 pl-5"><Check label="Select all on this page" checked={pick.allOn(pageIds)} onChange={(on) => pick.togglePage(pageIds, on)} /></th>
                     <th className="py-3 pl-2 pr-3">Customer</th>
                     <th className="px-3 py-3">Contact</th>
@@ -122,7 +122,7 @@ function Clients() {
                 </thead>
                 <tbody className="divide-y divide-line">
                   {data.clients.map((u: any) => (
-                    <tr key={u.id} className={cx("group cursor-pointer transition", pick.has(u.id) ? "bg-primary-tint/60" : "hover:bg-[#fbf9ff]")} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input")) router.push(`/admin/clients/${u.id}`); }}>
+                    <tr key={u.id} className={cx("group cursor-pointer transition", pick.has(u.id) ? "bg-primary-tint/60" : "hover:bg-[#f6fbf8]")} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input")) router.push(`/admin/clients/${u.id}`); }}>
                       <td className="py-3 pl-5"><Check label={`Select ${u.email}`} checked={pick.has(u.id)} onChange={(on) => pick.toggle(u.id, on)} /></td>
                       <td className="py-3 pl-2 pr-3"><Who u={u} /></td>
                       <td className="px-3 py-3">
@@ -148,12 +148,12 @@ function Clients() {
             <ul className="divide-y divide-line xl:hidden">
               {data.clients.map((u: any) => (
                 <li key={u.id}>
-                  <Link href={`/admin/clients/${u.id}`} className="block space-y-3 p-4 active:bg-[#fbf9ff]">
+                  <Link href={`/admin/clients/${u.id}`} className="block space-y-3 p-4 active:bg-[#f6fbf8]">
                     <div className="flex items-start justify-between gap-3">
                       <Who u={u} plain />
                       <StatusCell u={u} />
                     </div>
-                    <div className="grid grid-cols-3 gap-2 rounded-xl bg-[#fbf9ff] p-2.5 text-center">
+                    <div className="grid grid-cols-3 gap-2 rounded-xl bg-[#f6fbf8] p-2.5 text-center">
                       <div><div className="text-[11px] font-bold uppercase tracking-wide text-mute">Services</div><div className="mt-0.5"><Services u={u} /></div></div>
                       <div><div className="text-[11px] font-bold uppercase tracking-wide text-mute">Owes</div><div className={cx("mt-0.5 font-extrabold tabular-nums", u.stats.dueInr ? (u.stats.overdue ? "text-rose-600" : "text-amber-600") : "text-slate-400")}>{u.stats.dueInr ? inr(u.stats.dueInr) : "—"}</div></div>
                       <div><div className="text-[11px] font-bold uppercase tracking-wide text-mute">Paid</div><div className="mt-0.5 font-extrabold tabular-nums text-ink">{inr(u.stats.paidInr)}</div></div>
@@ -222,7 +222,7 @@ function StatusCell({ u }: { u: any }) {
     <div className="flex flex-col items-start gap-1">
       <Badge status={u.status} />
       {u.ownerResellerId && <span className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[10.5px] font-bold text-sky-700 ring-1 ring-sky-200">reseller's customer</span>}
-      {u._count.tickets > 0 && <span className="inline-flex items-center gap-0.5 text-[11.5px] font-bold text-violet-700"><Icon name="support_agent" className="text-[14px]" />{u._count.tickets} open ticket{u._count.tickets > 1 ? "s" : ""}</span>}
+      {u._count.tickets > 0 && <span className="inline-flex items-center gap-0.5 text-[11.5px] font-bold text-emerald-700"><Icon name="support_agent" className="text-[14px]" />{u._count.tickets} open ticket{u._count.tickets > 1 ? "s" : ""}</span>}
     </div>
   );
 }

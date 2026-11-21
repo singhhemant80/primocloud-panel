@@ -46,7 +46,7 @@ export default function Quote() {
           </div>
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-[#fbf9ff] text-left text-[11.5px] font-bold uppercase tracking-wider text-mute"><th className="px-4 py-2.5 sm:px-6">Item</th><th className="px-3 py-2.5 text-right">Qty</th><th className="hidden px-3 py-2.5 text-right sm:table-cell">Price</th><th className="px-4 py-2.5 text-right sm:px-6">Amount</th></tr></thead>
+            <thead><tr className="bg-[#f6fbf8] text-left text-[11.5px] font-bold uppercase tracking-wider text-mute"><th className="px-4 py-2.5 sm:px-6">Item</th><th className="px-3 py-2.5 text-right">Qty</th><th className="hidden px-3 py-2.5 text-right sm:table-cell">Price</th><th className="px-4 py-2.5 text-right sm:px-6">Amount</th></tr></thead>
             <tbody>
               {items.map((l, n) => (
                 <tr key={n} className="border-t border-line">

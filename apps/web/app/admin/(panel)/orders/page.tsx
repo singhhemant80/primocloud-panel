@@ -110,7 +110,7 @@ function Orders() {
               <table className="w-full table-fixed text-left text-sm">
                 <colgroup><col style={{ width: "44px" }} /><col style={{ width: "13%" }} /><col style={{ width: "20%" }} /><col style={{ width: "23%" }} /><col style={{ width: "11%" }} /><col style={{ width: "12%" }} /><col style={{ width: "10%" }} /><col style={{ width: "176px" }} /></colgroup>
                 <thead>
-                  <tr className="border-b border-line bg-[#fbf9ff] text-[11.5px] font-bold uppercase tracking-wider text-mute">
+                  <tr className="border-b border-line bg-[#f6fbf8] text-[11.5px] font-bold uppercase tracking-wider text-mute">
                     <th className="py-3 pl-5"><Check label="Select all on this page" checked={pick.allOn(pageIds)} onChange={(on) => pick.togglePage(pageIds, on)} /></th>
                     <th className="py-3 pl-2 pr-3">Order</th>
                     <th className="px-3 py-3">Customer</th>
@@ -123,7 +123,7 @@ function Orders() {
                 </thead>
                 <tbody className="divide-y divide-line">
                   {data.orders.map((o: any) => (
-                    <tr key={o.id} className={cx("group cursor-pointer align-top transition", pick.has(o.id) ? "bg-primary-tint/60" : "hover:bg-[#fbf9ff]")} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input")) router.push(`/admin/orders/${o.id}`); }}>
+                    <tr key={o.id} className={cx("group cursor-pointer align-top transition", pick.has(o.id) ? "bg-primary-tint/60" : "hover:bg-[#f6fbf8]")} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input")) router.push(`/admin/orders/${o.id}`); }}>
                       <td className="py-4 pl-5"><Check label={`Select ${o.number}`} checked={pick.has(o.id)} onChange={(on) => pick.toggle(o.id, on)} /></td>
                       <td className="py-3.5 pl-2 pr-3">
                         <Link href={`/admin/orders/${o.id}`} className="font-mono text-[13px] font-bold text-primary-dark hover:underline">{o.number}</Link>
@@ -161,7 +161,7 @@ function Orders() {
                   </div>
                   <Customer o={o} />
                   <Items o={o} />
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#fbf9ff] px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#f6fbf8] px-3 py-2">
                     <Payment o={o} inline />
                     <Actions o={o} busy={busy === o.id} accept={accept} cancel={cancel} fraud={fraud} />
                   </div>

@@ -84,7 +84,7 @@ export default function Migration() {
             <Button className="mt-4" variant="outline" icon="cable" loading={busy === "test"} disabled={!conn.host || !conn.database || !conn.user} onClick={test}>Test connection</Button>
             {connErr && <Alert tone="error" className="mt-4"><div className="text-sm leading-relaxed">{connErr.replace(/^Could not read the WHMCS database: /, "")}</div></Alert>}
             {info && (
-              <div className="mt-4 rounded-xl bg-[#fbf9ff] p-4 text-sm">
+              <div className="mt-4 rounded-xl bg-[#f6fbf8] p-4 text-sm">
                 <div className="font-bold text-ink">Connected — WHMCS {info.version} {info.company && `· ${info.company}`}</div>
                 <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-5">
                   {Object.entries(info.counts).map(([t, n]: any) => <div key={t}><span className="text-mute">{t.replace("tbl", "")}</span> <b>{n}</b></div>)}
@@ -101,7 +101,7 @@ export default function Migration() {
             <div className="grid gap-2 sm:grid-cols-2">
               {(runs.data?.entities ?? []).map((e: string) => (
                 <label key={e} className={cx("flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm", entities.includes(e) ? "border-primary bg-primary-tint font-semibold" : "border-line")}>
-                  <input type="checkbox" className="accent-[#7c3aed]" checked={entities.includes(e)} onChange={(ev) => setEntities(toggleEntity(e, ev.target.checked))} />
+                  <input type="checkbox" className="accent-[#008a49]" checked={entities.includes(e)} onChange={(ev) => setEntities(toggleEntity(e, ev.target.checked))} />
                   <span className="min-w-0">{LABELS[e] ?? e}{entities.includes(e) && requiredBy(e).length > 0 && <span className="block text-[11px] font-normal text-mute">needed by {requiredBy(e).map((x) => (LABELS[x] ?? x).split(" (")[0]).join(", ")}</span>}</span>
                   {runs.data?.mapped?.[e.replace(/s$/, "")] ? <span className="ml-auto text-xs text-mute">{runs.data.mapped[e.replace(/s$/, "")]} linked</span> : null}
                 </label>

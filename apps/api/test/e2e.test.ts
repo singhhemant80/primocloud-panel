@@ -10,6 +10,7 @@ import type { AddressInfo } from "node:net";
 import crypto from "node:crypto";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
+import { ensureTestCatalog } from "./legacy-catalog";
 import { config } from "../src/config";
 import { encryptJson, encrypt } from "../src/lib/crypto";
 import { computeGst } from "../src/modules/billing/gst";
@@ -85,6 +86,7 @@ async function runOrWait(serviceId: string, action: Parameters<typeof runProvisi
 let productId = "";
 
 before(async () => {
+  await ensureTestCatalog();
   config.provisionDryRun = true;
   server = createApp().listen(0);
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

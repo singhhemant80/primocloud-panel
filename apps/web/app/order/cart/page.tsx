@@ -93,14 +93,14 @@ export default function CartPage() {
                         {i.hostname && !i.domainAction && <div className="text-sm text-mute">{i.hostname}</div>}
                         {i.equipment && <div className="text-sm text-mute">Your equipment: {i.equipment.device} · {i.equipment.units}U{i.equipment.powerW ? ` · ~${i.equipment.powerW} W` : ""}</div>}
                         {i.domainAction && i.hostname && (
-                          <div className="mt-1.5 inline-flex flex-wrap items-center gap-1.5 rounded-lg bg-[#faf7ff] px-2.5 py-1 text-[12.5px] ring-1 ring-[#ede4ff]">
+                          <div className="mt-1.5 inline-flex flex-wrap items-center gap-1.5 rounded-lg bg-[#f7fffb] px-2.5 py-1 text-[12.5px] ring-1 ring-[#e4fff2]">
                             <Icon name="language" className="text-[15px] text-primary-dark" />
                             <span className="break-all font-bold text-ink">{i.hostname}</span>
                             <span className="text-mute">· {i.domainAction === "register" ? "registering with this order" : i.domainAction === "transfer" ? "transferring with this order" : "your existing domain"}</span>
                           </div>
                         )}
                         {i.ipAddress && (
-                          <div className="mt-2 inline-flex items-center gap-2 rounded-lg bg-primary-tint px-2.5 py-1 text-xs font-bold text-primary-dark ring-1 ring-[#e9d5ff]">
+                          <div className="mt-2 inline-flex items-center gap-2 rounded-lg bg-primary-tint px-2.5 py-1 text-xs font-bold text-primary-dark ring-1 ring-[#c9f5da]">
                             <Icon name="lock" className="text-[15px]" /> {i.ipAddress}
                             {left !== null && <span className={left < 120 ? "text-rose-600" : "text-mute"}>{left > 0 ? `held ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "hold expired"}</span>}
                           </div>
@@ -166,7 +166,7 @@ export default function CartPage() {
 
           <aside className="space-y-4">
             <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-              <div className="bg-gradient-to-br from-[#2e1065] via-[#4c1d95] to-[#6d28d9] px-5 py-4 text-white">
+              <div className="bg-gradient-to-br from-[#00391b] via-[#00512a] to-[#007a40] px-5 py-4 text-white">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-white/60">Order summary</div>
                 <div className="mt-0.5 text-lg font-extrabold">{cart.items.length + cart.domains.length} item{cart.items.length + cart.domains.length === 1 ? "" : "s"} · {qc}</div>
               </div>
@@ -180,7 +180,7 @@ export default function CartPage() {
                   {quote.totals.cgst > 0 && <div className="flex justify-between"><dt className="text-mute">CGST 9%</dt><dd className="font-semibold">{cm(quote.totals.cgst)}</dd></div>}
                   {quote.totals.sgst > 0 && <div className="flex justify-between"><dt className="text-mute">SGST 9%</dt><dd className="font-semibold">{cm(quote.totals.sgst)}</dd></div>}
                   {quote.totals.igst > 0 && <div className="flex justify-between"><dt className="text-mute">IGST 18%</dt><dd className="font-semibold">{cm(quote.totals.igst)}</dd></div>}
-                  <div className="!mt-4 flex items-end justify-between rounded-xl bg-[#faf7ff] px-4 py-3 ring-1 ring-[#ede4ff]"><dt className="text-[11px] font-bold uppercase tracking-wider text-mute">Total due</dt><dd className="text-2xl font-extrabold tracking-tight text-primary-dark">{cm(quote.totals.total)}</dd></div>
+                  <div className="!mt-4 flex items-end justify-between rounded-xl bg-[#f7fffb] px-4 py-3 ring-1 ring-[#e4fff2]"><dt className="text-[11px] font-bold uppercase tracking-wider text-mute">Total due</dt><dd className="text-2xl font-extrabold tracking-tight text-primary-dark">{cm(quote.totals.total)}</dd></div>
                   {!me && qc === "INR" && <p className="text-xs text-mute">GST shown for Madhya Pradesh; it is recalculated for your billing state after sign-in.</p>}
                   {qc !== "INR" && !quote.totals.taxTotal && <p className="text-xs text-mute">No Indian GST — export of services to customers outside India.</p>}
                 </dl>
@@ -203,8 +203,8 @@ export default function CartPage() {
             ) : (
               <Card>
                 <label className="flex items-start gap-2 text-sm text-slate-600">
-                  <input type="checkbox" className="mt-0.5 accent-[#7c3aed]" checked={tos} onChange={(e) => setTos(e.target.checked)} />
-                  <span>I agree to the <a className="font-bold text-primary-dark underline" href="/terms-and-conditions.html" target="_blank">Terms of Service</a> and <a className="font-bold text-primary-dark underline" href="/refund-policy.html" target="_blank">Refund Policy</a>.</span>
+                  <input type="checkbox" className="mt-0.5 accent-[#008a49]" checked={tos} onChange={(e) => setTos(e.target.checked)} />
+                  <span>I agree to the <a className="font-bold text-primary-dark underline" href="/terms-conditions" target="_blank">Terms of Service</a> and <a className="font-bold text-primary-dark underline" href="/refund-policy" target="_blank">Refund Policy</a>.</span>
                 </label>
                 <Button size="lg" className="mt-4 w-full" icon="lock" disabled={!tos || !quote} loading={busy} onClick={checkout}>Place order</Button>
                 <p className="mt-2 text-center text-xs text-mute">Wallet credit is applied first. Pay the rest by UPI, card or netbanking.</p>

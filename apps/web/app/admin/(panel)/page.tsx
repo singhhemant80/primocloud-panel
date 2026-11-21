@@ -70,7 +70,7 @@ function IncomeChart() {
       icon="monitoring"
       action={
         <div className="flex items-center gap-3">
-          <div className="flex rounded-xl bg-[#f4effd] p-0.5 text-[12px] font-bold" role="tablist" aria-label="Chart period">
+          <div className="flex rounded-xl bg-[#effdf6] p-0.5 text-[12px] font-bold" role="tablist" aria-label="Chart period">
             {RANGES.map(([k, l, sh]) => (
               <button key={k} role="tab" aria-selected={range === k} title={l} onClick={() => setRange(k)} className={cx("whitespace-nowrap rounded-lg px-2.5 py-1 transition", range === k ? "bg-white text-primary-dark shadow-sm" : "text-mute hover:text-ink")}>
                 <span className="hidden 2xl:inline">{l}</span>
@@ -89,7 +89,7 @@ function IncomeChart() {
           <span className="text-mute">New clients <b className="text-ink">{d.totals.clients.toLocaleString("en-IN")}</b></span>
         </div>
       )}
-      <div className={cx("transition-opacity", loading && "opacity-50")}>{d ? <Chart rows={d.rows} unit={d.unit} /> : <div className="h-[230px] animate-pulse rounded-xl bg-[#faf7ff]" />}</div>
+      <div className={cx("transition-opacity", loading && "opacity-50")}>{d ? <Chart rows={d.rows} unit={d.unit} /> : <div className="h-[230px] animate-pulse rounded-xl bg-[#f7fffb]" />}</div>
     </Panel>
   );
 }
@@ -113,12 +113,12 @@ function Chart({ rows, unit }: { rows: ChartRow[]; unit: "day" | "month" }) {
     <div className="relative">
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" onMouseLeave={() => setHover(null)}>
         <defs>
-          <linearGradient id="bar" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#a365fe" /><stop offset="1" stopColor="#6d28d9" /></linearGradient>
+          <linearGradient id="bar" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#0baf60" /><stop offset="1" stopColor="#007a40" /></linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((f) => (
           <g key={f}>
-            <line x1={P.l} x2={W - P.r} y1={y(maxI * f)} y2={y(maxI * f)} stroke="#efe9fb" />
-            <text x={P.l - 8} y={y(maxI * f) + 4} textAnchor="end" fontSize="10.5" fill="#8a84a3">{inr(maxI * f, true)}</text>
+            <line x1={P.l} x2={W - P.r} y1={y(maxI * f)} y2={y(maxI * f)} stroke="#e9fbf2" />
+            <text x={P.l - 8} y={y(maxI * f) + 4} textAnchor="end" fontSize="10.5" fill="#84a394">{inr(maxI * f, true)}</text>
             <text x={W - P.r + 8} y={yo(maxO * f) + 4} fontSize="10.5" fill="#0ea5e9">{maxO * f < 10 && maxO < 4 ? (maxO * f).toFixed(f % 1 ? 1 : 0) : Math.round(maxO * f)}</text>
           </g>
         ))}
@@ -127,9 +127,9 @@ function Chart({ rows, unit }: { rows: ChartRow[]; unit: "day" | "month" }) {
           const showLabel = i % every === 0 || i === rows.length - 1;
           return (
             <g key={r.key} onMouseEnter={() => setHover(i)} onClick={() => setHover(i)}>
-              <rect x={P.l + cw * i} y={P.t} width={cw} height={H - P.t - P.b} fill={hover === i ? "#f6f1ff" : "transparent"} />
+              <rect x={P.l + cw * i} y={P.t} width={cw} height={H - P.t - P.b} fill={hover === i ? "#f1fff8" : "transparent"} />
               <rect x={P.l + cw * i + cw * 0.2} y={H - P.b - bh} width={cw * 0.6} height={bh} rx={Math.min(5, cw * 0.2)} fill="url(#bar)" opacity={hover === null || hover === i ? 1 : 0.55} />
-              {showLabel && <text x={P.l + cw * i + cw / 2} y={H - 8} textAnchor="middle" fontSize="11" fill="#8a84a3" fontWeight={hover === i ? 700 : 500}>{short(r.key)}</text>}
+              {showLabel && <text x={P.l + cw * i + cw / 2} y={H - 8} textAnchor="middle" fontSize="11" fill="#84a394" fontWeight={hover === i ? 700 : 500}>{short(r.key)}</text>}
             </g>
           );
         })}
@@ -206,12 +206,12 @@ function OnlineNow() {
         <>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-[13px]">
-              <thead className="bg-[#faf7ff] text-[11px] font-bold uppercase tracking-wider text-mute">
+              <thead className="bg-[#f7fffb] text-[11px] font-bold uppercase tracking-wider text-mute">
                 <tr><th className="px-5 py-2.5">Client</th><th className="px-3 py-2.5">Viewing</th><th className="px-3 py-2.5">Device · IP</th><th className="px-5 py-2.5 text-right">Last active</th></tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {shown.map((c) => (
-                  <tr key={c.id} className="hover:bg-[#fcfaff]">
+                  <tr key={c.id} className="hover:bg-[#fafffd]">
                     <td className="px-5 py-2.5">
                       <Link href={`/admin/clients/${c.id}`} className="flex items-center gap-2.5">
                         <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-[11px] font-extrabold text-white">
@@ -309,7 +309,7 @@ export default function AdminDashboard() {
         </div>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-8">
           {todos.map((t) => (
-            <Link key={t.key} href={t.href} className={cx("group flex flex-col gap-2 rounded-xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md", t.n ? "border-line bg-white" : "border-dashed border-line bg-[#fcfbff] opacity-70")}>
+            <Link key={t.key} href={t.href} className={cx("group flex flex-col gap-2 rounded-xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md", t.n ? "border-line bg-white" : "border-dashed border-line bg-[#fbfffd] opacity-70")}>
               <span className="flex items-center justify-between">
                 <span className={cx("grid h-8 w-8 place-items-center rounded-lg", t.n ? TONE[t.tone] : "bg-slate-100 text-slate-400")}><Icon name={t.icon} className="text-[18px]" /></span>
                 <span className={cx("text-xl font-extrabold", t.n ? "text-ink" : "text-slate-400")}>{t.n}</span>
@@ -329,7 +329,7 @@ export default function AdminDashboard() {
           </div>
           <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
             {[["Active", d.clients.active], ["New today", d.clients.today], ["Online", d.clients.online]].map(([l, v]) => (
-              <div key={l as string} className="rounded-xl bg-[#faf7ff] py-2.5"><dd className="text-lg font-extrabold text-ink">{v as number}</dd><dt className="text-[11px] font-semibold text-mute">{l}</dt></div>
+              <div key={l as string} className="rounded-xl bg-[#f7fffb] py-2.5"><dd className="text-lg font-extrabold text-ink">{v as number}</dd><dt className="text-[11px] font-semibold text-mute">{l}</dt></div>
             ))}
           </dl>
           {d.staffOnline.length > 0 && (
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
           </div>
           <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
             {[["VPS", d.services.byKind.vps ?? 0, "dns"], ["Hosting", d.services.byKind.hosting ?? 0, "language"], ["Other", d.services.byKind.other ?? 0, "widgets"]].map(([l, v, i]) => (
-              <div key={l as string} className="rounded-xl bg-[#faf7ff] py-2.5"><dd className="flex items-center justify-center gap-1 text-lg font-extrabold text-ink"><Icon name={i as string} className="text-[16px] text-primary" />{v as number}</dd><dt className="text-[11px] font-semibold text-mute">{l}</dt></div>
+              <div key={l as string} className="rounded-xl bg-[#f7fffb] py-2.5"><dd className="flex items-center justify-center gap-1 text-lg font-extrabold text-ink"><Icon name={i as string} className="text-[16px] text-primary" />{v as number}</dd><dt className="text-[11px] font-semibold text-mute">{l}</dt></div>
             ))}
           </dl>
         </Panel>
@@ -409,10 +409,10 @@ export default function AdminDashboard() {
         <Panel title="Recent orders" icon="shopping_bag" action={<More href="/admin/orders" />} flush>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
-              <thead><tr className="bg-[#fbf9ff] text-left text-[11px] font-bold uppercase tracking-wider text-mute"><th className="px-5 py-2.5">Order</th><th className="px-3 py-2.5">Client</th><th className="px-3 py-2.5">Total</th><th className="px-3 py-2.5">Payment</th><th className="px-5 py-2.5 text-right">Status</th></tr></thead>
+              <thead><tr className="bg-[#f6fbf8] text-left text-[11px] font-bold uppercase tracking-wider text-mute"><th className="px-5 py-2.5">Order</th><th className="px-3 py-2.5">Client</th><th className="px-3 py-2.5">Total</th><th className="px-3 py-2.5">Payment</th><th className="px-5 py-2.5 text-right">Status</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {d.recentOrders.map((o: any) => (
-                  <tr key={o.id} className="hover:bg-[#fcfaff]">
+                  <tr key={o.id} className="hover:bg-[#fafffd]">
                     <td className="px-5 py-3"><Link href={`/admin/orders/${o.id}`} className="font-bold text-primary-dark hover:underline">{o.number}</Link><div className="max-w-[180px] truncate text-xs text-mute">{o.product ?? "—"} · {ago(o.createdAt)}</div></td>
                     <td className="px-3 py-3"><Link href={`/admin/clients/${o.clientId}`} className="font-semibold text-ink hover:text-primary-dark">{o.client}</Link></td>
                     <td className="px-3 py-3 font-semibold">{money(o.total, o.currency)}</td>
@@ -428,7 +428,7 @@ export default function AdminDashboard() {
           {d.tickets.length ? (
             <ul className="divide-y divide-line">
               {d.tickets.map((t: any) => (
-                <li key={t.id}><Link href={`/admin/tickets/${t.id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-[#fcfaff]">
+                <li key={t.id}><Link href={`/admin/tickets/${t.id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-[#fafffd]">
                   <span className={cx("mt-1.5 h-2 w-2 shrink-0 rounded-full", t.priority === "HIGH" || t.priority === "URGENT" ? "bg-rose-500" : t.priority === "MEDIUM" ? "bg-amber-400" : "bg-sky-400")} />
                   <span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-bold text-ink">#{t.number} {t.subject}</span><span className="text-xs text-mute">{t.user ? `${t.user.firstName ?? ""} ${t.user.lastName ?? ""}`.trim() || t.user.email : "Guest"} · {t.department?.name}</span></span>
                   <span className="shrink-0 text-xs font-semibold text-mute">{ago(t.lastReplyAt ?? t.createdAt)}</span>
@@ -461,7 +461,7 @@ export default function AdminDashboard() {
         <Panel title="Newest clients" icon="person_add" action={<More href="/admin/clients" />} flush>
           <ul className="divide-y divide-line">
             {d.newClients.map((c: any) => (
-              <li key={c.id}><Link href={`/admin/clients/${c.id}`} className="flex items-center gap-3 px-5 py-2.5 hover:bg-[#fcfaff]">
+              <li key={c.id}><Link href={`/admin/clients/${c.id}`} className="flex items-center gap-3 px-5 py-2.5 hover:bg-[#fafffd]">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-soft text-[11px] font-extrabold text-primary-dark">{`${c.firstName?.[0] ?? ""}${c.lastName?.[0] ?? ""}`.toUpperCase() || "?"}</span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-bold text-ink">{`${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || c.email}</span><span className="block truncate text-xs text-mute">{c.profile?.companyName || [c.profile?.city, c.profile?.state].filter(Boolean).join(", ") || c.email}</span></span>
                 <span className="shrink-0 text-xs text-mute">{ago(c.createdAt)}</span>

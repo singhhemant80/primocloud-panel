@@ -244,9 +244,9 @@ publicCampaigns.get("/e/o/:token.gif", (req, res) => {
 async function page(title: string, body: string) {
   const s = await getSettings();
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · ${esc(s.company.brand)}</title><meta name="robots" content="noindex"></head>
-<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f0ff;font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a;padding:16px;box-sizing:border-box">
-<div style="max-width:440px;width:100%;background:#fff;border:1px solid #ece4fb;border-radius:18px;overflow:hidden;box-shadow:0 20px 50px -25px rgba(76,29,149,.35)">
-<div style="background:linear-gradient(135deg,#a365fe,#7c3aed);color:#fff;padding:18px 24px;font-weight:800;font-size:18px">${esc(s.company.brand)}</div>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#eefaf3;font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a;padding:16px;box-sizing:border-box">
+<div style="max-width:440px;width:100%;background:#fff;border:1px solid #dcefe3;border-radius:18px;overflow:hidden;box-shadow:0 20px 50px -25px rgba(0,81,42,.35)">
+<div style="background:linear-gradient(135deg,#0baf60,#008a49);color:#fff;padding:18px 24px;font-weight:800;font-size:18px">${esc(s.company.brand)}</div>
 <div style="padding:24px;font-size:15px;line-height:1.6">${body}</div></div></body></html>`;
 }
 
@@ -259,7 +259,7 @@ publicCampaigns.get(
     if (ok.unsubscribedAt) return void res.send(await page("Unsubscribed", `<h1 style="font-size:20px;margin:0 0 8px">You're unsubscribed</h1><p style="margin:0;color:#475569"><b>${esc(ok.email)}</b> won't get offers and news from us. You'll still get emails about your services and invoices.</p>`));
     // a button, not a one-tap GET — mail scanners follow links and would unsubscribe people by accident
     res.send(await page("Unsubscribe", `<h1 style="font-size:20px;margin:0 0 8px">Unsubscribe from offers?</h1><p style="margin:0 0 18px;color:#475569">Stop sending offers and news to <b>${esc(ok.email)}</b>. You'll still get emails about your services and invoices.</p>
-<form method="post"><button type="submit" style="width:100%;border:0;border-radius:12px;background:#7c3aed;color:#fff;font-weight:700;font-size:15px;padding:13px;cursor:pointer">Unsubscribe</button></form>`));
+<form method="post"><button type="submit" style="width:100%;border:0;border-radius:12px;background:#008a49;color:#fff;font-weight:700;font-size:15px;padding:13px;cursor:pointer">Unsubscribe</button></form>`));
   }),
 );
 

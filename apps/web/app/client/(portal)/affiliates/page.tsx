@@ -29,7 +29,7 @@ export default function Affiliates() {
         <Stat label="Total earned" value={money(earned)} icon="savings" tone="green" />
       </div>
       <Card title="Your referral link" className="mb-6">
-        <div className="flex items-center gap-2 rounded-xl bg-[#fbf9ff] p-3 font-mono text-sm"><span className="flex-1 truncate">{link}</span><Copy text={link} /></div>
+        <div className="flex items-center gap-2 rounded-xl bg-[#f6fbf8] p-3 font-mono text-sm"><span className="flex-1 truncate">{link}</span><Copy text={link} /></div>
         <p className="mt-2 text-xs text-mute">Anyone who creates an account through this link is linked to you.</p>
       </Card>
       <Card title="Referrals" pad={false}>

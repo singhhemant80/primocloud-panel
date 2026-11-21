@@ -12,14 +12,14 @@ const PERKS = [
 /** Split-screen auth layout: branded panel on the left, form card on the right. */
 export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client area" }: { title: string; subtitle?: ReactNode; children: ReactNode; wide?: boolean; eyebrow?: string }) {
   return (
-    <div className="relative overflow-hidden bg-white lg:bg-[radial-gradient(circle_at_0%_0%,#efe3ff_0,transparent_45%),radial-gradient(circle_at_100%_100%,#fde7f3_0,transparent_40%)] lg:bg-[#fbf9ff] lg:px-4 lg:py-14">
+    <div className="relative overflow-hidden bg-white lg:bg-[radial-gradient(circle_at_0%_0%,#e3fff1_0,transparent_45%),radial-gradient(circle_at_100%_100%,#fde7f3_0,transparent_40%)] lg:bg-[#f6fbf8] lg:px-4 lg:py-14">
       {/* phones & tablets: a soft wash behind the heading instead of a card in a card */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(120%_100%_at_50%_0%,#efe6ff_0%,#f8f4ff_45%,#ffffff_100%)] lg:hidden" />
-      <div className={cx("relative mx-auto grid fade-up lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-line lg:bg-white lg:shadow-[0_40px_90px_rgba(46,16,101,.16)]", wide ? "max-w-6xl" : "max-w-5xl")}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(120%_100%_at_50%_0%,#e6fff3_0%,#f4fffa_45%,#ffffff_100%)] lg:hidden" />
+      <div className={cx("relative mx-auto grid fade-up lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-line lg:bg-white lg:shadow-[0_40px_90px_rgba(0,57,27,.16)]", wide ? "max-w-6xl" : "max-w-5xl")}>
         {/* brand panel */}
-        <aside className="relative hidden overflow-hidden bg-[linear-gradient(150deg,#8b5cf6_0%,#6d28d9_50%,#3b0f7a_100%)] p-10 text-white lg:flex lg:flex-col">
+        <aside className="relative hidden overflow-hidden bg-[linear-gradient(150deg,#0a9d56_0%,#007a40_50%,#0f7a46_100%)] p-10 text-white lg:flex lg:flex-col">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-fuchsia-400/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-teal-400/20 blur-3xl" />
           <div className="pointer-events-none absolute inset-0 opacity-[.07] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:28px_28px]" />
 
           <div className="relative">
@@ -29,9 +29,9 @@ export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client a
             <h2 className="mt-6 text-[30px] font-extrabold leading-tight tracking-tight">
               Cloud servers from
               <br />
-              <span className="bg-gradient-to-r from-white to-violet-200 bg-clip-text text-transparent">Noida to the world.</span>
+              <span className="bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">Noida to the world.</span>
             </h2>
-            <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-violet-100/85">One account for your VPS, hosting, domains, invoices and 24/7 support.</p>
+            <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-emerald-100/85">One account for your VPS, hosting, domains, invoices and 24/7 support.</p>
           </div>
 
           {/* mini server card illustration */}
@@ -43,7 +43,7 @@ export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client a
                 </span>
                 <div>
                   <div className="text-sm font-extrabold">Linux VPS G2</div>
-                  <div className="font-mono text-xs text-violet-100/80">web1.yourbrand.in</div>
+                  <div className="font-mono text-xs text-emerald-100/80">web1.yourbrand.in</div>
                 </div>
               </div>
               <span className="rounded-full bg-emerald-400/20 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-200 ring-1 ring-emerald-300/40">● RUNNING</span>
@@ -51,7 +51,7 @@ export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client a
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
               {[["IPv4", "103.x.x.10"], ["CPU", "2 vCPU"], ["RAM", "4 GB"]].map(([k, v]) => (
                 <div key={k} className="rounded-xl bg-white/10 px-2 py-2">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-violet-200/80">{k}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-200/80">{k}</div>
                   <div className="mt-0.5 font-mono text-[12.5px] font-bold">{v}</div>
                 </div>
               ))}
@@ -66,7 +66,7 @@ export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client a
                 </span>
                 <div>
                   <div className="text-sm font-extrabold">{p.title}</div>
-                  <div className="text-[13px] text-violet-100/75">{p.text}</div>
+                  <div className="text-[13px] text-emerald-100/75">{p.text}</div>
                 </div>
               </li>
             ))}
@@ -77,13 +77,13 @@ export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client a
               {[["< 60s", "VPS deployment"], ["24/7", "Expert support"], ["Tier III", "Data centre"]].map(([v, l]) => (
                 <div key={l} className="rounded-2xl bg-white/10 px-3 py-4 text-center ring-1 ring-white/15">
                   <div className="text-xl font-extrabold">{v}</div>
-                  <div className="mt-0.5 text-[11px] font-semibold text-violet-100/75">{l}</div>
+                  <div className="mt-0.5 text-[11px] font-semibold text-emerald-100/75">{l}</div>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="relative mt-auto flex items-center gap-3 pt-10 text-xs font-semibold text-violet-100/80">
+          <div className="relative mt-auto flex items-center gap-3 pt-10 text-xs font-semibold text-emerald-100/80">
             <Icon name="verified_user" className="text-[18px]" /> Tier III data centre · DDoS protected · GSTIN 23AAHCC8426G1ZR
           </div>
         </aside>
@@ -91,7 +91,7 @@ export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client a
         {/* form */}
         <section className={cx("mx-auto w-full min-w-0 px-5 pb-10 pt-8 sm:px-8 sm:pt-12 lg:max-w-none lg:p-10", wide ? "max-w-2xl" : "max-w-[440px]")}>
           <div className="mb-7 lg:mb-7">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[.16em] text-primary-dark shadow-sm ring-1 ring-[#e9ddff] lg:bg-transparent lg:p-0 lg:shadow-none lg:ring-0">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[.16em] text-primary-dark shadow-sm ring-1 ring-[#ddffef] lg:bg-transparent lg:p-0 lg:shadow-none lg:ring-0">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 lg:hidden" />
               {eyebrow}
             </span>
@@ -102,7 +102,7 @@ export function AuthShell({ title, subtitle, children, wide, eyebrow = "Client a
           {/* phones & tablets: what you get, compactly (desktop has the side panel) */}
           <ul className="mt-9 grid grid-cols-3 gap-2 lg:hidden">
             {[["bolt", "Instant VPS setup"], ["receipt_long", "GST invoices"], ["support_agent", "24/7 support"]].map(([i, t]) => (
-              <li key={t} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#faf7ff] px-2 py-3 text-center ring-1 ring-[#efe7ff]">
+              <li key={t} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#f7fffb] px-2 py-3 text-center ring-1 ring-[#e1f5e9]">
                 <span className="grid h-8 w-8 place-items-center rounded-xl bg-white text-primary-dark shadow-sm"><Icon name={i} className="text-[18px]" /></span>
                 <span className="text-[11.5px] font-bold leading-tight text-slate-700">{t}</span>
               </li>
@@ -125,7 +125,7 @@ export function IconInput({ icon, trailing, className, ...p }: InputHTMLAttribut
       <input
         {...p}
         className={cx(
-          "h-12 w-full rounded-xl border border-[#e6dcf8] bg-[#fcfaff] pl-11 text-base text-ink sm:text-[15px] outline-none transition placeholder:text-slate-400 hover:border-[#d8c6fb] focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/15",
+          "h-12 w-full rounded-xl border border-[#dcf8ea] bg-[#fafffd] pl-11 text-base text-ink sm:text-[15px] outline-none transition placeholder:text-slate-400 hover:border-[#c6fbe1] focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/15",
           trailing ? "pr-12" : "pr-3.5",
           className,
         )}

@@ -20,7 +20,7 @@ export function LineEditor({ lines, onChange, currency = "INR", hsn = true }: { 
   const set = (k: string, p: Partial<Line>) => onChange(lines.map((l) => (l.key === k ? { ...l, ...p } : l)));
   return (
     <div className="overflow-hidden rounded-xl border border-line">
-      <div className={cx("hidden gap-2 bg-[#fbf9ff] px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-mute sm:grid", hsn ? "sm:grid-cols-[1fr_70px_120px_90px_64px_36px]" : "sm:grid-cols-[1fr_70px_120px_64px_36px]")}>
+      <div className={cx("hidden gap-2 bg-[#f6fbf8] px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-mute sm:grid", hsn ? "sm:grid-cols-[1fr_70px_120px_90px_64px_36px]" : "sm:grid-cols-[1fr_70px_120px_64px_36px]")}>
         <span>Description</span><span>Qty</span><span>Unit price ({currency})</span>{hsn && <span>HSN/SAC</span>}<span>GST</span><span />
       </div>
       {lines.map((l) => {
@@ -41,7 +41,7 @@ export function LineEditor({ lines, onChange, currency = "INR", hsn = true }: { 
           </div>
         );
       })}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-[#fdfcff] px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-[#fcfffe] px-3 py-2">
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="ghost" icon="add" onClick={() => onChange([...lines, newLine()])}>Add line</Button>
           <Button type="button" size="sm" variant="ghost" icon="sell" onClick={() => onChange([...lines, newLine({ description: "Discount", unitPrice: "", taxable: true })])}>Add discount</Button>

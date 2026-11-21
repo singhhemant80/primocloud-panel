@@ -11,3 +11,6 @@ apps/api/storage/
 *.sql.gz
 *.dump
 *.tsbuildinfo
+
+# the public website is built from apps/site by deploy/install.sh
+public-site/

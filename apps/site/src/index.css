@@ -1,0 +1,329 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-container: #0baf60;
+  --color-primary: #006d39;
+  --color-primary-fixed-dim: #56df8a;
+  --color-on-primary: #ffffff;
+  --color-secondary: #006d3a;
+  --color-secondary-container: #93f4b0;
+  --color-tertiary-fixed-dim: #62de8c;
+  --color-error: #ba1a1a;
+  --color-outline: #6d7b6e;
+  --color-outline-variant: #bccabc;
+  --color-on-surface: #1c1b1b;
+  --color-on-surface-variant: #3d4a3f;
+  --color-surface: #fcf9f8;
+  --color-surface-bright: #fcf9f8;
+  --color-surface-variant: #e5e2e1;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f3f2;
+  --color-surface-container: #f0eded;
+  --color-surface-container-high: #eae7e7;
+
+  --spacing-margin-desktop: 3rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-gutter-lg: 2rem;
+  --spacing-margin: 2rem;
+  --spacing-margin-mobile: 1rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2.5rem;
+
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+
+  --font-inter: "Inter", sans-serif;
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+  --font-label-lg: "Inter";
+  --font-label-md: "Inter";
+  --font-label-sm: "Inter";
+  --font-body-lg: "Inter";
+  --font-body-md: "Inter";
+  --font-body-sm: "Inter";
+  --font-mono-code: "Inter";
+  --font-headline-sm: "Plus Jakarta Sans";
+  --font-headline-md: "Plus Jakarta Sans";
+  --font-headline-lg: "Plus Jakarta Sans";
+  --font-headline-xl: "Plus Jakarta Sans";
+  --font-display-lg: "Plus Jakarta Sans";
+
+  --text-label-lg: 14px; --text-label-lg--line-height: 20px; --text-label-lg--letter-spacing: 0.005em; --text-label-lg--font-weight: 600;
+  --text-label-md: 12px; --text-label-md--line-height: 16px; --text-label-md--letter-spacing: 0.01em; --text-label-md--font-weight: 600;
+  --text-label-sm: 11px; --text-label-sm--line-height: 14px; --text-label-sm--letter-spacing: 0.02em; --text-label-sm--font-weight: 600;
+  --text-body-lg: 16px; --text-body-lg--line-height: 24px; --text-body-lg--font-weight: 400;
+  --text-body-md: 14px; --text-body-md--line-height: 20px; --text-body-md--font-weight: 400;
+  --text-body-sm: 12px; --text-body-sm--line-height: 16px; --text-body-sm--letter-spacing: 0.01em; --text-body-sm--font-weight: 400;
+  --text-mono-code: 13px; --text-mono-code--line-height: 18px; --text-mono-code--font-weight: 500;
+  --text-headline-sm: 18px; --text-headline-sm--line-height: 26px; --text-headline-sm--letter-spacing: -0.005em; --text-headline-sm--font-weight: 600;
+  --text-headline-md: 22px; --text-headline-md--line-height: 30px; --text-headline-md--letter-spacing: -0.01em; --text-headline-md--font-weight: 600;
+  --text-headline-lg: 28px; --text-headline-lg--line-height: 36px; --text-headline-lg--letter-spacing: -0.01em; --text-headline-lg--font-weight: 600;
+  --text-headline-xl: 36px; --text-headline-xl--line-height: 44px; --text-headline-xl--letter-spacing: -0.015em; --text-headline-xl--font-weight: 600;
+  --text-display-lg: 48px; --text-display-lg--line-height: 56px; --text-display-lg--letter-spacing: -0.02em; --text-display-lg--font-weight: 700;
+
+  /* Material tokens the pages already reference but were never defined (they silently rendered nothing). */
+  --color-background: #fcf9f8;
+  --color-on-background: #1c1b1b;
+  --color-surface-dim: #dcd9d9;
+  --color-surface-container-highest: #e5e2e1;
+  --color-inverse-surface: #1d2b22;
+  --color-inverse-on-surface: #eaf3ec;
+  --color-inverse-primary: #56df8a;
+  --color-primary-fixed: #77fca4;
+  --color-secondary-fixed: #93f4b0;
+  --color-tertiary: #006e3c;
+  --color-tertiary-container: #0eb066;
+  --color-tertiary-fixed: #7efba6;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #00522a;
+  --color-on-tertiary: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-on-error: #ffffff;
+}
+
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+:root {
+  /* Fallbacks for the fixed topbar's height; Layout refines --header-h at runtime.
+     Desktop: offer strip 36 + main row 64 + nav row 48. It collapses to 112 after scrolling. */
+  --header-h: 64px;
+  --header-min: 64px;
+  --glass-bg: rgba(255, 255, 255, 0.52);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.78);
+  --glass-shadow: 0 10px 34px -14px rgba(0, 109, 57, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --glass-shadow-hover: 0 24px 54px -18px rgba(0, 109, 57, 0.42), 0 0 0 1px rgba(11, 175, 96, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+@media (min-width: 1280px) {
+  :root { --header-h: 148px; --header-min: 112px; }
+}
+
+html {
+  scroll-behavior: smooth;
+  /* in-page #anchors (e.g. #vps-plans) land BELOW the sticky header, not under it */
+  scroll-padding-top: calc(var(--header-min) + 12px);
+}
+body {
+  margin: 0;
+  overscroll-behavior: none;
+  background: #f3faf6;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: rgba(11, 175, 96, 0.28); }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+/* content starts below the fixed topbar */
+.pc-main {
+  padding-top: var(--header-h);
+  animation: pc-page .5s ease-out backwards;
+}
+
+/* slim brand scrollbar */
+@media (hover: hover) {
+  html { scrollbar-width: thin; scrollbar-color: rgba(11,175,96,.55) transparent; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(#56df8a, #0baf60); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+/* ==========================================================================
+   KEYFRAMES
+   ========================================================================== */
+@keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@keyframes pc-rise { from { opacity: 0; transform: translateY(28px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes pc-page { from { opacity: 0; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes shimmer { to { background-position: 200% center; } }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes pc-ripple { to { transform: scale(1); opacity: 0; } }
+@keyframes pc-drift-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(8vw,6vh) scale(1.18); } }
+@keyframes pc-drift-2 { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-9vw,8vh) scale(.92); } }
+@keyframes pc-drift-3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vw,-9vh) scale(1.22); } }
+@keyframes pc-drift-4 { 0%,100% { transform: translate(0,0) scale(.95); } 50% { transform: translate(-7vw,-6vh) scale(1.12); } }
+@keyframes pc-sheen { 0% { transform: translateX(-120%) skewX(-18deg); } 60%, 100% { transform: translateX(260%) skewX(-18deg); } }
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-marquee { animation: marquee 40s linear infinite; }
+
+/* ==========================================================================
+   LIVING BACKGROUND (aurora + particles + cursor glow) - mounted in fx.jsx
+   ========================================================================== */
+.pc-aurora {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  --ax: 0; --ay: 0;
+  background:
+    radial-gradient(1200px 700px at 12% -10%, rgba(147,244,176,.38), transparent 60%),
+    radial-gradient(900px 600px at 100% 10%, rgba(86,223,138,.22), transparent 60%),
+    linear-gradient(180deg, #f6fcf8 0%, #eaf7ef 100%);
+}
+.pc-blob {
+  position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%;
+  translate: calc(var(--ax) * var(--k) * 1px) calc(var(--ay) * var(--k) * 1px);
+  transition: translate 1.2s cubic-bezier(.2,.7,.2,1);
+}
+.pc-blob > i { display: block; width: 100%; height: 100%; border-radius: 50%; will-change: transform; }
+.pc-blob-1 { top: -18vmax; left: -12vmax; }
+.pc-blob-1 > i { background: radial-gradient(circle, rgba(11,175,96,.34), rgba(11,175,96,.12) 38%, transparent 68%); animation: pc-drift-1 26s ease-in-out infinite; }
+.pc-blob-2 { top: 8vh; right: -16vmax; width: 40vmax; height: 40vmax; }
+.pc-blob-2 > i { background: radial-gradient(circle, rgba(45,212,191,.28), rgba(45,212,191,.09) 38%, transparent 68%); animation: pc-drift-2 32s ease-in-out infinite; }
+.pc-blob-3 { bottom: -20vmax; left: 18vw; width: 52vmax; height: 52vmax; }
+.pc-blob-3 > i { background: radial-gradient(circle, rgba(86,223,138,.32), rgba(86,223,138,.11) 38%, transparent 68%); animation: pc-drift-3 30s ease-in-out infinite; }
+.pc-blob-4 { bottom: 4vh; right: -8vmax; width: 34vmax; height: 34vmax; }
+.pc-blob-4 > i { background: radial-gradient(circle, rgba(163,230,53,.18), rgba(163,230,53,.06) 38%, transparent 68%); animation: pc-drift-4 36s ease-in-out infinite; }
+
+.pc-particles { position: absolute; inset: 0; }
+.pc-glow {
+  position: absolute; left: 0; top: 0; width: 560px; height: 560px; margin: -280px 0 0 -280px;
+  border-radius: 50%; opacity: 0; transition: opacity .5s;
+  background: radial-gradient(circle, rgba(11,175,96,.20), rgba(11,175,96,.06) 45%, transparent 70%);
+}
+.pc-ring {
+  position: fixed; left: 0; top: 0; z-index: 9999; pointer-events: none;
+  width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
+  border: 1.5px solid rgba(11,175,96,.65); background: rgba(11,175,96,.07);
+  opacity: 0; transition: opacity .3s, background .25s, border-color .25s;
+}
+@media (hover: none), (pointer: coarse) { .pc-ring, .pc-glow { display: none; } }
+
+/* ==========================================================================
+   GLASSMORPHISM
+   Every card-like surface in the pages is `bg-surface-container-lowest rounded-*`.
+   Turn those into frosted glass, and let section backgrounds go transparent so the
+   aurora shows through. Unlayered CSS beats Tailwind's layered utilities.
+   ========================================================================== */
+main section[class*="bg-surface"],
+main section[class*="bg-white"],
+main section[class*="bg-background"] { background-color: transparent; }
+main section[class*="bg-surface-container-low"] { background-color: rgba(255,255,255,.34); }
+
+main :is(div,article,li,aside,a,button)[class*="bg-surface-container-lowest"][class*="rounded"] {
+  background-color: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  transition: transform .15s ease-out, box-shadow .35s ease, background-color .35s ease, border-color .35s ease;
+}
+/* the (expensive) blur is reserved for real cards, not chips/buttons */
+main :is(div,article,li,aside)[class*="bg-surface-container-lowest"]:is([class*="rounded-xl"],[class*="rounded-2xl"],[class*="rounded-3xl"]) {
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  backdrop-filter: blur(12px) saturate(1.5);
+}
+main :is(div,article,li,aside,a,button)[class*="bg-surface-container-lowest"][class*="rounded"]:hover {
+  background-color: var(--glass-bg-strong);
+  box-shadow: var(--glass-shadow-hover);
+}
+/* glass inside glass: no second blur (it would only see the parent), just a lighter tint */
+main [class*="bg-surface-container-lowest"][class*="rounded"] [class*="bg-surface-container-lowest"][class*="rounded"] {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background-color: rgba(255,255,255,.58);
+}
+/* form controls stay readable */
+main input[class*="bg-surface-container-lowest"],
+main select[class*="bg-surface-container-lowest"],
+main textarea[class*="bg-surface-container-lowest"] { background-color: rgba(255,255,255,.85); }
+
+/* cursor-following glare (class + --gx/--gy are set from fx.jsx) */
+.pc-hot { z-index: 2; }
+.pc-hot::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;
+  background: radial-gradient(380px circle at var(--gx, 50%) var(--gy, 50%), rgba(255,255,255,.5), rgba(255,255,255,0) 55%);
+}
+
+/* ---- lite glass: added automatically on slow devices (see fx.jsx performance guard) ---- */
+.pc-lite main * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.pc-lite main :is(div,article,li,aside,a,button)[class*="bg-surface-container-lowest"][class*="rounded"] { background-color: rgba(255,255,255,.84); }
+.pc-lite .pc-blob > i { animation: none; }
+.pc-lite .pc-particles, .pc-lite .pc-glow { display: none; }
+
+/* topbar menus / search results */
+/* (nested inside the header's own backdrop-filter, so they can't blur the page: keep them near-opaque) */
+.pc-glass-bar [class*="bg-surface-container-lowest"][class*="rounded"] {
+  background-color: rgba(255,255,255,.96);
+  border-color: rgba(255,255,255,.95);
+  box-shadow: 0 28px 60px -20px rgba(0,109,57,.45), 0 0 0 1px rgba(11,175,96,.12);
+}
+
+/* primary buttons: click ripple + slow idle sheen */
+.pc-ripple {
+  position: absolute; border-radius: 50%; pointer-events: none; transform: scale(0);
+  background: rgba(255,255,255,.5); animation: pc-ripple .65s ease-out forwards;
+}
+main a[class*="from-primary-container"][class*="to-secondary"] { transition: transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .3s; }
+
+/* dark terminal / code mockups: glassy dark panels */
+main [class*="bg-inverse-surface"] { border-color: rgba(255,255,255,.08); }
+
+/* ==========================================================================
+   COMPACT HERO (every page; class added by useMotion)
+   - starts below the topbar (via .pc-main) and takes far less vertical space
+   ========================================================================== */
+.pc-hero {
+  background-image: none;
+  padding-top: clamp(1.25rem, 2.6vw, 2.25rem);
+  padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+}
+/* full-bleed image hero (homepage): fit the first screen instead of ~720px */
+.pc-hero[class*="min-h-"] {
+  min-height: min(600px, calc(100svh - var(--header-h) - 8px));
+  padding-block: 0;
+  display: flex; align-items: center;
+}
+.pc-hero[class*="min-h-"] > .relative.z-10 {
+  width: 100%; padding-block: clamp(1.5rem, 4vw, 3rem);
+}
+.pc-hero h1 {
+  font-size: clamp(1.7rem, .95rem + 2vw, 2.6rem);
+  line-height: 1.13;
+  letter-spacing: -0.022em;
+}
+/* tighten the big vertical gaps inside heroes */
+.pc-hero [class*="mt-space-xl"] { margin-top: 1.35rem; }
+.pc-hero [class*="mb-space-xl"] { margin-bottom: 1.35rem; }
+.pc-hero [class*="mb-space-lg"],
+.pc-hero [class*="mb-12"] { margin-bottom: 1.1rem; }
+.pc-hero [class*="mb-10"] { margin-bottom: 1.1rem; }
+.pc-hero [class*="mb-8"] { margin-bottom: .9rem; }
+.pc-hero [class*="mb-6"] { margin-bottom: .7rem; }
+.pc-hero [class*="mt-space-lg"] { margin-top: 1rem; }
+.pc-hero > div[class*="gap-space-xl"],
+.pc-hero > div > div[class*="gap-space-xl"] { gap: 1.25rem; }
+.pc-hero [class*="space-y-6"] > :not(:last-child) { margin-bottom: .75rem; }
+
+/* hero orbs are moved by the mouse (fx.jsx) */
+.pc-hero > .pointer-events-none.absolute { will-change: translate; }
+
+/* ==========================================================================
+   SCROLL REVEAL (classes added/removed by useMotion)
+   ========================================================================== */
+.reveal { opacity: 0; transform: translateY(26px) scale(.985); transition: opacity .75s ease, transform .75s cubic-bezier(.2,.7,.2,1); }
+.reveal.in { opacity: 1; transform: none; transition-delay: var(--d, 0ms); }
+
+/* ==========================================================================
+   HOMEPAGE EXTRAS
+   ========================================================================== */
+.hero-slide {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  background-position: center; background-size: cover; background-repeat: no-repeat;
+  opacity: 0; animation: heroFade 30s infinite; will-change: opacity;
+}
+.hero-slide:nth-child(1) { animation-delay: 0s; }
+.hero-slide:nth-child(2) { animation-delay: 6s; }
+.hero-slide:nth-child(3) { animation-delay: 12s; }
+.hero-slide:nth-child(4) { animation-delay: 18s; }
+.hero-slide:nth-child(5) { animation-delay: 24s; }
+@keyframes heroFade { 0% { opacity: 0; } 3% { opacity: 1; } 17% { opacity: 1; } 20% { opacity: 0; } 100% { opacity: 0; } }
+
+/* ==========================================================================
+   ACCESSIBILITY
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
+  .animate-float, .animate-marquee, .pc-blob > i, .pc-main { animation: none; }
+  .pc-ring, .pc-glow { display: none; }
+  .hero-slide { animation: none; opacity: 0; }
+  .hero-slide:first-child { opacity: 1; }
+}

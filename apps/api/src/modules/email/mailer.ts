@@ -106,25 +106,25 @@ export function layout(body: string, company: Company, preheader = "", footer?: 
   const app = config.appUrl.replace(/\/+$/, "");
   const phone = (company as { phone?: string }).phone ?? "";
   const wa = phone.replace(/\D/g, "");
-  const link = (href: string, text: string) => `<a href="${esc(href)}" style="color:#6d28d9;text-decoration:none;font-weight:600">${text}</a>`;
+  const link = (href: string, text: string) => `<a href="${esc(href)}" style="color:#007a40;text-decoration:none;font-weight:600">${text}</a>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>${esc(company.brand)}</title>
 <style>
 body{margin:0;padding:0;-webkit-text-size-adjust:100%}
-a{color:#6d28d9}
+a{color:#007a40}
 @media (max-width:620px){.em-card{width:100%!important;border-radius:0!important}.em-pad{padding-left:22px!important;padding-right:22px!important}.em-outer{padding:0!important}h1{font-size:22px!important}.em-hide{display:none!important}}
 </style></head>
-<body style="margin:0;background:#f4effd;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+<body style="margin:0;background:#effdf6;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all">${esc(preheader)}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4effd;background:linear-gradient(180deg,#ede3ff 0px,#f4effd 260px)"><tr><td class="em-outer" align="center" style="padding:36px 12px">
-<table role="presentation" class="em-card" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e9e0fb;box-shadow:0 18px 50px -24px rgba(76,29,149,.35)">
-<tr><td bgcolor="#7c3aed" style="height:5px;line-height:5px;font-size:0;background:#7c3aed;background:linear-gradient(90deg,#38bdf8,#a365fe 45%,#7c3aed)">&nbsp;</td></tr>
-<tr><td class="em-pad" style="padding:24px 36px 20px;border-bottom:1px solid #f1ebfd">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#effdf6;background:linear-gradient(180deg,#e3fff1 0px,#effdf6 260px)"><tr><td class="em-outer" align="center" style="padding:36px 12px">
+<table role="presentation" class="em-card" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e0fbee;box-shadow:0 18px 50px -24px rgba(0,81,42,.35)">
+<tr><td bgcolor="#008a49" style="height:5px;line-height:5px;font-size:0;background:#008a49;background:linear-gradient(90deg,#38bdf8,#0baf60 45%,#008a49)">&nbsp;</td></tr>
+<tr><td class="em-pad" style="padding:24px 36px 20px;border-bottom:1px solid #ebfdf4">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="vertical-align:middle"><a href="${esc(site)}" style="text-decoration:none"><img src="${esc(emailLogoUrl(company))}" width="190" alt="${esc(company.brand)}" style="display:block;width:190px;max-width:190px;height:auto;border:0;outline:none;color:#7c3aed;font-size:22px;font-weight:800"></a></td>
-<td class="em-hide" align="right" style="vertical-align:middle"><a href="${esc(app)}/client" style="display:inline-block;padding:9px 16px;border-radius:999px;background:#f5f0ff;border:1px solid #e4d6ff;color:#6d28d9;font-size:13px;font-weight:700;text-decoration:none">Client area&nbsp;&rarr;</a></td>
+<td style="vertical-align:middle"><a href="${esc(site)}" style="text-decoration:none"><img src="${esc(emailLogoUrl(company))}" width="190" alt="${esc(company.brand)}" style="display:block;width:190px;max-width:190px;height:auto;border:0;outline:none;color:#008a49;font-size:22px;font-weight:800"></a></td>
+<td class="em-hide" align="right" style="vertical-align:middle"><a href="${esc(app)}/client" style="display:inline-block;padding:9px 16px;border-radius:999px;background:#f0fff8;border:1px solid #d6ffeb;color:#007a40;font-size:13px;font-weight:700;text-decoration:none">Client area&nbsp;&rarr;</a></td>
 </tr></table></td></tr>
 <tr><td class="em-pad" style="padding:30px 36px 34px;font-size:15.5px;line-height:1.65;color:#0f172a">${body}</td></tr>
-<tr><td class="em-pad" style="padding:22px 36px;background:#faf7ff;border-top:1px solid #f1ebfd">
+<tr><td class="em-pad" style="padding:22px 36px;background:#f7fffb;border-top:1px solid #ebfdf4">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:13.5px;line-height:1.7;color:#475569">
 <b style="color:#0f172a">Need help?</b> We're here 24/7.<br>
 ${phone ? `${link(`tel:${phone.replace(/\s+/g, "")}`, esc(phone))}${wa ? ` &nbsp;·&nbsp; ${link(`https://wa.me/${wa}`, "WhatsApp")}` : ""} &nbsp;·&nbsp; ` : ""}${link(`mailto:${company.email}`, esc(company.email))} &nbsp;·&nbsp; ${link(`${app}/client/tickets`, "Open a ticket")}

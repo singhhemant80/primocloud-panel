@@ -27,7 +27,7 @@ function CodeBoxes({ value, onChange }: { value: string; onChange: (v: string) =
             if (d && i < 5) refs.current[i + 1]?.focus();
           }}
           onKeyDown={(e) => { if (e.key === "Backspace" && !value[i] && i > 0) refs.current[i - 1]?.focus(); }}
-          className="h-14 w-full min-w-0 rounded-xl border border-[#e6dcf8] bg-[#fcfaff] text-center text-2xl font-extrabold text-ink outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/15"
+          className="h-14 w-full min-w-0 rounded-xl border border-[#dcf8ea] bg-[#fafffd] text-center text-2xl font-extrabold text-ink outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/15"
           aria-label={`Digit ${i + 1}`}
         />
       ))}
@@ -113,7 +113,7 @@ export function LoginForm({ portal = "client" }: { portal?: "client" | "admin" }
         </>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-2xl bg-primary-tint p-4 ring-1 ring-[#e9d5ff]">
+          <div className="flex items-center gap-3 rounded-2xl bg-primary-tint p-4 ring-1 ring-[#c9f5da]">
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-primary-dark shadow-sm"><Icon name="phonelink_lock" /></span>
             <div className="text-sm"><div className="font-extrabold text-ink">Two-factor authentication</div><div className="text-mute">Enter the 6-digit code from your authenticator app.</div></div>
           </div>
@@ -131,7 +131,7 @@ export function LoginForm({ portal = "client" }: { portal?: "client" | "admin" }
           </div>
           <Link
             href={`/client/register${sp.get("next") ? `?next=${encodeURIComponent(sp.get("next")!)}` : ""}`}
-            className="flex h-[52px] items-center justify-center gap-2 rounded-xl border-2 border-[#e6dcf8] text-[15px] font-extrabold text-primary-dark transition hover:border-primary hover:bg-primary-tint"
+            className="flex h-[52px] items-center justify-center gap-2 rounded-xl border-2 border-[#dcf8ea] text-[15px] font-extrabold text-primary-dark transition hover:border-primary hover:bg-primary-tint"
           >
             <Icon name="person_add" className="text-[20px]" /> Create a free account
           </Link>

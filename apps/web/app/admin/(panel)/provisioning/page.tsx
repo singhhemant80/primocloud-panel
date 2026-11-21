@@ -77,7 +77,7 @@ export default function ProvisioningPage() {
             const p: Progress = x.progress;
             const cur = p.steps.find((st) => st.state === "current" || st.state === "failed");
             return (
-              <tr key={x.id} className="hover:bg-[#fcfaff]">
+              <tr key={x.id} className="hover:bg-[#fafffd]">
                 <Td>
                   <Link href={`/admin/services/${x.id}`} className="font-bold text-ink hover:text-primary-dark">{x.product.name}</Link>
                   <div className="text-xs text-mute">{x.hostname ?? "—"}{x.order && <> · <Link href={`/admin/orders/${x.order.id}`} className="font-semibold text-primary-dark hover:underline">{x.order.number}</Link></>}</div>

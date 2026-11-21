@@ -70,15 +70,15 @@ export function VirtualizorSyncAll({ onDone, label = "Sync all from Virtualizor"
         </p>
 
         {running || st?.status === "done" || st?.status === "error" ? (
-          <div className="rounded-2xl border border-line bg-[#fbf9ff] p-5">
+          <div className="rounded-2xl border border-line bg-[#f6fbf8] p-5">
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="flex items-center gap-2 font-bold text-ink">
-                {running ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#e4d8fb] border-t-primary" /> : st?.status === "done" ? <Icon name="check_circle" className="text-emerald-600" /> : <Icon name="error" className="text-rose-600" />}
+                {running ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#d8fbea] border-t-primary" /> : st?.status === "done" ? <Icon name="check_circle" className="text-emerald-600" /> : <Icon name="error" className="text-rose-600" />}
                 {running ? st?.phase : st?.status === "done" ? `Finished ${st.finishedAt ? date(st.finishedAt, true) : ""}${st.startedBy === "automatic" ? " · automatic run" : ""}` : "Sync failed"}
               </span>
               {st?.total ? <span className="font-bold text-primary-dark">{st.checked} / {st.total}</span> : null}
             </div>
-            {running && <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#ece4fb]"><div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-dark transition-all" style={{ width: `${pct}%` }} /></div>}
+            {running && <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#dcefe3]"><div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-dark transition-all" style={{ width: `${pct}%` }} /></div>}
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {([["Updated", (st?.updated ?? 0) + (st?.linked ?? 0), "text-emerald-700"], ["Already correct", st?.unchanged ?? 0, "text-ink"], ["Need attention", (st?.missing?.length ?? 0) + (st?.duplicates?.length ?? 0) + (st?.notLinked?.length ?? 0), (st?.missing?.length ?? 0) + (st?.duplicates?.length ?? 0) + (st?.notLinked?.length ?? 0) ? "text-amber-700" : "text-ink"], ["Services checked", st?.checked ?? 0, "text-ink"]] as const).map(([l, v, c]) => (
                 <div key={l} className="rounded-xl border border-line bg-white p-3"><div className="text-[11px] font-bold uppercase tracking-wider text-mute">{l}</div><div className={`mt-1 text-xl font-extrabold ${c}`}>{v}</div></div>

@@ -113,7 +113,7 @@ function SearchRow({ sld, setSld, tld, setTld, tlds, busy, onSubmit, cta }: { sl
           autoFocus
           aria-label="Domain name"
         />
-        <select value={tld} onChange={(e) => setTld(e.target.value)} className="h-12 shrink-0 rounded-r-xl border-l border-line bg-[#faf7ff] px-3 text-[15px] font-bold text-primary-dark outline-none" aria-label="Extension">
+        <select value={tld} onChange={(e) => setTld(e.target.value)} className="h-12 shrink-0 rounded-r-xl border-l border-line bg-[#f7fffb] px-3 text-[15px] font-bold text-primary-dark outline-none" aria-label="Extension">
           {tlds.map((t) => <option key={t.tld} value={t.tld}>{t.tld}</option>)}
         </select>
       </div>
@@ -248,7 +248,7 @@ function TransferBox({ tlds, currency, cm, initial, seed, onChoose, onRegister }
         </Alert>
       )}
       {res?.pricing && res.available !== true && (
-        <div className="mt-4 rounded-xl bg-[#faf7ff] p-4 ring-1 ring-[#ede4ff]">
+        <div className="mt-4 rounded-xl bg-[#f7fffb] p-4 ring-1 ring-[#e4fff2]">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-0 flex-1">
               <div className="break-all text-lg font-extrabold text-ink">{res.name}</div>

@@ -30,8 +30,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* ── welcome ── */}
-      <section className="relative overflow-hidden rounded-3xl bg-[radial-gradient(110%_140%_at_0%_0%,#7c3aed_0%,#5b21b6_42%,#2e1065_100%)] p-6 text-white shadow-[0_20px_50px_-20px_rgba(76,29,149,.6)] sm:p-8">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-400/20 blur-3xl" />
+      <section className="relative overflow-hidden rounded-3xl bg-[radial-gradient(110%_140%_at_0%_0%,#008a49_0%,#006d39_42%,#00391b_100%)] p-6 text-white shadow-[0_20px_50px_-20px_rgba(0,81,42,.6)] sm:p-8">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 right-40 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.04)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:linear-gradient(90deg,transparent,black)]" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -83,12 +83,12 @@ export default function Dashboard() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Panel title="Your services" icon="dns" sub={`${services.length} service${services.length === 1 ? "" : "s"} · about ${money(s.monthlySpend, cur)}/month`} action={<PanelLink href="/client/services">View all</PanelLink>} flush>
           {services.length ? (
-            <ul className="divide-y divide-[#f1edf9]">
+            <ul className="divide-y divide-[#edf9f3]">
               {services.slice(0, 8).map((x) => {
                 const st = live.states[x.id];
                 const due = daysUntil(x.nextDueDate);
                 return (
-                  <li key={x.id} className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition hover:bg-[#fbf9ff] sm:flex-nowrap">
+                  <li key={x.id} className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition hover:bg-[#f6fbf8] sm:flex-nowrap">
                     <ServiceIcon kind={x.kind} os={x.os} />
                     <Link href={`/client/services/${x.id}`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-2"><span className="truncate text-[14.5px] font-bold text-ink group-hover:text-primary-dark">{x.product}</span>{x.status !== "ACTIVE" && <Badge status={x.status} />}</div>
@@ -130,7 +130,7 @@ export default function Dashboard() {
               {s.outstanding > 0 && <Link href={data.unpaid.length === 1 ? `/client/invoices/${data.unpaid[0].id}` : "/client/invoices?status=UNPAID"} className="mt-3 flex h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 text-sm font-bold text-white hover:bg-rose-700"><Icon name="bolt" className="text-[18px]" />Pay now with UPI / card</Link>}
             </div>
             {data.unpaid.length > 0 && (
-              <ul className="mt-3 divide-y divide-[#f1edf9]">
+              <ul className="mt-3 divide-y divide-[#edf9f3]">
                 {data.unpaid.slice(0, 4).map((i: any) => (
                   <li key={i.id}>
                     <Link href={`/client/invoices/${i.id}`} className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-primary-dark">
@@ -147,7 +147,7 @@ export default function Dashboard() {
                 {data.spend.map((m: any, i: number) => (
                   <div key={i} className="group flex min-w-0 flex-1 flex-col items-center gap-1.5" title={`${m.label}: ${money(m.total, cur)}`}>
                     <div className="flex h-24 w-full items-end">
-                      <div className={cx("w-full rounded-t-lg transition", i === data.spend.length - 1 ? "bg-gradient-to-t from-primary-dark to-primary" : m.total ? "bg-[#d9cbfa] group-hover:bg-[#c4adf6]" : "bg-[#efe9fc]")} style={{ height: `${Math.max(4, Math.round((m.total / maxSpend) * 96))}px` }} />
+                      <div className={cx("w-full rounded-t-lg transition", i === data.spend.length - 1 ? "bg-gradient-to-t from-primary-dark to-primary" : m.total ? "bg-[#cbfae3] group-hover:bg-[#adf6d3]" : "bg-[#e9fcf3]")} style={{ height: `${Math.max(4, Math.round((m.total / maxSpend) * 96))}px` }} />
                     </div>
                     <span className="text-[10.5px] font-semibold text-mute">{m.label}</span>
                   </div>
@@ -162,10 +162,10 @@ export default function Dashboard() {
       <div className="grid items-start gap-6 lg:grid-cols-2 2xl:grid-cols-3">
         <Panel title="Support" icon="support_agent" action={<PanelLink href="/client/tickets/new">New ticket</PanelLink>} flush>
           {data.tickets.length ? (
-            <ul className="divide-y divide-[#f1edf9]">
+            <ul className="divide-y divide-[#edf9f3]">
               {data.tickets.map((t: any) => (
                 <li key={t.id}>
-                  <Link href={`/client/tickets/${t.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-[#fbf9ff]">
+                  <Link href={`/client/tickets/${t.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-[#f6fbf8]">
                     <span className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-xl", t.status === "ANSWERED" ? "bg-amber-50 text-amber-600" : t.status === "CLOSED" ? "bg-slate-100 text-slate-400" : "bg-sky-50 text-sky-600")}><Icon name={t.status === "ANSWERED" ? "mark_chat_unread" : "chat"} className="text-[18px]" /></span>
                     <span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-bold text-ink">{t.subject}</span><span className="block text-xs text-mute">#{t.number} · {t.department} · {date(t.lastReplyAt, true)}</span></span>
                     <Badge status={t.status} />
@@ -189,7 +189,7 @@ export default function Dashboard() {
         <Panel title="Account & security" icon="verified_user" action={<PanelLink href="/client/profile">Profile</PanelLink>}>
           <div className="flex items-center gap-4">
             <div className="relative h-[72px] w-[72px] shrink-0">
-              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90"><circle cx="18" cy="18" r="15.5" fill="none" stroke="#ede9fe" strokeWidth="3.5" /><circle cx="18" cy="18" r="15.5" fill="none" stroke="url(#g)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${(pct / 100) * 97.4} 97.4`} /><defs><linearGradient id="g"><stop stopColor="#a855f7" /><stop offset="1" stopColor="#6d28d9" /></linearGradient></defs></svg>
+              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90"><circle cx="18" cy="18" r="15.5" fill="none" stroke="#dcf7e7" strokeWidth="3.5" /><circle cx="18" cy="18" r="15.5" fill="none" stroke="url(#g)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${(pct / 100) * 97.4} 97.4`} /><defs><linearGradient id="g"><stop stopColor="#12b866" /><stop offset="1" stopColor="#007a40" /></linearGradient></defs></svg>
               <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-ink">{pct}%</span>
             </div>
             <div className="min-w-0">
@@ -218,12 +218,12 @@ export default function Dashboard() {
         <div className="space-y-6 lg:col-span-2 2xl:col-span-1">
           {data.expiringDomains.length > 0 && (
             <Panel title="Domains expiring soon" icon="language" action={<PanelLink href="/client/domains">All domains</PanelLink>} flush>
-              <ul className="divide-y divide-[#f1edf9]">
+              <ul className="divide-y divide-[#edf9f3]">
                 {data.expiringDomains.map((d: any) => {
                   const n = daysUntil(d.expiryDate);
                   return (
                     <li key={d.id}>
-                      <Link href={`/client/domains/${d.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-[#fbf9ff]">
+                      <Link href={`/client/domains/${d.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-[#f6fbf8]">
                         <span className="min-w-0"><span className="block truncate text-sm font-bold text-ink">{d.name}</span><span className="block text-xs text-mute">{d.autoRenew ? "Auto-renew on" : "Auto-renew off"}</span></span>
                         <span className={cx("rounded-full px-2.5 py-1 text-xs font-bold", n !== null && n <= 15 ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-700")}>{n !== null && n <= 0 ? "Expired" : `${n} days`}</span>
                       </Link>
@@ -235,7 +235,7 @@ export default function Dashboard() {
           )}
           <Panel title="Recent payments" icon="payments" action={<PanelLink href="/client/payments">All payments</PanelLink>} flush>
             {data.transactions.length ? (
-              <ul className="divide-y divide-[#f1edf9]">
+              <ul className="divide-y divide-[#edf9f3]">
                 {data.transactions.map((t: any) => (
                   <li key={t.id} className="flex items-center gap-3 px-5 py-3">
                     <span className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-xl", t.type === "REFUND" ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600")}><Icon name={t.type === "REFUND" ? "undo" : t.type === "WALLET_TOPUP" ? "savings" : "check"} className="text-[18px]" /></span>
@@ -253,7 +253,7 @@ export default function Dashboard() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Panel title="Announcements" icon="campaign" flush>
           {data.announcements.length ? (
-            <ul className="divide-y divide-[#f1edf9]">
+            <ul className="divide-y divide-[#edf9f3]">
               {data.announcements.map((n: any) => (
                 <li key={n.id} className="flex gap-4 px-5 py-4">
                   <div className="w-14 shrink-0 rounded-xl bg-primary-tint py-1.5 text-center"><div className="text-lg font-extrabold leading-none text-primary-dark">{new Date(n.publishedAt).getDate()}</div><div className="text-[10px] font-bold uppercase text-mute">{new Date(n.publishedAt).toLocaleString("en-IN", { month: "short" })}</div></div>
@@ -263,9 +263,9 @@ export default function Dashboard() {
             </ul>
           ) : <p className="px-5 py-8 text-center text-sm text-mute">No announcements right now.</p>}
         </Panel>
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1d0b45] to-[#3b1786] p-6 text-white shadow-card">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-fuchsia-500/25 blur-2xl" />
-          <span className="relative grid h-11 w-11 place-items-center rounded-xl bg-white/10"><Icon name="redeem" className="text-[22px] text-fuchsia-200" /></span>
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b4529] to-[#178650] p-6 text-white shadow-card">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-teal-500/25 blur-2xl" />
+          <span className="relative grid h-11 w-11 place-items-center rounded-xl bg-white/10"><Icon name="redeem" className="text-[22px] text-teal-200" /></span>
           <div className="relative mt-4 text-lg font-extrabold">Refer & earn</div>
           {a.affiliate ? (
             <>
@@ -291,18 +291,18 @@ function HeroBtn({ href, icon, children, primary }: { href: string; icon: string
 }
 
 const TONES: Record<string, string> = {
-  violet: "from-violet-500 to-purple-600",
+  violet: "from-emerald-500 to-green-600",
   rose: "from-rose-500 to-pink-600",
   emerald: "from-emerald-500 to-teal-600",
   indigo: "from-indigo-500 to-blue-600",
   amber: "from-amber-400 to-orange-500",
   sky: "from-sky-500 to-cyan-600",
   teal: "from-teal-500 to-emerald-600",
-  fuchsia: "from-fuchsia-500 to-purple-600",
+  fuchsia: "from-teal-500 to-green-600",
 };
 function Kpi({ href, icon, tone, label, value, hint }: { href: string; icon: string; tone: string; label: string; value: ReactNode; hint?: string }) {
   return (
-    <Link href={href} className="group relative overflow-hidden rounded-2xl border border-[#ece7f7] bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:border-[#dccafb] hover:shadow-lg">
+    <Link href={href} className="group relative overflow-hidden rounded-2xl border border-[#e7f7ef] bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:border-[#cafbe3] hover:shadow-lg">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[12.5px] font-semibold text-mute">{label}</div>
@@ -317,8 +317,8 @@ function Kpi({ href, icon, tone, label, value, hint }: { href: string; icon: str
 
 function Panel({ title, icon, sub, action, children, flush }: { title: string; icon: string; sub?: string; action?: ReactNode; children: ReactNode; flush?: boolean }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#ece7f7] bg-white shadow-card">
-      <div className="flex items-center justify-between gap-3 border-b border-[#f1edf9] px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-[#e7f7ef] bg-white shadow-card">
+      <div className="flex items-center justify-between gap-3 border-b border-[#edf9f3] px-5 py-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary-dark"><Icon name={icon} className="text-[19px]" /></span>
           <div className="min-w-0"><h2 className="truncate text-[15px] font-extrabold text-ink">{title}</h2>{sub && <div className="truncate text-xs text-mute">{sub}</div>}</div>
@@ -333,7 +333,7 @@ function PanelLink({ href, children }: { href: string; children: ReactNode }) {
   return <Link href={href} className="inline-flex shrink-0 items-center gap-0.5 rounded-lg px-2 py-1 text-[13px] font-bold text-primary-dark hover:bg-primary-tint">{children}<Icon name="chevron_right" className="text-[18px]" /></Link>;
 }
 function Notice({ tone, icon, title, text, href, cta }: { tone: "rose" | "amber" | "violet"; icon: string; title: string; text: string; href: string; cta: string }) {
-  const t = { rose: ["bg-rose-50 ring-rose-200", "bg-rose-500", "bg-rose-600 hover:bg-rose-700"], amber: ["bg-amber-50 ring-amber-200", "bg-amber-500", "bg-amber-600 hover:bg-amber-700"], violet: ["bg-violet-50 ring-violet-200", "bg-primary", "bg-primary-dark hover:bg-primary-deep"] }[tone];
+  const t = { rose: ["bg-rose-50 ring-rose-200", "bg-rose-500", "bg-rose-600 hover:bg-rose-700"], amber: ["bg-amber-50 ring-amber-200", "bg-amber-500", "bg-amber-600 hover:bg-amber-700"], violet: ["bg-emerald-50 ring-emerald-200", "bg-primary", "bg-primary-dark hover:bg-primary-deep"] }[tone];
   return (
     <div className={cx("flex min-w-0 items-center gap-3 rounded-2xl p-3.5 ring-1", t[0])}>
       <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white", t[1])}><Icon name={icon} className="text-[20px]" /></span>

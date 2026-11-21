@@ -2,14 +2,14 @@
 
 // ───────── email building blocks (tables + inline styles: they work in Gmail, Outlook and Apple Mail) ─────────
 const TONE: Record<string, [bg: string, fg: string, border: string]> = {
-  purple: ["#f5f0ff", "#6d28d9", "#e4d6ff"],
+  purple: ["#f0fff8", "#007a40", "#d6ffeb"],
   green: ["#ecfdf5", "#047857", "#bbf0d6"],
   amber: ["#fffbeb", "#b45309", "#fde3a7"],
   red: ["#fef2f2", "#b91c1c", "#fbcaca"],
   blue: ["#eff6ff", "#1d4ed8", "#cfe0fd"],
   slate: ["#f1f5f9", "#475569", "#e2e8f0"],
 };
-const BTN: Record<string, string> = { purple: "#7c3aed", red: "#dc2626", amber: "#d97706", green: "#059669" };
+const BTN: Record<string, string> = { purple: "#008a49", red: "#dc2626", amber: "#d97706", green: "#059669" };
 
 /** Status label, big headline and an intro line. */
 function hero(tone: string, label: string, title: string, intro: string) {
@@ -23,7 +23,7 @@ function hero(tone: string, label: string, title: string, intro: string) {
 /** Bulletproof call-to-action button. */
 function btn(label: string, href: string, tone = "purple") {
   const c = BTN[tone] ?? BTN.purple;
-  const bg = tone === "purple" ? `background:${c};background:linear-gradient(135deg,#a365fe,#7c3aed)` : `background:${c}`;
+  const bg = tone === "purple" ? `background:${c};background:linear-gradient(135deg,#0baf60,#008a49)` : `background:${c}`;
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 10px"><tr><td bgcolor="${c}" style="border-radius:12px;${bg};box-shadow:0 8px 20px -8px ${c}">
 <a href="${href}" target="_blank" style="display:inline-block;padding:14px 30px;font-size:15px;font-weight:700;line-height:1;color:#ffffff;text-decoration:none;border-radius:12px">${label}&nbsp;&nbsp;&rarr;</a></td></tr></table>`;
 }
@@ -31,9 +31,9 @@ function btn(label: string, href: string, tone = "purple") {
 /** A rounded card of label → value rows. */
 function details(rows: [string, string][]) {
   const tr = rows
-    .map(([k, v], i) => `<tr><td style="padding:12px 18px;${i ? "border-top:1px solid #eee7fb;" : ""}color:#64748b;font-size:13.5px;white-space:nowrap;vertical-align:top;width:38%">${k}</td><td style="padding:12px 18px;${i ? "border-top:1px solid #eee7fb;" : ""}color:#0f172a;font-size:14.5px;word-break:break-word">${v}</td></tr>`)
+    .map(([k, v], i) => `<tr><td style="padding:12px 18px;${i ? "border-top:1px solid #e7fbf1;" : ""}color:#64748b;font-size:13.5px;white-space:nowrap;vertical-align:top;width:38%">${k}</td><td style="padding:12px 18px;${i ? "border-top:1px solid #e7fbf1;" : ""}color:#0f172a;font-size:14.5px;word-break:break-word">${v}</td></tr>`)
     .join("");
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 4px;background:#fbf9ff;border:1px solid #eee7fb;border-radius:14px;border-collapse:separate">${tr}</table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 4px;background:#f6fbf8;border:1px solid #e7fbf1;border-radius:14px;border-collapse:separate">${tr}</table>`;
 }
 
 /** Big amount with a caption (invoices). */
@@ -55,19 +55,19 @@ function note(text: string) {
 }
 
 function quote(text: string) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 4px"><tr><td style="background:#fbf9ff;border-left:4px solid #a365fe;border-radius:0 12px 12px 0;padding:16px 18px;font-size:15px;line-height:1.65;color:#0f172a;white-space:pre-wrap">${text}</td></tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 4px"><tr><td style="background:#f6fbf8;border-left:4px solid #0baf60;border-radius:0 12px 12px 0;padding:16px 18px;font-size:15px;line-height:1.65;color:#0f172a;white-space:pre-wrap">${text}</td></tr></table>`;
 }
 
 const ICONS: Record<string, string> = { rocket: "&#128640;", wallet: "&#128179;", chat: "&#128172;", key: "&#128273;" };
 /** Numbered "what's next" list with small icons. */
 function steps(items: [icon: string, title: string, text: string][]) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 0">${items
-    .map(([ic, t, d]) => `<tr><td style="padding:8px 14px 8px 0;vertical-align:top;width:44px"><div style="width:40px;height:40px;line-height:40px;text-align:center;border-radius:12px;background:#f5f0ff;font-size:19px">${ICONS[ic] ?? "&#10022;"}</div></td><td style="padding:8px 0;vertical-align:top"><div style="font-size:15px;font-weight:700;color:#0f172a">${t}</div><div style="font-size:14px;line-height:1.55;color:#64748b">${d}</div></td></tr>`)
+    .map(([ic, t, d]) => `<tr><td style="padding:8px 14px 8px 0;vertical-align:top;width:44px"><div style="width:40px;height:40px;line-height:40px;text-align:center;border-radius:12px;background:#f0fff8;font-size:19px">${ICONS[ic] ?? "&#10022;"}</div></td><td style="padding:8px 0;vertical-align:top"><div style="font-size:15px;font-weight:700;color:#0f172a">${t}</div><div style="font-size:14px;line-height:1.55;color:#64748b">${d}</div></td></tr>`)
     .join("")}</table>`;
 }
 
-const mono = (v: string) => `<span style="font-family:SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;font-weight:700;background:#ffffff;border:1px solid #e9e1fb;border-radius:6px;padding:2px 7px">${v}</span>`;
-const link = (v: string) => `<a href="${v}" style="color:#7c3aed;font-weight:600;text-decoration:none">${v}</a>`;
+const mono = (v: string) => `<span style="font-family:SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;font-weight:700;background:#ffffff;border:1px solid #e1fbee;border-radius:6px;padding:2px 7px">${v}</span>`;
+const link = (v: string) => `<a href="${v}" style="color:#008a49;font-weight:600;text-decoration:none">${v}</a>`;
 const badge = (tone: string, v: string) => {
   const [bg, fg, bd] = TONE[tone] ?? TONE.purple;
   return `<span style="display:inline-block;background:${bg};color:${fg};border:1px solid ${bd};font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px">${v}</span>`;
@@ -255,71 +255,71 @@ export const DEFAULT_TEMPLATES: Record<string, { name: string; subject: string; 
   "alert.order_placed": {
     name: "Staff alert: new order",
     subject: "🛒 New order {{orderNumber}} · {{total}} · {{clientName}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.upgrade_requested": {
     name: "Staff alert: plan change ordered",
     subject: "⬆️ {{clientName}} ordered a {{direction}}: {{from}} → {{to}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.payment_received": {
     name: "Staff alert: payment received",
     subject: "💰 Payment received: {{amount}} from {{clientName}} ({{gateway}})",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.payment_review": {
     name: "Staff alert: payment to verify",
     subject: "[Action needed] Verify {{amount}} {{gateway}} payment from {{clientName}} — ref {{reference}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.payment_failed": {
     name: "Staff alert: AutoPay payment failed",
     subject: "⚠️ AutoPay failed: {{amount}} for invoice {{invoiceNumber}} ({{clientName}})",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.payment_problem": {
     name: "Staff alert: payment couldn't be applied",
     subject: "[Action needed] {{gateway}} payment {{gatewayTxnId}} couldn't be applied",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.credit_applied": {
     name: "Staff alert: invoice paid from credit",
     subject: "Invoice {{invoiceNumber}} paid from credit ({{amount}}) · {{clientName}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.refund_issued": {
     name: "Staff alert: refund issued",
     subject: "↩️ Refund issued: {{amount}} to {{clientName}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.service_suspended": {
     name: "Staff alert: service suspended",
     subject: "Suspended: {{productName}} {{hostname}} · {{clientName}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.service_terminated": {
     name: "Staff alert: service terminated",
     subject: "Terminated: {{productName}} {{hostname}} · {{clientName}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.ticket_opened": {
     name: "Staff alert: new ticket",
     subject: "🎫 New ticket #{{ticketNumber}}: {{subject}} · {{clientName}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.cancellation": {
     name: "Staff alert: cancellation request",
     subject: "[Action needed] Cancellation request from {{clientName}} (#{{ticketNumber}})",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.ticket_reply": {
     name: "Staff alert: customer replied",
     subject: "💬 {{clientName}} replied on #{{ticketNumber}}: {{subject}}",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
   "alert.client_registered": {
     name: "Staff alert: new client",
     subject: "👤 New client: {{clientName}} ({{clientEmail}})",
-    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#6d28d9;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
+    body: `<p style="font-size:15px">{{headline}}</p>{{{details}}}<p><a href="{{adminUrl}}" style="display:inline-block;background:#007a40;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700">{{linkLabel}}</a></p><p style="color:#94a3b8;font-size:12px">Staff alert · {{alertName}} · {{sentAt}}. Change who gets these, or turn them off, in Admin → Email Delivery → Staff alerts.</p>`,
   },
 };

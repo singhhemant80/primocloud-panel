@@ -139,7 +139,7 @@ export default function ClientDetail() {
             {inv ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {([["PAID", "Paid", "text-emerald-700"], ["UNPAID", "Unpaid / due", "text-rose-600"], ["DRAFT", "Draft", "text-slate-600"], ["CANCELLED", "Cancelled", "text-slate-600"], ["REFUNDED", "Refunded", "text-sky-700"], ["COLLECTIONS", "Collections", "text-amber-700"]] as const).map(([k, l, tone]) => (
-                  <button key={k} type="button" onClick={() => goTab("invoices")} className="rounded-xl border border-line bg-[#fcfaff] px-4 py-3 text-left transition hover:border-[#dccafb] hover:bg-white">
+                  <button key={k} type="button" onClick={() => goTab("invoices")} className="rounded-xl border border-line bg-[#fafffd] px-4 py-3 text-left transition hover:border-[#cafbe3] hover:bg-white">
                     <div className="text-[12px] font-semibold text-mute">{l}</div>
                     <div className={cx("mt-0.5 text-lg font-extrabold", inv[k].count ? tone : "text-slate-300")}>{money(inv[k].total, cur)}</div>
                     <div className="text-[11.5px] text-mute">{inv[k].count} invoice{inv[k].count === 1 ? "" : "s"}</div>
@@ -207,7 +207,7 @@ export default function ClientDetail() {
             {sum?.payMethods?.length ? (
               <ul className="space-y-2.5">
                 {sum.payMethods.map((m: any) => (
-                  <li key={m.id} className={cx("rounded-xl border p-3", m.isDefault ? "border-[#dccafb] bg-primary-tint" : "border-line")}>
+                  <li key={m.id} className={cx("rounded-xl border p-3", m.isDefault ? "border-[#cafbe3] bg-primary-tint" : "border-line")}>
                     <div className="flex items-start gap-3">
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-primary-dark ring-1 ring-line"><Icon name={m.type === "CARD" ? "credit_card" : m.type === "UPI" ? "qr_code_2" : m.type === "BANK" ? "account_balance" : "verified_user"} className="text-[19px]" /></span>
                       <div className="min-w-0 flex-1">
@@ -303,7 +303,7 @@ function Records({ tab, setTab, data, services, id, cur }: { tab: string; setTab
   const unpaid = (data.invoices as any[]).filter((i) => i.status === "UNPAID").length;
   return (
     <section id="client-tabs" className="scroll-mt-24 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-      <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-line bg-[#fbf9ff] p-1.5 [scrollbar-width:none] sm:flex-wrap">
+      <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-line bg-[#f6fbf8] p-1.5 [scrollbar-width:none] sm:flex-wrap">
         {TABS.map(([t, l, n, icon]) => {
           const count = n ? rows[n]?.length ?? 0 : 0;
           return (
@@ -322,7 +322,7 @@ function Records({ tab, setTab, data, services, id, cur }: { tab: string; setTab
             <ul className="divide-y divide-line sm:hidden">
               {services.map((s: any) => (
                 <li key={s.id}>
-                  <Link href={`/admin/services/${s.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-[#fbf9ff]">
+                  <Link href={`/admin/services/${s.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-[#f6fbf8]">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary-dark"><Icon name={planIcon(s.product.type, s.product.provisioner)} className="text-[19px]" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14px] font-bold text-ink">{s.product.name}</span>
@@ -358,7 +358,7 @@ function Records({ tab, setTab, data, services, id, cur }: { tab: string; setTab
               {services.map((s: any) => {
                 const late = s.nextDueDate && new Date(s.nextDueDate) < today && ["ACTIVE", "SUSPENDED"].includes(s.status);
                 return (
-                  <tr key={s.id} className="hover:bg-[#fbf9ff]">
+                  <tr key={s.id} className="hover:bg-[#f6fbf8]">
                     <Td><Link className="flex items-center gap-2.5 font-bold text-ink hover:text-primary-dark" href={`/admin/services/${s.id}`}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary-dark"><Icon name={planIcon(s.product.type, s.product.provisioner)} className="text-[18px]" /></span>{s.product.name}</Link></Td>
                     <Td><div className="max-w-[240px] truncate font-semibold text-slate-700">{s.hostname || "—"}</div><div className="font-mono text-xs text-mute">{s.ips.map((i: any) => i.address).join(", ")}</div></Td>
                     <Td><Badge status={s.status} /></Td>
@@ -369,13 +369,13 @@ function Records({ tab, setTab, data, services, id, cur }: { tab: string; setTab
               })}
             </Table></div>
           )}
-          {tab === "orders" && <Table head={["Order", "Placed", "Total", "Status"]}>{rows.orders.map((o: any) => <tr key={o.id} className="hover:bg-[#fbf9ff]"><Td><Link className="font-mono font-bold text-primary-dark hover:underline" href={`/admin/orders/${o.id}`}>{o.number}</Link></Td><Td className="text-slate-600"><Ago at={o.createdAt} /></Td><Td className="font-semibold tabular-nums">{money(o.total, o.currency)}</Td><Td><Badge status={o.status} /></Td></tr>)}</Table>}
+          {tab === "orders" && <Table head={["Order", "Placed", "Total", "Status"]}>{rows.orders.map((o: any) => <tr key={o.id} className="hover:bg-[#f6fbf8]"><Td><Link className="font-mono font-bold text-primary-dark hover:underline" href={`/admin/orders/${o.id}`}>{o.number}</Link></Td><Td className="text-slate-600"><Ago at={o.createdAt} /></Td><Td className="font-semibold tabular-nums">{money(o.total, o.currency)}</Td><Td><Badge status={o.status} /></Td></tr>)}</Table>}
           {tab === "invoices" && (
             <div className="hidden sm:block"><Table head={["Invoice", "For", "Issued", "Due", "Total", "Status"]}>
               {data.invoices.map((i: any) => {
                 const over = i.status === "UNPAID" && i.dueDate && new Date(i.dueDate) < today;
                 return (
-                  <tr key={i.id} className={cx("hover:bg-[#fbf9ff]", over && "bg-rose-50/40")}>
+                  <tr key={i.id} className={cx("hover:bg-[#f6fbf8]", over && "bg-rose-50/40")}>
                     <Td className="whitespace-nowrap"><Link className="font-mono font-bold text-primary-dark hover:underline" href={`/admin/invoices/${i.id}`}>{invNo(i)}</Link></Td>
                     <Td><InvoiceFor inv={i} audience="admin" compact showProduct={false} /></Td>
                     <Td className="whitespace-nowrap text-slate-600">{date(i.issueDate)}</Td>
@@ -389,11 +389,11 @@ function Records({ tab, setTab, data, services, id, cur }: { tab: string; setTab
           )}
           {tab === "statement" && <Statement id={id} />}
           {tab === "emails" && <ClientEmails id={id} />}
-          {tab === "transactions" && <Table head={["Date", "Gateway", "Reference", "Type", "Amount"]}>{data.transactions.map((t: any) => <tr key={t.id} className="hover:bg-[#fbf9ff]"><Td className="whitespace-nowrap text-slate-600">{date(t.createdAt, true)}</Td><Td className="font-semibold uppercase">{t.gateway}</Td><Td className="max-w-[220px] truncate font-mono text-xs">{t.gatewayTxnId}</Td><Td><Badge status={t.type === "REFUND" ? "REFUNDED" : t.type === "PAYMENT" ? "PAID" : "DRAFT"}>{t.type.replace("_", " ").toLowerCase()}</Badge></Td><Td className={cx("whitespace-nowrap font-bold tabular-nums", t.type === "REFUND" ? "text-sky-700" : "text-emerald-700")}>{t.type === "REFUND" ? "−" : ""}{money(Math.abs(t.amount), t.currency)}</Td></tr>)}</Table>}
-          {tab === "tickets" && <Table head={["Ticket", "Subject", "Department", "Last reply", "Status"]}>{data.tickets.map((t: any) => <tr key={t.id} className="hover:bg-[#fbf9ff]"><Td className="font-mono text-mute">#{t.number}</Td><Td><Link className="font-bold text-ink hover:text-primary-dark" href={`/admin/tickets/${t.id}`}>{t.subject}</Link></Td><Td className="text-slate-600">{t.department.name}</Td><Td className="whitespace-nowrap text-slate-600"><Ago at={t.lastReplyAt} /></Td><Td><Badge status={t.status} /></Td></tr>)}</Table>}
-          {tab === "domains" && <Table head={["Domain", "Status", "Expiry", "Auto-renew"]}>{data.domains.map((d: any) => <tr key={d.id} className="hover:bg-[#fbf9ff]"><Td className="font-bold"><span className="inline-flex items-center gap-2"><Icon name="public" className="text-[18px] text-primary-dark" />{d.name}</span></Td><Td><Badge status={d.status} /></Td><Td className="whitespace-nowrap text-slate-600">{d.expiryDate ? <>{date(d.expiryDate)} <span className="text-mute">(<Ago at={d.expiryDate} />)</span></> : "—"}</Td><Td>{d.autoRenew ? <span className="font-semibold text-emerald-600">On</span> : <span className="text-mute">Off</span>}</Td></tr>)}</Table>}
-          {tab === "credit" && <Table head={["Date", "Description", "Amount", "Balance"]}>{data.ledger.map((l: any) => <tr key={l.id} className="hover:bg-[#fbf9ff]"><Td className="whitespace-nowrap text-slate-600">{date(l.createdAt, true)}</Td><Td>{l.description}</Td><Td className={cx("whitespace-nowrap font-bold tabular-nums", l.amount < 0 ? "text-rose-600" : "text-emerald-600")}>{l.amount > 0 ? "+" : ""}{money(l.amount, cur)}</Td><Td className="whitespace-nowrap tabular-nums">{money(l.balanceAfter, cur)}</Td></tr>)}</Table>}
-          {tab === "logins" && <Table head={["Time", "IP", "Result"]}>{data.logins.map((l: any) => <tr key={l.id} className="hover:bg-[#fbf9ff]"><Td className="whitespace-nowrap text-slate-600">{date(l.createdAt, true)} <span className="text-mute">· <Ago at={l.createdAt} /></span></Td><Td className="font-mono text-xs">{l.ip}</Td><Td>{l.success ? <Badge status="ACTIVE">signed in</Badge> : <Badge status="FAILED">{l.reason ?? "failed"}</Badge>}</Td></tr>)}</Table>}
+          {tab === "transactions" && <Table head={["Date", "Gateway", "Reference", "Type", "Amount"]}>{data.transactions.map((t: any) => <tr key={t.id} className="hover:bg-[#f6fbf8]"><Td className="whitespace-nowrap text-slate-600">{date(t.createdAt, true)}</Td><Td className="font-semibold uppercase">{t.gateway}</Td><Td className="max-w-[220px] truncate font-mono text-xs">{t.gatewayTxnId}</Td><Td><Badge status={t.type === "REFUND" ? "REFUNDED" : t.type === "PAYMENT" ? "PAID" : "DRAFT"}>{t.type.replace("_", " ").toLowerCase()}</Badge></Td><Td className={cx("whitespace-nowrap font-bold tabular-nums", t.type === "REFUND" ? "text-sky-700" : "text-emerald-700")}>{t.type === "REFUND" ? "−" : ""}{money(Math.abs(t.amount), t.currency)}</Td></tr>)}</Table>}
+          {tab === "tickets" && <Table head={["Ticket", "Subject", "Department", "Last reply", "Status"]}>{data.tickets.map((t: any) => <tr key={t.id} className="hover:bg-[#f6fbf8]"><Td className="font-mono text-mute">#{t.number}</Td><Td><Link className="font-bold text-ink hover:text-primary-dark" href={`/admin/tickets/${t.id}`}>{t.subject}</Link></Td><Td className="text-slate-600">{t.department.name}</Td><Td className="whitespace-nowrap text-slate-600"><Ago at={t.lastReplyAt} /></Td><Td><Badge status={t.status} /></Td></tr>)}</Table>}
+          {tab === "domains" && <Table head={["Domain", "Status", "Expiry", "Auto-renew"]}>{data.domains.map((d: any) => <tr key={d.id} className="hover:bg-[#f6fbf8]"><Td className="font-bold"><span className="inline-flex items-center gap-2"><Icon name="public" className="text-[18px] text-primary-dark" />{d.name}</span></Td><Td><Badge status={d.status} /></Td><Td className="whitespace-nowrap text-slate-600">{d.expiryDate ? <>{date(d.expiryDate)} <span className="text-mute">(<Ago at={d.expiryDate} />)</span></> : "—"}</Td><Td>{d.autoRenew ? <span className="font-semibold text-emerald-600">On</span> : <span className="text-mute">Off</span>}</Td></tr>)}</Table>}
+          {tab === "credit" && <Table head={["Date", "Description", "Amount", "Balance"]}>{data.ledger.map((l: any) => <tr key={l.id} className="hover:bg-[#f6fbf8]"><Td className="whitespace-nowrap text-slate-600">{date(l.createdAt, true)}</Td><Td>{l.description}</Td><Td className={cx("whitespace-nowrap font-bold tabular-nums", l.amount < 0 ? "text-rose-600" : "text-emerald-600")}>{l.amount > 0 ? "+" : ""}{money(l.amount, cur)}</Td><Td className="whitespace-nowrap tabular-nums">{money(l.balanceAfter, cur)}</Td></tr>)}</Table>}
+          {tab === "logins" && <Table head={["Time", "IP", "Result"]}>{data.logins.map((l: any) => <tr key={l.id} className="hover:bg-[#f6fbf8]"><Td className="whitespace-nowrap text-slate-600">{date(l.createdAt, true)} <span className="text-mute">· <Ago at={l.createdAt} /></span></Td><Td className="font-mono text-xs">{l.ip}</Td><Td>{l.success ? <Badge status="ACTIVE">signed in</Badge> : <Badge status="FAILED">{l.reason ?? "failed"}</Badge>}</Td></tr>)}</Table>}
         </>
       )}
     </section>
@@ -432,7 +432,7 @@ function Item({ k, v, mono, wide }: { k: string; v?: ReactNode; mono?: boolean; 
 function Kpi({ icon, label, value, hint, tone, onClick }: { icon: string; label: string; value: ReactNode; hint?: string; tone: "purple" | "green" | "amber" | "rose" | "sky" | "slate"; onClick?: () => void }) {
   const tones = { purple: "bg-primary-soft text-primary-dark", green: "bg-emerald-50 text-emerald-600", amber: "bg-amber-50 text-amber-600", rose: "bg-rose-50 text-rose-600", sky: "bg-sky-50 text-sky-600", slate: "bg-slate-100 text-slate-500" };
   return (
-    <button type="button" onClick={onClick} className="flex flex-col items-start gap-2.5 rounded-2xl border border-line bg-white p-3.5 text-left shadow-card sm:flex-row sm:items-center sm:gap-3.5 sm:p-4 transition hover:-translate-y-px hover:border-[#dccafb]">
+    <button type="button" onClick={onClick} className="flex flex-col items-start gap-2.5 rounded-2xl border border-line bg-white p-3.5 text-left shadow-card sm:flex-row sm:items-center sm:gap-3.5 sm:p-4 transition hover:-translate-y-px hover:border-[#cafbe3]">
       <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl", tones[tone])}><Icon name={icon} className="text-[22px]" /></span>
       <div className="min-w-0">
         <div className="truncate text-[12.5px] font-semibold text-mute">{label}</div>
@@ -445,7 +445,7 @@ function Kpi({ icon, label, value, hint, tone, onClick }: { icon: string; label:
 function Count({ icon, label, a, t, onClick }: { icon: string; label: string; a: number; t?: number; onClick?: () => void }) {
   const Tag = onClick ? "button" : "div";
   return (
-    <Tag type={onClick ? "button" : undefined} onClick={onClick} className={cx("flex items-center gap-3 rounded-xl border border-line px-3.5 py-3 text-left", onClick && "transition hover:border-[#dccafb] hover:bg-primary-tint")}>
+    <Tag type={onClick ? "button" : undefined} onClick={onClick} className={cx("flex items-center gap-3 rounded-xl border border-line px-3.5 py-3 text-left", onClick && "transition hover:border-[#cafbe3] hover:bg-primary-tint")}>
       <Icon name={icon} className={cx("text-[22px]", a ? "text-primary-dark" : "text-slate-300")} />
       <div className="min-w-0">
         <div className={cx("text-lg font-extrabold leading-tight", a ? "text-ink" : "text-slate-300")}>{a}{t !== undefined && t !== a ? <span className="text-[12px] font-semibold text-mute"> / {t}</span> : null}</div>
@@ -456,7 +456,7 @@ function Count({ icon, label, a, t, onClick }: { icon: string; label: string; a:
 }
 function Quick({ icon, children, onClick }: { icon: string; children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-left text-[13px] font-bold text-slate-700 transition hover:border-[#dccafb] hover:bg-primary-tint hover:text-primary-dark">
+    <button type="button" onClick={onClick} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-left text-[13px] font-bold text-slate-700 transition hover:border-[#cafbe3] hover:bg-primary-tint hover:text-primary-dark">
       <Icon name={icon} className="text-[18px] text-primary-dark" />
       <span className="truncate">{children}</span>
     </button>
@@ -521,7 +521,7 @@ function WhatsAppModal({ open, onClose, client: c }: { open: boolean; onClose: (
     <Modal open={open} onClose={onClose} title="Send WhatsApp message" wide>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
         <span className="text-mute">To <b className="text-ink">+{phone}</b>{c.profile?.whatsappNotifications === false && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">notifications off</span>}</span>
-        <div className="flex flex-wrap gap-1.5">{WA_QUICK.map(([l, t]) => <button key={l} type="button" onClick={() => setMsg(t.replace("{name}", c.firstName ?? "").replaceAll("{app}", app))} className="rounded-full bg-[#f4effd] px-2.5 py-1 text-[11.5px] font-bold text-primary-dark hover:bg-primary-soft">{l}</button>)}</div>
+        <div className="flex flex-wrap gap-1.5">{WA_QUICK.map(([l, t]) => <button key={l} type="button" onClick={() => setMsg(t.replace("{name}", c.firstName ?? "").replaceAll("{app}", app))} className="rounded-full bg-[#effdf6] px-2.5 py-1 text-[11.5px] font-bold text-primary-dark hover:bg-primary-soft">{l}</button>)}</div>
       </div>
       <Textarea rows={5} value={msg} onChange={(e) => setMsg(e.target.value)} autoFocus maxLength={1000} />
       <div className="mt-1 text-right text-[11px] text-mute">{msg.length}/1000</div>
@@ -576,7 +576,7 @@ function SetPasswordModal({ open, onClose, client: c, onDone }: { open: boolean;
           <Alert tone="success">Password changed{result.sent.length ? ` · sent by ${result.sent.join(", ")}` : ""}.</Alert>
           <div>
             <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-mute">New password — shown once</div>
-            <div className="flex items-center gap-2 rounded-xl border border-line bg-[#faf7ff] px-4 py-3 font-mono text-[15px] font-bold text-ink"><span className="min-w-0 flex-1 break-all">{result.password}</span><Copy text={result.password} /></div>
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-[#f7fffb] px-4 py-3 font-mono text-[15px] font-bold text-ink"><span className="min-w-0 flex-1 break-all">{result.password}</span><Copy text={result.password} /></div>
             <p className="mt-2 text-xs text-mute">Share it with {c.email} securely. They can change it under Account → Security.</p>
           </div>
           <div className="flex justify-end"><Button onClick={onClose}>Done</Button></div>
@@ -591,7 +591,7 @@ function SetPasswordModal({ open, onClose, client: c, onDone }: { open: boolean;
             ))}
           </div>
           {mode === "own" && <Field label="New password" hint="At least 8 characters"><Input type="text" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus /></Field>}
-          <div className="space-y-2.5 rounded-xl bg-[#fbf9ff] p-4">
+          <div className="space-y-2.5 rounded-xl bg-[#f6fbf8] p-4">
             <Toggle checked={sendEmail} onChange={setSendEmail} label={`Email the new password to ${c.email}`} />
             <Toggle checked={sendWa} onChange={setSendWa} label={c.phone ? `Send it on WhatsApp to ${c.phone}` : "Send it on WhatsApp (no mobile number)"} />
             <Toggle checked={signOut} onChange={setSignOut} label="Sign the client out everywhere" />
@@ -683,7 +683,7 @@ function ProfileModal({ open, onClose, c, onDone }: any) {
             {inp("phone", "Phone / mobile", { type: "tel", placeholder: "+91 98765 43210", hint: "Also used for WhatsApp" })}
           </div>
           <label className="mt-2.5 flex items-start gap-2 text-sm text-slate-700">
-            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#6d28d9]" checked={!!f.emailVerified} onChange={(e) => setF({ ...f, emailVerified: e.target.checked })} />
+            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#007a40]" checked={!!f.emailVerified} onChange={(e) => setF({ ...f, emailVerified: e.target.checked })} />
             <span>Email is verified{emailChanged && <span className="block text-[12.5px] text-amber-700">You changed the email — leave this unticked to make the client confirm the new address, or tick it if you&apos;ve checked it yourself.</span>}</span>
           </label>
         </section>
@@ -837,11 +837,11 @@ function MergeModal({ open, onClose, c, onDone }: any) {
     <Modal open={open} onClose={onClose} title="Merge clients accounts">
       <p className="mb-3 text-sm text-mute">Everything on <b>{c.email}</b> — services, orders, invoices, payments, tickets, domains, contacts, files, pay methods and credit — moves to the account you choose. {c.email} is then closed.</p>
       {target ? (
-        <div className="flex items-center justify-between rounded-xl bg-primary-tint px-4 py-3 ring-1 ring-[#e9d5ff]"><div><b>{fullName(target)}</b><div className="text-xs text-mute">{target.email}</div></div><Button size="sm" variant="ghost" onClick={() => setTarget(null)}>Change</Button></div>
+        <div className="flex items-center justify-between rounded-xl bg-primary-tint px-4 py-3 ring-1 ring-[#c9f5da]"><div><b>{fullName(target)}</b><div className="text-xs text-mute">{target.email}</div></div><Button size="sm" variant="ghost" onClick={() => setTarget(null)}>Change</Button></div>
       ) : (
         <>
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the account to merge into…" autoFocus />
-          {found.length > 0 && <div className="mt-2 divide-y divide-line overflow-hidden rounded-xl border border-line">{found.map((x) => <button key={x.id} type="button" onClick={() => setTarget(x)} className="flex w-full justify-between px-4 py-2.5 text-left text-sm hover:bg-[#fbf9ff]"><span><b>{fullName(x)}</b> <span className="text-mute">{x.email}</span></span><Icon name="chevron_right" className="text-mute" /></button>)}</div>}
+          {found.length > 0 && <div className="mt-2 divide-y divide-line overflow-hidden rounded-xl border border-line">{found.map((x) => <button key={x.id} type="button" onClick={() => setTarget(x)} className="flex w-full justify-between px-4 py-2.5 text-left text-sm hover:bg-[#f6fbf8]"><span><b>{fullName(x)}</b> <span className="text-mute">{x.email}</span></span><Icon name="chevron_right" className="text-mute" /></button>)}</div>}
         </>
       )}
       <Button className="mt-4" variant="danger" loading={busy} disabled={!target} onClick={async () => {
@@ -892,7 +892,7 @@ function CreditModal({ open, onClose, id, currency = "INR", balance = 0, onDone 
   return (
     <Modal open={open} onClose={onClose} title="Manage credit">
       <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl bg-[#faf7ff] px-4 py-3 ring-1 ring-[#ede4ff]">
+        <div className="flex items-center justify-between rounded-xl bg-[#f7fffb] px-4 py-3 ring-1 ring-[#e4fff2]">
           <span className="text-sm text-mute">Current credit balance</span>
           <b className="text-lg text-ink">{money(balance, currency)}</b>
         </div>
@@ -987,7 +987,7 @@ function ClientEmails({ id }: { id: string }) {
           {data.items.map((e: any) => {
             const st = EMAIL_STATUS[e.status] ?? { label: e.status, tone: "text-slate-600 bg-slate-100 ring-slate-200", dot: "bg-slate-400" };
             return (
-              <li key={e.id} className="flex flex-col gap-2 px-4 py-3 hover:bg-[#fbf9ff] sm:flex-row sm:items-center">
+              <li key={e.id} className="flex flex-col gap-2 px-4 py-3 hover:bg-[#f6fbf8] sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className={cx("h-2 w-2 shrink-0 rounded-full", st.dot)} />

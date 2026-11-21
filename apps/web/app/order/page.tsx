@@ -153,7 +153,7 @@ function Compare({ products, currency }: { products: any[]; currency: string }) 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="bg-[#faf7ff] text-left">
+            <tr className="bg-[#f7fffb] text-left">
               <th className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-mute">Plan</th>
               {products.map((p) => <th key={p.id} className="px-4 py-3 text-[13px] font-extrabold text-ink">{p.name}{p.featured && <span className="ml-1.5 rounded bg-primary-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-dark">Popular</span>}</th>)}
             </tr>
@@ -232,7 +232,7 @@ function Catalog() {
 
       {g && (
         <section className="mt-6">
-          <div className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl bg-gradient-to-r from-[#2e1065] via-[#4c1d95] to-[#6d28d9] p-6 text-white shadow-card">
+          <div className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl bg-gradient-to-r from-[#00391b] via-[#00512a] to-[#007a40] p-6 text-white shadow-card">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20"><Icon name={groupIcon(g.name)} className="text-[26px]" /></span>
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-extrabold">{g.name}</h2>

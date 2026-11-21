@@ -15,7 +15,7 @@ export function AdminAuthCard({ title, subtitle, eyebrow = "Admin console", chil
       {/* brand side */}
       <aside className="relative hidden overflow-hidden bg-[#0b0f2a] text-white lg:flex lg:flex-col">
         <div className="pointer-events-none absolute -left-32 -top-32 h-[520px] w-[520px] rounded-full bg-sky-500/25 blur-[110px]" />
-        <div className="pointer-events-none absolute -bottom-40 -right-24 h-[560px] w-[560px] rounded-full bg-violet-600/30 blur-[120px]" />
+        <div className="pointer-events-none absolute -bottom-40 -right-24 h-[560px] w-[560px] rounded-full bg-emerald-600/30 blur-[120px]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.05)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_30%_40%,#000_10%,transparent_70%)]" />
 
         <div className="relative flex flex-1 flex-col px-12 py-10 xl:px-16">
@@ -30,12 +30,12 @@ export function AdminAuthCard({ title, subtitle, eyebrow = "Admin console", chil
             </span>
             <h2 className="mt-5 text-[40px] font-extrabold leading-[1.1] tracking-tight xl:text-[46px]">
               Run your hosting business from{" "}
-              <span className="bg-gradient-to-r from-sky-300 via-indigo-300 to-violet-300 bg-clip-text text-transparent">one console.</span>
+              <span className="bg-gradient-to-r from-sky-300 via-indigo-300 to-emerald-300 bg-clip-text text-transparent">one console.</span>
             </h2>
             <ul className="mt-9 space-y-5">
               {POINTS.map((p) => (
                 <li key={p.title} className="flex gap-4">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-400/20 to-violet-500/25 text-sky-200 ring-1 ring-white/10">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-400/20 to-emerald-500/25 text-sky-200 ring-1 ring-white/10">
                     <Icon name={p.icon} className="text-[22px]" />
                   </span>
                   <span>
@@ -59,7 +59,7 @@ export function AdminAuthCard({ title, subtitle, eyebrow = "Admin console", chil
       </aside>
 
       {/* form side */}
-      <main className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_100%_0%,#eef6ff_0,transparent_40%),radial-gradient(circle_at_0%_100%,#f5efff_0,transparent_45%)] px-5 py-8 sm:px-10">
+      <main className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_100%_0%,#eef6ff_0,transparent_40%),radial-gradient(circle_at_0%_100%,#effff7_0,transparent_45%)] px-5 py-8 sm:px-10">
         <div className="flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/Primocloud_logo.png" alt="PrimoCloud" className="h-10 w-auto sm:h-11 lg:invisible" />
@@ -71,7 +71,7 @@ export function AdminAuthCard({ title, subtitle, eyebrow = "Admin console", chil
         <div className="mx-auto my-auto w-full max-w-[420px] py-10 fade-up">
           <div className="mb-7">
             <div className="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-[.18em] text-indigo-600">
-              <span className="h-1.5 w-5 rounded-full bg-gradient-to-r from-sky-400 to-violet-500" />
+              <span className="h-1.5 w-5 rounded-full bg-gradient-to-r from-sky-400 to-emerald-500" />
               {eyebrow}
             </div>
             <h1 className="mt-2.5 text-[30px] font-extrabold leading-tight tracking-tight text-ink">{title}</h1>

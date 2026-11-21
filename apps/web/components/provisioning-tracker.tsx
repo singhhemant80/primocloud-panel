@@ -95,15 +95,15 @@ export function ProvisioningTracker({ path, audience, onChange, onRetry, compact
   }
 
   return (
-    <section className={cx("mb-6 overflow-hidden rounded-2xl border bg-white shadow-card", failed ? "border-rose-200" : done ? "border-emerald-200" : "border-[#e9d5ff]")}>
-      <div className={cx("flex flex-wrap items-start gap-4 px-5 py-4 sm:px-6", failed ? "bg-rose-50/70" : done ? "bg-emerald-50/60" : "bg-[#faf6ff]")}>
+    <section className={cx("mb-6 overflow-hidden rounded-2xl border bg-white shadow-card", failed ? "border-rose-200" : done ? "border-emerald-200" : "border-[#c9f5da]")}>
+      <div className={cx("flex flex-wrap items-start gap-4 px-5 py-4 sm:px-6", failed ? "bg-rose-50/70" : done ? "bg-emerald-50/60" : "bg-[#f6fffb]")}>
         <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-xl", failed ? "bg-rose-100 text-rose-600" : done ? "bg-emerald-100 text-emerald-600" : "bg-primary-soft text-primary-dark")}>
           {p.inProgress ? <span className="h-5 w-5 animate-spin rounded-full border-[3px] border-current border-t-transparent" /> : <Icon name={failed ? "error" : done ? "check_circle" : retrying ? "autorenew" : "hourglass_top"} className="text-[24px]" fill />}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h3 className="text-[17px] font-extrabold text-ink">{p.headline}</h3>
-            {p.inProgress && p.startedAt && <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-primary-dark ring-1 ring-[#e9d5ff]">running {elapsed(p.startedAt)}</span>}
+            {p.inProgress && p.startedAt && <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-primary-dark ring-1 ring-[#c9f5da]">running {elapsed(p.startedAt)}</span>}
             {done && p.startedAt && p.finishedAt && <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">built in {elapsed(p.startedAt, p.finishedAt)}</span>}
             {audience === "admin" && p.job && p.job.maxAttempts > 1 && !done && <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-slate-600 ring-1 ring-line">attempt {Math.max(1, p.job.attempt)} of {p.job.maxAttempts} · {p.job.state}</span>}
           </div>
@@ -135,7 +135,7 @@ export function ProvisioningTracker({ path, audience, onChange, onRetry, compact
               className={cx(
                 "relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full ring-4 ring-white",
                 s.state === "done" && "bg-emerald-500 text-white",
-                s.state === "current" && "bg-primary text-white shadow-[0_0_0_6px_rgba(163,101,254,.18)]",
+                s.state === "current" && "bg-primary text-white shadow-[0_0_0_6px_rgba(11,175,96,.18)]",
                 s.state === "failed" && "bg-rose-500 text-white",
                 s.state === "pending" && "bg-slate-100 text-slate-400",
               )}
