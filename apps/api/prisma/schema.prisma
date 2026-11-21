@@ -1,0 +1,1514 @@
+// PrimoCloud — hosting automation & billing platform
+// All money values are stored as integers in the currency's minor unit (paise for INR).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Identity & access ─────────────────────────────
+
+enum UserType {
+  CLIENT
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+model User {
+  id              String      @id @default(cuid())
+  type            UserType    @default(CLIENT)
+  email           String      @unique
+  passwordHash    String
+  firstName       String
+  lastName        String      @default("")
+  phone           String?
+  status          UserStatus  @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  totpSecretEnc   String?
+  totpEnabled     Boolean     @default(false)
+  /** offers & news emails (Email Campaigns of the "Offer" kind); unticked by the customer or an unsubscribe link */
+  marketingEmails   Boolean   @default(true)
+  marketingOptOutAt DateTime?
+  roleId          String?
+  role            Role?       @relation(fields: [roleId], references: [id])
+  // a client created by a reseller belongs to that reseller
+  ownerResellerId String?
+  ownerReseller   Reseller?   @relation("ResellerCustomers", fields: [ownerResellerId], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  profile        ClientProfile?
+  sessions       Session[]
+  loginHistory   LoginHistory[]
+  tokens         VerificationToken[]
+  orders         Order[]
+  services       Service[]
+  invoices       Invoice[]
+  transactions   Transaction[]
+  creditLedger   CreditLedger[]
+  tickets        Ticket[]              @relation("TicketClient")
+  assignedTickets Ticket[]             @relation("TicketAssignee")
+  ticketMessages TicketMessage[]
+  domains        Domain[]
+  apiKeys        ApiKey[]
+  reseller       Reseller?             @relation("ResellerUser")
+  affiliate      Affiliate?
+  referredBy     Referral[]            @relation("ReferredUser")
+  reservedIps    IpAddress[]           @relation("IpReservedBy")
+  paymentIntents PaymentIntent[]
+  activity       ActivityLog[]         @relation("ActivityUser")
+  contacts       ClientContact[]
+  files          ClientFile[]
+  payMethods     PayMethod[]
+  billableItems    BillableItem[]
+  quotes           Quote[]
+}
+
+/** Extra people on a customer's account (billing, technical…) — WHMCS "Contacts". */
+model ClientContact {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName   String
+  lastName    String   @default("")
+  email       String
+  phone       String?
+  companyName String?
+  /** which emails they get: general | invoice | support | product | domain */
+  emails      String[] @default([])
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+/** Files kept on a customer's account (contracts, KYC…). adminOnly files aren't shown to the customer. */
+model ClientFile {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  filename     String
+  storedAs     String
+  size         Int
+  mime         String?
+  adminOnly    Boolean  @default(true)
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+/**
+ * A saved way to pay (card / UPI AutoPay / e-mandate / bank). Only the gateway's token or mandate id is
+ * kept (encrypted) — never card numbers. autopay = charge renewal invoices to it automatically.
+ */
+model PayMethod {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String // CARD | UPI | MANDATE | BANK | OTHER
+  gateway    String // razorpay | cashfree | stripe | manual…
+  label      String // "HDFC Visa •••• 4242", "UPI AutoPay — name@okhdfc"
+  brand      String?
+  last4      String?
+  expiry     String? // MM/YY
+  tokenEnc   String? // gateway customer/token/mandate id, encrypted
+  isDefault  Boolean   @default(false)
+  autopay    Boolean   @default(false)
+  status     String    @default("ACTIVE") // ACTIVE | PAUSED | EXPIRED | REVOKED
+  /** gateway's token / mandate id (Razorpay token_…) — to match the gateway's token.* webhooks */
+  externalId String?   @unique
+  /** most the mandate allows per debit (paise) — set when the customer approved it */
+  maxAmount  Int?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
+}
+
+model ClientProfile {
+  userId        String  @id
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName   String?
+  gstin         String?
+  pan           String?
+  address1      String  @default("")
+  address2      String?
+  city          String  @default("")
+  state         String  @default("")
+  stateCode     String? // GST state code, e.g. "23" for Madhya Pradesh
+  country       String  @default("IN")
+  postcode      String  @default("")
+  currency      String  @default("INR")
+  creditBalance Int     @default(0)
+  notes         String?
+  affiliateRef  String?
+  /// client accepts WhatsApp notifications (they can switch it off in their profile)
+  whatsappNotifications Boolean @default(true)
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions String[] @default([]) // e.g. ["clients.view","invoices.manage","*"]
+  users       User[]
+  createdAt   DateTime @default(now())
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ip               String?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+  /// last request / heartbeat from this session (for "online now"), and the page it was on
+  lastSeenAt       DateTime?
+  lastPath         String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  /** staff user who opened this client session with "Login as client" */
+  impersonatedById String?
+  /** staff "confirm your password" window — Products, Servers, Setup and critical actions work until then */
+  sudoUntil        DateTime?
+  sudoFailures     Int       @default(0)
+
+  @@index([userId])
+
+  @@index([lastSeenAt])
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  ip        String?
+  userAgent String?
+  success   Boolean
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+enum TokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      TokenType
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyPrefix  String    @unique
+  keyHash    String
+  scopes     String[] @default([])
+  allowedIps String[] @default([])
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// ───────────────────────────── Settings ─────────────────────────────
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model Currency {
+  code      String  @id // INR, USD
+  prefix    String
+  suffix    String  @default("")
+  rate      Float   @default(1) // units per 1 INR
+  isDefault Boolean @default(false)
+  enabled   Boolean @default(true)
+}
+
+// ───────────────────────────── Catalogue ─────────────────────────────
+
+enum ProductType {
+  SHARED
+  RESELLER_HOSTING
+  WORDPRESS
+  VPS_LINUX
+  VPS_WINDOWS
+  VPS_FOREX
+  TALLY
+  VPS_N8N
+  VPS_MINECRAFT
+  VPS_GOLD
+  DEDICATED
+  GPU
+  COLOCATION
+  CUSTOM
+}
+
+enum Provisioner {
+  PROXMOX
+  VIRTUALIZOR
+  MANUAL
+  NONE
+  CPANEL
+}
+
+enum VirtType {
+  KVM
+  LXC
+}
+
+enum BillingCycle {
+  ONETIME
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+  BIENNIAL
+  TRIENNIAL
+}
+
+enum AutoSetup {
+  ON_PAYMENT
+  ON_ORDER
+  MANUAL
+}
+
+model ProductGroup {
+  id          String    @id @default(cuid())
+  legacyGid   Int?      @unique // WHMCS gid used by the existing website links (cart.php?gid=2)
+  name        String
+  slug        String    @unique
+  description String?
+  headline    String?
+  sortOrder   Int       @default(0)
+  hidden      Boolean   @default(false)
+  products    Product[]
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  legacyPid        Int?          @unique // WHMCS pid used by the existing website links
+  groupId          String
+  group            ProductGroup  @relation(fields: [groupId], references: [id])
+  name             String
+  slug             String        @unique
+  type             ProductType
+  tagline          String?
+  description      String?
+  features         String[] @default([])
+  imageUrl         String?
+  provisioner      Provisioner   @default(MANUAL)
+  virtType         VirtType      @default(KVM)
+  cpuCores         Int?
+  ramMb            Int?
+  diskGb           Int?
+  bandwidthGb      Int? // null = unmetered
+  ipv4Count        Int           @default(0)
+  ipv6Enabled      Boolean       @default(false)
+  allowIpSelection Boolean       @default(false)
+  requireHostname  Boolean       @default(false)
+  /// staff switch: shown on the website / order page as "Out of stock" and can't be ordered
+  outOfStock       Boolean       @default(false)
+  /// WHMCS-style free domain with hosting: none | once (first year) | recurring (free while the plan is kept)
+  freeDomain       String        @default("none")
+  /// billing cycles that qualify for the free domain (empty = any)
+  freeDomainCycles BillingCycle[] @default([])
+  /// TLDs that qualify, like ".com" (empty = any TLD we sell)
+  freeDomainTlds   String[]      @default([])
+  hsnSac           String        @default("998315")
+  taxable          Boolean       @default(true)
+  stockControl     Boolean       @default(false)
+  stockQty         Int           @default(0)
+  enabled          Boolean       @default(true)
+  hidden           Boolean       @default(false)
+  featured         Boolean       @default(false)
+  autoSetup        AutoSetup     @default(ON_PAYMENT)
+  sortOrder        Int           @default(0)
+  // provisioner specific: { proxmox: { storage, bridge, vlan, cpuType, onboot }, virtualizor: { planId, virt } }
+  moduleConfig     Json          @default("{}")
+  resellerEnabled  Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  pricing          ProductPricing[]
+  wholesalePricing WholesalePrice[]
+  servers          ProductServer[]
+  osTemplates      ProductOs[]
+  configOptions    ConfigOption[]
+  addons           AddonProduct[]
+  services         Service[]
+  resellerPrices   ResellerPrice[]
+}
+
+model ProductPricing {
+  id        String       @id @default(cuid())
+  productId String
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  currency  String       @default("INR")
+  cycle     BillingCycle
+  price     Int
+  setupFee  Int          @default(0)
+  enabled   Boolean      @default(true)
+
+  @@unique([productId, currency, cycle])
+}
+
+model WholesalePrice {
+  id        String       @id @default(cuid())
+  productId String
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cycle     BillingCycle
+  price     Int
+
+  @@unique([productId, cycle])
+}
+
+model ProductServer {
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  serverId  String
+  server    Server  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@id([productId, serverId])
+}
+
+model OsTemplate {
+  id              String      @id @default(cuid())
+  name            String
+  family          String      @default("linux") // linux | windows
+  // Proxmox: KVM template VMID to clone, or LXC ostemplate volid "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+  proxmoxKvmVmid  Int?
+  proxmoxLxcVolid String?
+  virtualizorOsId Int?
+  /// set for templates imported from a Virtualizor master: which server, its virt type (kvm, proxk…), distro and raw file name
+  virtualizorServerId String?
+  virtualizorVirt String?
+  distro          String?
+  remoteName      String?
+  /// optional image shown on the order page instead of the built-in logo (e.g. an official Windows logo you're licensed to use)
+  logoUrl         String?
+  /// manual | virtualizor
+  source          String      @default("manual")
+  syncedAt        DateTime?
+  defaultUser     String      @default("root")
+  enabled         Boolean     @default(true)
+  sortOrder       Int         @default(0)
+  products        ProductOs[]
+  services        Service[]
+
+  @@unique([virtualizorServerId, virtualizorOsId])
+}
+
+model ProductOs {
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  osTemplateId String
+  osTemplate   OsTemplate @relation(fields: [osTemplateId], references: [id], onDelete: Cascade)
+
+  @@id([productId, osTemplateId])
+}
+
+enum ConfigOptionType {
+  SELECT
+  QUANTITY
+  YESNO
+}
+
+model ConfigOption {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  key       String // extra_ram_gb, extra_ipv4, ...
+  label     String
+  type      ConfigOptionType
+  minQty    Int              @default(0)
+  maxQty    Int              @default(0)
+  // SELECT: [{ value, label, monthly }]; QUANTITY/YESNO: unit monthly price in `unitMonthly`
+  choices   Json             @default("[]")
+  unitMonthly Int            @default(0)
+  /// other currencies for unitMonthly: { "USD": 120 }; SELECT choices carry their own { prices: { USD } }
+  unitPrices Json            @default("{}")
+  sortOrder Int              @default(0)
+
+  @@unique([productId, key])
+}
+
+model Addon {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  monthly     Int
+  setupFee    Int            @default(0)
+  /// other currencies: { "USD": { "monthly": 199, "setupFee": 0 } } (minor units); missing = auto-convert
+  prices      Json           @default("{}")
+  taxable     Boolean        @default(true)
+  enabled     Boolean        @default(true)
+  products    AddonProduct[]
+  services    ServiceAddon[]
+}
+
+model AddonProduct {
+  addonId   String
+  addon     Addon   @relation(fields: [addonId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([addonId, productId])
+}
+
+enum PromoType {
+  PERCENT
+  FIXED
+}
+
+model PromoCode {
+  id          String         @id @default(cuid())
+  code        String         @unique
+  type        PromoType
+  value       Int // percent (0-100) or fixed amount in minor units (INR)
+  /// FIXED promos in other currencies: { "USD": 500 }; missing = auto-convert from INR
+  fixedAmounts Json          @default("{}")
+  recurring   Boolean        @default(false)
+  productIds  String[] @default([]) // empty = all
+  cycles      BillingCycle[] @default([]) // empty = all
+  maxUses     Int            @default(0) // 0 = unlimited
+  uses        Int            @default(0)
+  newOnly     Boolean        @default(false)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  enabled     Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+}
+
+// ───────────────────────────── Infrastructure ─────────────────────────────
+
+model Location {
+  id      String     @id @default(cuid())
+  name    String
+  code    String     @unique
+  country String     @default("IN")
+  servers Server[]
+  subnets IpSubnet[]
+}
+
+enum ServerType {
+  PROXMOX
+  VIRTUALIZOR
+  MANUAL
+  CPANEL
+}
+
+model Server {
+  id            String     @id @default(cuid())
+  name          String
+  type          ServerType
+  locationId    String?
+  location      Location?  @relation(fields: [locationId], references: [id])
+  hostname      String
+  port          Int        @default(8006)
+  // Proxmox: "user@realm!tokenid"; Virtualizor: API key
+  apiUser       String?
+  apiSecretEnc  String? // AES-256-GCM
+  verifyTls     Boolean    @default(true)
+  defaultNode   String?
+  storage       String?    @default("local-lvm")
+  bridge        String?    @default("vmbr0")
+  // thresholds in percent
+  maxCpuPct     Int        @default(85)
+  maxRamPct     Int        @default(90)
+  maxDiskPct    Int        @default(90)
+  maxServices   Int        @default(0)
+  /// cPanel: nameservers shown to customers in the welcome email and client area
+  nameservers   String[]   @default([])
+  enabled       Boolean    @default(true)
+  lastCheckAt   DateTime?
+  lastStatus    Json?
+  createdAt     DateTime   @default(now())
+
+  nodes    ServerNode[]
+  products ProductServer[]
+  services Service[]
+  subnets  IpSubnet[]
+  ips      IpAddress[]
+}
+
+model ServerNode {
+  id        String   @id @default(cuid())
+  serverId  String
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  name      String
+  enabled   Boolean  @default(true)
+  online    Boolean  @default(true)
+  cpuPct    Float    @default(0)
+  ramUsedMb Int      @default(0)
+  ramTotalMb Int     @default(0)
+  diskUsedGb Int     @default(0)
+  diskTotalGb Int    @default(0)
+  /// id of the node on the panel (Virtualizor serid); null for Proxmox
+  externalId String?
+  /// extra live data: ip, vps count, load average, virt, cpu model, uptime, errors…
+  meta      Json?
+  updatedAt DateTime @updatedAt
+
+  @@unique([serverId, name])
+}
+
+enum IpStatus {
+  AVAILABLE
+  RESERVED
+  ALLOCATED
+  BLOCKED
+  MAINTENANCE
+  QUARANTINED
+}
+
+model IpSubnet {
+  id         String      @id @default(cuid())
+  cidr       String      @unique
+  version    Int         @default(4)
+  gateway    String?
+  prefix     Int
+  serverId   String?
+  server     Server?     @relation(fields: [serverId], references: [id])
+  locationId String?
+  location   Location?   @relation(fields: [locationId], references: [id])
+  vlan       Int?
+  notes      String?
+  /// imported from a Virtualizor IP pool: its ippid and the node serids the pool is attached to (empty = all)
+  externalPoolId Int?
+  nodeIds    String[]    @default([])
+  createdAt  DateTime    @default(now())
+  ips        IpAddress[]
+}
+
+model IpAddress {
+  id               String      @id @default(cuid())
+  address          String      @unique
+  version          Int         @default(4)
+  subnetId         String?
+  subnet           IpSubnet?   @relation(fields: [subnetId], references: [id])
+  serverId         String?
+  server           Server?     @relation(fields: [serverId], references: [id])
+  status           IpStatus    @default(AVAILABLE)
+  reservedById     String?
+  reservedBy       User?       @relation("IpReservedBy", fields: [reservedById], references: [id])
+  reservedOrderId  String?
+  reservedUntil    DateTime?
+  serviceId        String?
+  service          Service?    @relation(fields: [serviceId], references: [id])
+  isPrimary        Boolean     @default(false)
+  rdns             String?
+  notes            String?
+  updatedAt        DateTime    @updatedAt
+  createdAt        DateTime    @default(now())
+  history          IpHistory[]
+
+  @@index([status, serverId])
+  @@index([reservedUntil])
+}
+
+model IpHistory {
+  id         String    @id @default(cuid())
+  ipId       String
+  ip         IpAddress @relation(fields: [ipId], references: [id], onDelete: Cascade)
+  action     String
+  fromStatus IpStatus?
+  toStatus   IpStatus?
+  userId     String?
+  serviceId  String?
+  actorId    String?
+  note       String?
+  createdAt  DateTime  @default(now())
+
+  @@index([ipId, createdAt])
+}
+
+// ───────────────────────────── Orders & services ─────────────────────────────
+
+enum OrderStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+  CANCELLED
+  FRAUD
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  number      String      @unique
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  status      OrderStatus @default(PENDING)
+  /// staff pinned the status by hand — automatic updates from the services are paused
+  statusLocked Boolean    @default(false)
+  invoiceId   String?     @unique
+  invoice     Invoice?    @relation(fields: [invoiceId], references: [id])
+  promoCode   String?
+  currency    String      @default("INR")
+  total       Int
+  ip          String?
+  notes       String?
+  resellerId  String?
+  createdAt   DateTime    @default(now())
+  services    Service[]
+  domains     Domain[]
+}
+
+enum ServiceStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+  CANCELLED
+  FAILED
+}
+
+model Service {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  orderId          String?
+  order            Order?        @relation(fields: [orderId], references: [id])
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id])
+  serverId         String?
+  server           Server?       @relation(fields: [serverId], references: [id])
+  node             String?
+  status           ServiceStatus @default(PENDING)
+  billingCycle     BillingCycle
+  currency         String        @default("INR")
+  firstAmount      Int
+  recurringAmount  Int
+  registrationDate DateTime      @default(now())
+  nextDueDate      DateTime?
+  nextInvoiceDate  DateTime?
+  terminationDate  DateTime?
+  /// why it was terminated / cancelled (shown to the customer and staff)
+  terminationReason String?
+  /// the reseller's own order reference (API idempotency — one service per reference)
+  resellerRef      String?
+  hostname         String?
+  username         String?
+  passwordEnc      String?
+  osTemplateId     String?
+  osTemplate       OsTemplate?   @relation(fields: [osTemplateId], references: [id])
+  config           Json          @default("{}") // selected config options, requested IP id, etc.
+  remoteId         String? // Proxmox VMID / Virtualizor vpsid
+  virtType         VirtType?
+  ipv6Address      String?
+  suspendReason    String?
+  overrideAutoSuspend Boolean    @default(false)
+  resellerId       String? // created by a reseller for their customer
+  reseller         Reseller?     @relation(fields: [resellerId], references: [id])
+  retailAmount     Int? // what the reseller charges their customer
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  ips              IpAddress[]
+  addons           ServiceAddon[]
+  upgrades         ServiceUpgrade[]
+  logs             ProvisioningLog[]
+  tickets          Ticket[]
+
+  @@index([status, nextDueDate])
+  @@index([userId])
+
+  @@unique([resellerId, resellerRef])
+}
+
+model ServiceAddon {
+  id              String   @id @default(cuid())
+  serviceId       String
+  service         Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  addonId         String
+  addon           Addon    @relation(fields: [addonId], references: [id])
+  recurringAmount Int
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+}
+
+model ProvisioningLog {
+  id        String   @id @default(cuid())
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  action    String
+  success   Boolean
+  message   String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([serviceId, createdAt])
+}
+
+// ───────────────────────────── Billing ─────────────────────────────
+
+enum InvoiceStatus {
+  DRAFT
+  UNPAID
+  PAID
+  CANCELLED
+  REFUNDED
+  COLLECTIONS
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  number           String?       @unique // tax invoice number, assigned on payment (sequential per FY)
+  proformaNumber   String        @unique
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  status           InvoiceStatus @default(UNPAID)
+  currency         String        @default("INR")
+  /// INR per 1 unit of `currency` when issued (1 for INR) — for GST returns / export invoices
+  exchangeRate     Float         @default(1)
+  issueDate        DateTime      @default(now())
+  dueDate          DateTime
+  paidAt           DateTime?
+  subtotal         Int
+  discount         Int           @default(0)
+  taxableAmount    Int           @default(0)
+  cgst             Int           @default(0)
+  sgst             Int           @default(0)
+  igst             Int           @default(0)
+  taxTotal         Int           @default(0)
+  total            Int
+  amountPaid       Int           @default(0)
+  creditApplied    Int           @default(0)
+  taxInclusive     Boolean       @default(false)
+  gstRate          Float         @default(18)
+  placeOfSupply    String?
+  placeOfSupplyCode String?
+  customerGstin    String?
+  billingSnapshot  Json? // customer name / address at time of invoice
+  isWalletTopup    Boolean       @default(false)
+  notes            String?
+  remindersSent    Int           @default(0)
+  lastReminderAt   DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  items            InvoiceItem[]
+  transactions     Transaction[]
+  creditNotes      CreditNote[]
+  order            Order?
+  paymentIntents   PaymentIntent[]
+
+  @@index([status, dueDate])
+  @@index([userId])
+}
+
+enum InvoiceItemType {
+  SERVICE
+  SETUP
+  ADDON
+  DOMAIN
+  PROMO
+  LATE_FEE
+  WALLET
+  CUSTOM
+  UPGRADE // relId = ServiceUpgrade id
+}
+
+model InvoiceItem {
+  id          String          @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  type        InvoiceItemType
+  relId       String? // service / domain id
+  description String
+  hsnSac      String?
+  quantity    Int             @default(1)
+  unitPrice   Int
+  amount      Int
+  taxable     Boolean         @default(true)
+  periodStart DateTime?
+  periodEnd   DateTime?
+}
+
+model CreditNote {
+  id        String   @id @default(cuid())
+  number    String   @unique
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+  userId    String
+  amount    Int
+  taxAmount Int      @default(0)
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+enum TransactionType {
+  PAYMENT
+  REFUND
+  WALLET_TOPUP
+  CREDIT_APPLIED
+}
+
+model Transaction {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  invoiceId    String?
+  invoice      Invoice?        @relation(fields: [invoiceId], references: [id])
+  gateway      String
+  gatewayTxnId String
+  type         TransactionType @default(PAYMENT)
+  amount       Int
+  fee          Int             @default(0)
+  currency     String          @default("INR")
+  description  String?
+  raw          Json?
+  /// for REFUND rows: the payment (PAYMENT / CREDIT_APPLIED transaction) this refund reverses
+  refundOfId   String?
+  createdAt    DateTime        @default(now())
+
+  @@unique([gateway, gatewayTxnId, type])
+  @@index([userId])
+  @@index([refundOfId])
+}
+
+enum IntentStatus {
+  CREATED
+  PENDING_REVIEW
+  PAID
+  FAILED
+  EXPIRED
+  REJECTED
+}
+
+model PaymentIntent {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id])
+  gateway        String
+  gatewayOrderId String?
+  amount         Int
+  currency       String       @default("INR")
+  status         IntentStatus @default(CREATED)
+  reference      String? // UTR for bank / UPI submissions
+  meta           Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([gateway, gatewayOrderId])
+}
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  gateway     String
+  eventId     String
+  type        String?
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([gateway, eventId])
+}
+
+model PaymentGateway {
+  code       String  @id // razorpay, cashfree, payu, stripe, bank, upi, manual, custom
+  name       String
+  enabled    Boolean @default(false)
+  testMode   Boolean @default(true)
+  configEnc  String? // encrypted JSON of secrets
+  publicConfig Json  @default("{}") // non-secret display config (bank details, UPI VPA)
+  sortOrder  Int     @default(0)
+}
+
+model CreditLedger {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  amount       Int // + credit, - debit
+  balanceAfter Int
+  description  String
+  refType      String?
+  refId        String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ───────────────────────────── Domains ─────────────────────────────
+
+enum DomainStatus {
+  PENDING
+  PENDING_TRANSFER
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  TRANSFERRED_AWAY
+}
+
+model Domain {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id])
+  orderId         String?
+  order           Order?       @relation(fields: [orderId], references: [id])
+  name            String       @unique
+  registrar       String       @default("manual")
+  status          DomainStatus @default(PENDING)
+  action          String       @default("register") // register | transfer
+  years           Int          @default(1)
+  registrationDate DateTime?
+  expiryDate      DateTime?
+  nextDueDate     DateTime?
+  recurringAmount Int
+  currency        String       @default("INR")
+  autoRenew       Boolean      @default(true)
+  locked          Boolean      @default(true)
+  idProtection    Boolean      @default(false)
+  nameservers     String[] @default([])
+  eppCodeEnc      String?
+  createdAt       DateTime     @default(now())
+  dnsRecords      DnsRecord[]
+}
+
+model DnsRecord {
+  id       String @id @default(cuid())
+  domainId String
+  domain   Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  type     String
+  name     String
+  content  String
+  ttl      Int    @default(3600)
+  priority Int?
+}
+
+model DomainPricing {
+  tld      String  @id // ".in"
+  register Int
+  transfer Int
+  renew    Int
+  /// other currencies: { "USD": { "register": 1199, "transfer": 1199, "renew": 1299 } }
+  prices   Json    @default("{}")
+  enabled  Boolean @default(true)
+  registrar String @default("manual")
+}
+
+// ───────────────────────────── Support ─────────────────────────────
+
+model TicketDepartment {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  email     String?
+  hidden    Boolean  @default(false)
+  slaHours  Int      @default(4)
+  sortOrder Int      @default(0)
+  tickets   Ticket[]
+}
+
+enum TicketStatus {
+  OPEN
+  ANSWERED
+  CUSTOMER_REPLY
+  IN_PROGRESS
+  ON_HOLD
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id              String           @id @default(cuid())
+  number          String           @unique
+  userId          String
+  user            User             @relation("TicketClient", fields: [userId], references: [id])
+  departmentId    String
+  department      TicketDepartment @relation(fields: [departmentId], references: [id])
+  serviceId       String?
+  service         Service?         @relation(fields: [serviceId], references: [id])
+  subject         String
+  status          TicketStatus     @default(OPEN)
+  priority        TicketPriority   @default(MEDIUM)
+  assignedToId    String?
+  assignedTo      User?            @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  slaDueAt        DateTime?
+  firstResponseAt DateTime?
+  lastReplyAt     DateTime         @default(now())
+  closedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  messages        TicketMessage[]
+
+  @@index([status, lastReplyAt])
+}
+
+model TicketMessage {
+  id          String             @id @default(cuid())
+  ticketId    String
+  ticket      Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId    String?
+  author      User?              @relation(fields: [authorId], references: [id])
+  fromEmail   String?
+  isStaff     Boolean            @default(false)
+  isNote      Boolean            @default(false)
+  body        String
+  createdAt   DateTime           @default(now())
+  attachments TicketAttachment[]
+}
+
+model TicketAttachment {
+  id        String        @id @default(cuid())
+  messageId String
+  message   TicketMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  filename  String
+  storedAs  String
+  size      Int
+  mime      String
+}
+
+model CannedResponse {
+  id    String @id @default(cuid())
+  title String
+  body  String
+}
+
+// ───────────────────────────── Content ─────────────────────────────
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  published   Boolean  @default(true)
+  publishedAt DateTime @default(now())
+}
+
+model KbCategory {
+  id       String      @id @default(cuid())
+  name     String
+  slug     String      @unique
+  articles KbArticle[]
+}
+
+model KbArticle {
+  id         String     @id @default(cuid())
+  categoryId String
+  category   KbCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  title      String
+  slug       String     @unique
+  body       String
+  views      Int        @default(0)
+  published  Boolean    @default(true)
+  updatedAt  DateTime   @updatedAt
+}
+
+model Download {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   @default("General")
+  url         String
+  clientsOnly Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model EmailTemplate {
+  key       String   @id // invoice.created, service.vps_ready ...
+  name      String
+  subject   String
+  body      String // HTML with {{placeholders}}
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  template  String?
+  userId    String?
+  status    String // SENT | LOGGED | FAILED | BOUNCED | SUPPRESSED
+  error     String?
+  messageId String?
+  response  String? // the receiving server's reply, e.g. "250 2.0.0 OK"
+  job       Json? // template + vars, so the email can be re-sent
+  createdAt DateTime @default(now())
+
+  @@index([to])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  userId    String?
+  user      User?    @relation("ActivityUser", fields: [userId], references: [id])
+  action    String
+  entity    String?
+  entityId  String?
+  ip        String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ───────────────────────────── Resellers & affiliates ─────────────────────────────
+
+enum ResellerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model Reseller {
+  id          String          @id @default(cuid())
+  userId      String          @unique
+  user        User            @relation("ResellerUser", fields: [userId], references: [id])
+  status      ResellerStatus  @default(PENDING)
+  brandName   String
+  website     String?
+  discountPct Int             @default(0) // extra discount on top of wholesale
+  notes       String?
+  /// the reseller's endpoint for signed event notifications (service.active, invoice.paid, …)
+  webhookUrl        String?
+  webhookSecretEnc  String?
+  webhookLastAt     DateTime?
+  webhookLastStatus String?
+  approvedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  customers   User[]          @relation("ResellerCustomers")
+  services    Service[]
+  prices      ResellerPrice[]
+}
+
+model ResellerPrice {
+  id         String       @id @default(cuid())
+  resellerId String
+  reseller   Reseller     @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cycle      BillingCycle
+  retail     Int
+  enabled    Boolean      @default(true)
+
+  @@unique([resellerId, productId, cycle])
+}
+
+model Affiliate {
+  id            String     @id @default(cuid())
+  userId        String     @unique
+  user          User       @relation(fields: [userId], references: [id])
+  code          String     @unique
+  commissionPct Int        @default(10)
+  balance       Int        @default(0)
+  withdrawn     Int        @default(0)
+  visitors      Int        @default(0)
+  createdAt     DateTime   @default(now())
+  referrals     Referral[]
+}
+
+model Referral {
+  id             String    @id @default(cuid())
+  affiliateId    String
+  affiliate      Affiliate @relation(fields: [affiliateId], references: [id])
+  referredUserId String
+  referredUser   User      @relation("ReferredUser", fields: [referredUserId], references: [id])
+  invoiceId      String?   @unique
+  amount         Int       @default(0)
+  status         String    @default("PENDING") // PENDING | APPROVED | PAID
+  createdAt      DateTime  @default(now())
+}
+
+model Sequence {
+  name  String @id
+  value Int    @default(0)
+}
+
+// ───────────────────────────── Data migration (WHMCS import) ─────────────────────────────
+
+/// Maps a record in the legacy system (e.g. WHMCS tblclients.id) to the local record, so imports can be re-run.
+model LegacyMap {
+  id        String   @id @default(cuid())
+  source    String   @default("whmcs")
+  entity    String // client, product, service, invoice, ...
+  legacyId  String
+  localId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([source, entity, legacyId])
+  @@index([localId])
+}
+
+enum MigrationStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model MigrationRun {
+  id          String          @id @default(cuid())
+  source      String          @default("whmcs")
+  status      MigrationStatus @default(QUEUED)
+  dryRun      Boolean         @default(true)
+  optionsEnc  String? // encrypted connection details + options; wiped when the run ends
+  entities    String[]        @default([])
+  progress    Json            @default("{}")
+  summary     Json            @default("{}")
+  warnings    Json            @default("[]")
+  error       String?
+  createdById String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime        @default(now())
+}
+
+/// One run of the daily automation (scheduled or "Run now").
+model AutomationRun {
+  id            String            @id @default(cuid())
+  trigger       String            // schedule | manual
+  triggeredById String?
+  status        String            @default("RUNNING") // RUNNING | COMPLETED | FAILED
+  startedAt     DateTime          @default(now())
+  finishedAt    DateTime?
+  durationMs    Int?
+  summary       Json              @default("{}") // { action: count }
+  error         String?
+  events        AutomationEvent[]
+
+  @@index([startedAt])
+}
+
+/// Something the automation did (or failed to do) — the drill-down behind each count.
+model AutomationEvent {
+  id        String         @id @default(cuid())
+  runId     String?
+  run       AutomationRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
+  action    String         // invoice_created, reminder_sent, overdue_1, late_fee, suspended, …
+  entity    String?        // invoice | service | order | domain | ticket
+  entityId  String?
+  userId    String?
+  label     String?
+  success   Boolean        @default(true)
+  message   String?
+  createdAt DateTime       @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([runId])
+}
+
+/// WhatsApp messages sent (or attempted) to clients — automatic notifications and staff messages.
+model WhatsappMessage {
+  id         String   @id @default(cuid())
+  userId     String?
+  to         String
+  event      String   // notification key (invoice.created, …) or "manual"
+  body       String
+  status     String   @default("QUEUED") // QUEUED | SENT | FAILED | SKIPPED
+  providerId String?
+  error      String?
+  sentById   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+/// A database backup (automatic or "Back up now") and where copies were sent.
+model BackupRun {
+  id           String    @id @default(cuid())
+  trigger      String    // schedule | manual
+  triggeredBy  String?
+  status       String    @default("RUNNING") // RUNNING | COMPLETED | FAILED
+  fileName     String?
+  sizeBytes    BigInt?
+  includesUploads Boolean @default(false)
+  destinations Json      @default("[]") // [{ type, ok, location?, error? }]
+  error        String?
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  deletedAt    DateTime? // local file removed by retention
+
+  @@index([startedAt])
+}
+
+/** Admin → Email Campaigns: offers and information emails to customers */
+model EmailCampaign {
+  id          String    @id @default(cuid())
+  name        String
+  kind        String    @default("OFFER") // OFFER: marketing — only customers who accept offers, with unsubscribe | INFO: service information
+  subject     String
+  preheader   String?
+  body        String    // HTML, with {{firstName}} etc.
+  audience    Json      @default("{}")
+  status      String    @default("DRAFT") // DRAFT | SCHEDULED | SENDING | PAUSED | SENT | CANCELLED
+  perMinute   Int       @default(60)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  total       Int       @default(0)
+  sent        Int       @default(0)
+  failed      Int       @default(0)
+  skipped     Int       @default(0)
+  opened      Int       @default(0)
+  unsubscribed Int      @default(0)
+  lastError   String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  recipients  EmailCampaignRecipient[]
+
+  @@index([status])
+}
+
+model EmailCampaignRecipient {
+  id         String        @id @default(cuid())
+  campaignId String
+  campaign   EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId     String?
+  email      String
+  name       String?
+  status     String        @default("QUEUED") // QUEUED | SENT | FAILED | SKIPPED
+  error      String?
+  token      String        @unique // open pixel + unsubscribe link
+  sentAt     DateTime?
+  openedAt   DateTime?
+  unsubscribedAt DateTime?
+
+  @@unique([campaignId, email])
+  @@index([campaignId, status])
+}
+
+/// A charge for a customer that isn't a product: invoiced now, on the next invoice, on a date, or every N months.
+model BillableItem {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description      String
+  /// per unit, in paise (or cents) of `currency`
+  amount           Int
+  quantity         Int       @default(1)
+  currency         String    @default("INR")
+  taxable          Boolean   @default(true)
+  /// NOW | NEXT_INVOICE | ON_DATE | RECURRING
+  invoiceAction    String    @default("NEXT_INVOICE")
+  /// ON_DATE: the day to invoice; RECURRING: the next day to invoice
+  dueDate          DateTime?
+  recurEveryMonths Int?
+  /// RECURRING: how many times in all (null = until stopped)
+  recurTimes       Int?
+  recurDone        Int       @default(0)
+  /// no more invoicing (one-off billed, recurring finished or stopped)
+  invoiced         Boolean   @default(false)
+  invoiceId        String?
+  lastInvoicedAt   DateTime?
+  serviceId        String?
+  notes            String?
+  createdById      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, invoiced])
+  @@index([invoiced, invoiceAction, dueDate])
+}
+
+/// A quote (estimate) sent to a customer; accepting it creates an invoice.
+model Quote {
+  id            String    @id @default(cuid())
+  number        String    @unique
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject       String
+  /// DRAFT | SENT | ACCEPTED | DECLINED | EXPIRED | INVOICED
+  status        String    @default("DRAFT")
+  currency      String    @default("INR")
+  validUntil    DateTime
+  /// [{ description, quantity, unitPrice, taxable }]
+  items         Json
+  subtotal      Int       @default(0)
+  taxTotal      Int       @default(0)
+  total         Int       @default(0)
+  customerNotes String?
+  adminNotes    String?
+  invoiceId     String?
+  sentAt        DateTime?
+  acceptedAt    DateTime?
+  declinedAt    DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// A plan / billing-cycle change of a service (upgrade or downgrade), WHMCS-style with proration.
+model ServiceUpgrade {
+  id             String       @id @default(cuid())
+  serviceId      String
+  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  userId         String
+  fromProductId  String
+  toProductId    String
+  fromCycle      BillingCycle
+  toCycle        BillingCycle
+  currency       String       @default("INR")
+  oldRecurring   Int
+  newRecurring   Int
+  /// unused value of the current period (paise)
+  credit         Int          @default(0)
+  /// cost of the new plan for the remaining / new period (paise)
+  charge         Int          @default(0)
+  /// charge − credit, before tax; negative = downgrade refund
+  amountDue      Int          @default(0)
+  newNextDueDate DateTime?
+  /// PENDING (invoice unpaid) → PROVISIONING (changing the server) → DONE | FAILED; CANCELLED
+  status         String       @default("PENDING")
+  /// downgrade refund goes to the customer's account credit
+  creditRefund   Boolean      @default(true)
+  applyOnServer  Boolean      @default(true)
+  invoiceId      String?
+  message        String?
+  byClient       Boolean      @default(false)
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  appliedAt      DateTime?
+
+  @@index([serviceId, status])
+  @@index([invoiceId])
+}

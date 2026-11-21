@@ -1,0 +1,738 @@
+import { Router } from "express";
+import { z } from "zod";
+import { parse as parseCsv } from "csv-parse/sync";
+import { prisma, Prisma, IpStatus, ServerType, type Server } from "../../db";
+import { findTwin, importedServerIds, mergeServer } from "../provisioning/server-twins";
+import { ah, badRequest, conflict, notFound, pageParams, parse } from "../../lib/http";
+import { audit } from "../../lib/audit";
+import { encrypt } from "../../lib/crypto";
+import { requireStaff } from "../../middleware/auth";
+import { adminAssignIp, importCidr, importCsv, logIp, setIpStatus } from "../ipam/service";
+import { proxmoxFor, virtualizorFor } from "../provisioning/provisioner";
+import { parseStorages, storagesOfNode } from "../provisioning/virtualizor";
+import { checkServer } from "../../jobs/health";
+import { syncVirtualizorOs } from "../provisioning/virtualizor-os";
+import { syncVirtualizorIps } from "../provisioning/virtualizor-ips";
+import { productReadiness } from "./readiness";
+import { crud } from "./crud";
+
+export const adminInfra = Router();
+
+// ───────────── Locations ─────────────
+crud(adminInfra, "/locations", "location", z.object({ name: z.string().min(1), code: z.string().trim().toUpperCase().min(2).max(12), country: z.string().length(2).default("IN") }), "servers.manage", {
+  include: { _count: { select: { servers: true } } },
+});
+
+// ───────────── Servers ─────────────
+const serverSchema = z.object({
+  name: z.string().min(1),
+  type: z.nativeEnum(ServerType),
+  locationId: z.string().nullable().optional(),
+  hostname: z.string().min(1),
+  port: z.number().int().min(1).max(65535).default(8006),
+  apiUser: z.string().nullable().optional(),
+  apiSecret: z.string().optional(),
+  verifyTls: z.boolean().default(true),
+  defaultNode: z.string().nullable().optional(),
+  storage: z.string().nullable().optional(),
+  bridge: z.string().nullable().optional(),
+  maxCpuPct: z.number().int().min(10).max(100).default(85),
+  maxRamPct: z.number().int().min(10).max(100).default(90),
+  maxDiskPct: z.number().int().min(10).max(100).default(90),
+  maxServices: z.number().int().min(0).default(0),
+  nameservers: z.array(z.string().trim().toLowerCase().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, "Nameservers look like ns1.example.com")).max(4).optional(),
+  enabled: z.boolean().default(true),
+});
+
+const serverPublic = { id: true, name: true, type: true, locationId: true, location: true, hostname: true, port: true, apiUser: true, verifyTls: true, defaultNode: true, storage: true, bridge: true, maxCpuPct: true, maxRamPct: true, maxDiskPct: true, maxServices: true, enabled: true, lastCheckAt: true, lastStatus: true, createdAt: true, nodes: true } satisfies Prisma.ServerSelect;
+
+adminInfra.get(
+  "/servers",
+  requireStaff("servers.manage"),
+  ah(async (_req, res) => {
+    const servers = await prisma.server.findMany({ orderBy: { name: "asc" }, select: { ...serverPublic, apiSecretEnc: true, _count: { select: { services: { where: { status: { in: ["ACTIVE", "SUSPENDED"] } } }, ips: true } } } });
+    const free = await prisma.ipAddress.groupBy({ by: ["serverId"], where: { status: "AVAILABLE" }, _count: true });
+    const allServices = await prisma.service.groupBy({ by: ["serverId"], where: { serverId: { not: null }, status: { notIn: ["TERMINATED", "CANCELLED"] } }, _count: true });
+    // servers imported from WHMCS, and the server here they're a copy of (merge suggestion)
+    const imported = await importedServerIds();
+    const twins = new Map<string, { id: string; name: string }>();
+    await Promise.all(
+      servers
+        .filter((sv) => imported.has(sv.id))
+        .map(async (sv) => {
+          const t = await findTwin(sv as unknown as Server).catch(() => null);
+          if (t) twins.set(sv.id, { id: t.id, name: t.name });
+        }),
+    );
+    res.json({ servers: servers.map(({ apiSecretEnc, ...s }) => ({ ...s, hasSecret: !!apiSecretEnc, freeIps: free.find((f) => f.serverId === s.id)?._count ?? 0, imported: imported.has(s.id), sameAs: twins.get(s.id) ?? null, servicesAll: allServices.find((a) => a.serverId === s.id)?._count ?? 0 })) });
+  }),
+);
+
+adminInfra.get(
+  "/servers/:id",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const s = await prisma.server.findUnique({ where: { id: req.params.id }, select: serverPublic });
+    if (!s) throw notFound();
+    res.json({ server: s });
+  }),
+);
+
+adminInfra.post(
+  "/servers",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const { apiSecret, ...b } = parse(serverSchema, req.body);
+    const s = await prisma.server.create({ data: { ...b, apiSecretEnc: apiSecret ? encrypt(apiSecret) : null } });
+    await audit({ actorId: req.user!.id, action: "server.created", entity: "server", entityId: s.id });
+    res.status(201).json({ id: s.id });
+  }),
+);
+
+adminInfra.put(
+  "/servers/:id",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const { apiSecret, ...b } = parse(serverSchema.partial(), req.body);
+    await prisma.server.update({ where: { id: req.params.id }, data: { ...b, ...(apiSecret ? { apiSecretEnc: encrypt(apiSecret) } : {}) } });
+    await audit({ actorId: req.user!.id, action: "server.updated", entity: "server", entityId: req.params.id, details: { secretChanged: !!apiSecret } });
+    res.json({ ok: true });
+  }),
+);
+
+adminInfra.delete(
+  "/servers/:id",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const used = await prisma.service.count({ where: { serverId: req.params.id, status: { notIn: ["TERMINATED", "CANCELLED"] } } });
+    if (used) throw conflict(`${used} live services are on this server`);
+    await prisma.ipAddress.updateMany({ where: { serverId: req.params.id, serviceId: null }, data: { serverId: null } });
+    await prisma.server.delete({ where: { id: req.params.id } });
+    res.json({ ok: true });
+  }),
+);
+
+/** Merge a server (typically one imported from WHMCS) into the same master set up here: its services, IPs and plan links move over. */
+adminInfra.post(
+  "/servers/:id/merge",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ intoId: z.string().min(1) }), req.body);
+    let r;
+    try {
+      r = await mergeServer(req.params.id, b.intoId);
+    } catch (e) {
+      throw badRequest((e as Error).message);
+    }
+    await audit({ actorId: req.user!.id, action: "server.merged", entity: "server", entityId: b.intoId, details: r });
+    res.json(r);
+  }),
+);
+
+adminInfra.post(
+  "/servers/:id/test",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const s = await prisma.server.findUniqueOrThrow({ where: { id: req.params.id } });
+    res.json(await checkServer(s.id));
+  }),
+);
+
+/** WHM packages and reseller ACL lists on a cPanel server (for the product editor). */
+adminInfra.get(
+  "/servers/:id/cpanel-packages",
+  requireStaff("catalog.manage"),
+  ah(async (req, res) => {
+    const s = await prisma.server.findUniqueOrThrow({ where: { id: req.params.id } });
+    if (s.type !== "CPANEL") throw badRequest("Not a cPanel/WHM server");
+    const { whmFor } = await import("../provisioning/cpanel-provisioner");
+    const w = whmFor(s);
+    const [packages, acls] = await Promise.all([w.packages(), w.aclLists()]).catch((e: Error) => {
+      throw badRequest(`Couldn't read packages from ${s.name}: ${e.message}`);
+    });
+    res.json({ packages, acls });
+  }),
+);
+
+/** Staff: one-click login to WHM as the API user (root). */
+adminInfra.post(
+  "/servers/:id/whm-login",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const s = await prisma.server.findUniqueOrThrow({ where: { id: req.params.id } });
+    if (s.type !== "CPANEL") throw badRequest("Not a cPanel/WHM server");
+    const { whmFor } = await import("../provisioning/cpanel-provisioner");
+    const url = await whmFor(s).loginUrl(s.apiUser || "root", "whostmgrd").catch((e: Error) => {
+      throw badRequest(e.message);
+    });
+    await audit({ actorId: req.user!.id, action: "server.whm_login", entity: "server", entityId: s.id });
+    res.json({ url });
+  }),
+);
+
+adminInfra.put(
+  "/servers/:id/nodes/:node",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const { enabled } = parse(z.object({ enabled: z.boolean() }), req.body);
+    await prisma.serverNode.upsert({ where: { serverId_name: { serverId: req.params.id, name: req.params.node } }, update: { enabled }, create: { serverId: req.params.id, name: req.params.node, enabled } });
+    res.json({ ok: true });
+  }),
+);
+
+// ───────────── Proxmox ─────────────
+async function pve(serverId: string) {
+  const s = await prisma.server.findUniqueOrThrow({ where: { id: serverId } });
+  if (s.type !== "PROXMOX") throw badRequest("Not a Proxmox server");
+  return { s, c: proxmoxFor(s) };
+}
+
+adminInfra.get(
+  "/proxmox/:serverId/overview",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const { s, c } = await pve(req.params.serverId);
+    const [version, nodes, resources, cluster] = await Promise.all([c.version(), c.nodes(), c.resources(), c.clusterStatus().catch(() => [])]);
+    const vms = resources.filter((r) => r.type === "qemu" || r.type === "lxc");
+    const linked = await prisma.service.findMany({ where: { serverId: s.id, remoteId: { in: vms.map((v) => String(v.vmid)) } }, select: { id: true, remoteId: true, status: true, user: { select: { email: true } } } });
+    res.json({
+      version,
+      cluster,
+      nodes,
+      storage: resources.filter((r) => r.type === "storage"),
+      vms: vms.map((v) => ({ ...v, service: linked.find((l) => l.remoteId === String(v.vmid)) ?? null })),
+    });
+  }),
+);
+
+const guestParams = z.object({ node: z.string(), kind: z.enum(["qemu", "lxc"]), vmid: z.coerce.number().int() });
+
+adminInfra.post(
+  "/proxmox/:serverId/guest/:action",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const { c } = await pve(req.params.serverId);
+    const g = parse(guestParams.extend({ target: z.string().optional(), snapname: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional(), storage: z.string().optional(), newid: z.number().int().optional(), name: z.string().optional() }), req.body);
+    const a = req.params.action;
+    let result: unknown = { ok: true };
+    switch (a) {
+      case "start":
+      case "stop":
+      case "shutdown":
+      case "reboot":
+      case "suspend":
+      case "resume":
+        await c.power(g.node, g.kind, g.vmid, a);
+        break;
+      case "migrate":
+        if (!g.target) throw badRequest("target node required");
+        await c.migrate(g.node, g.kind, g.vmid, g.target);
+        await prisma.service.updateMany({ where: { serverId: req.params.serverId, remoteId: String(g.vmid) }, data: { node: g.target } });
+        break;
+      case "snapshots":
+        result = { snapshots: await c.snapshots(g.node, g.kind, g.vmid) };
+        break;
+      case "snapshot":
+        await c.snapshot(g.node, g.kind, g.vmid, g.snapname ?? `snap${Date.now()}`, "Created from PrimoCloud admin");
+        break;
+      case "rollback":
+        if (!g.snapname) throw badRequest("snapname required");
+        await c.rollback(g.node, g.kind, g.vmid, g.snapname);
+        break;
+      case "delete-snapshot":
+        if (!g.snapname) throw badRequest("snapname required");
+        await c.deleteSnapshot(g.node, g.kind, g.vmid, g.snapname);
+        break;
+      case "backup":
+        result = { upid: await c.backup(g.node, g.vmid, g.storage ?? "local") };
+        break;
+      case "backups":
+        result = { backups: await c.backups(g.node, g.storage ?? "local", g.vmid) };
+        break;
+      case "clone":
+        await c.cloneGuest(g.node, g.kind, g.vmid, g.newid ?? (await c.nextId()), g.name ?? `clone-${g.vmid}`, g.target);
+        break;
+      case "status":
+        result = { status: await c.guestStatus(g.node, g.kind, g.vmid), config: await c.config(g.node, g.kind, g.vmid) };
+        break;
+      case "rrd":
+        result = { points: await c.rrd(g.node, g.kind, g.vmid, "day") };
+        break;
+      default:
+        throw badRequest("Unknown action");
+    }
+    await audit({ actorId: req.user!.id, action: `proxmox.${a}`, entity: "server", entityId: req.params.serverId, details: g });
+    res.json(result);
+  }),
+);
+
+// ───────────── Monitoring ─────────────
+/** Every node of every server with its latest usage snapshot (refreshed by the worker every 5 min). */
+adminInfra.get(
+  "/monitoring",
+  requireStaff("servers.manage"),
+  ah(async (_req, res) => {
+    // disabled servers aren't polled, so they're left out
+    const servers = await prisma.server.findMany({
+      where: { type: { in: ["PROXMOX", "VIRTUALIZOR"] }, enabled: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, type: true, hostname: true, enabled: true, lastCheckAt: true, lastStatus: true, location: { select: { name: true } }, nodes: { orderBy: { name: "asc" } }, _count: { select: { services: { where: { status: { in: ["ACTIVE", "SUSPENDED"] } } } } } },
+    });
+    res.json({ servers });
+  }),
+);
+
+/** Re-poll one server (or all) right now instead of waiting for the next 5-minute check. */
+adminInfra.post(
+  "/monitoring/refresh",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const id = typeof req.body?.serverId === "string" ? req.body.serverId : null;
+    const servers = await prisma.server.findMany({ where: { type: { in: ["PROXMOX", "VIRTUALIZOR"] }, ...(id ? { id } : { enabled: true }) }, select: { id: true } });
+    const results = await Promise.all(servers.map((s) => checkServer(s.id).then((r) => ({ id: s.id, ...r }))));
+    res.json({ results });
+  }),
+);
+
+// ───────────── Virtualizor ─────────────
+adminInfra.get(
+  "/virtualizor/:serverId/overview",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const s = await prisma.server.findUniqueOrThrow({ where: { id: req.params.serverId } });
+    if (s.type !== "VIRTUALIZOR") throw badRequest("Not a Virtualizor server");
+    const c = virtualizorFor(s);
+    const [vps, plans] = await Promise.all([c.listVps(1, 200), c.plans().catch(() => ({ plans: {} }))]);
+    const ids = Object.keys(vps.vs ?? {});
+    const linked = await prisma.service.findMany({ where: { serverId: s.id, remoteId: { in: ids } }, select: { id: true, remoteId: true, status: true, user: { select: { email: true } } } });
+    res.json({ vps: Object.entries(vps.vs ?? {}).map(([id, v]) => ({ vpsid: id, ...v, service: linked.find((l) => l.remoteId === id) ?? null })), plans: Object.values(plans.plans ?? {}) });
+  }),
+);
+
+/** Storages of each Virtualizor master and the nodes they're attached to (Node Monitoring + diagnosis). */
+adminInfra.get(
+  "/virtualizor/:serverId/storages",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const servers = await prisma.server.findMany({ where: { type: "VIRTUALIZOR", ...(req.params.serverId === "all" ? { enabled: true } : { id: req.params.serverId }) }, include: { nodes: { select: { externalId: true, name: true, meta: true } } } });
+    const results = await Promise.all(
+      servers.map(async (srv) => {
+        try {
+          const client = virtualizorFor(srv);
+          const raw = await client.storagesRaw();
+          const storages = parseStorages(raw);
+          // per node: what Virtualizor's own Create VPS form offers, else what the storage list ties to it
+          const byNode = Object.fromEntries(
+            await Promise.all(
+              srv.nodes
+                .filter((n) => n.externalId !== null)
+                .map(async (n) => {
+                  const own = await client.storagesForServer(Number(n.externalId)).catch(() => []);
+                  return [n.externalId!, own.length ? own : storagesOfNode(storages, n.externalId!, ((n.meta ?? {}) as { sgid?: string | null }).sgid ?? null)] as const;
+                }),
+            ),
+          );
+          // the raw reply (trimmed) lets staff/support see exactly what the master reports
+          const rawText = JSON.stringify(raw.storage ?? raw.storages ?? raw, null, 1).slice(0, 6000);
+          return { serverId: srv.id, serverName: srv.name, ok: true, storages, byNode, mappingKnown: storages.some((x) => x.serids.length || x.sgids.length) || Object.values(byNode).some((l) => l.length), raw: rawText };
+        } catch (e) {
+          return { serverId: srv.id, serverName: srv.name, ok: false, error: (e as Error).message };
+        }
+      }),
+    );
+    res.json({ results });
+  }),
+);
+
+/** Removes anything secret-looking from a Virtualizor reply before showing it. */
+function scrub(v: unknown, depth = 0): unknown {
+  if (depth > 8 || v === null || typeof v !== "object") return v;
+  if (Array.isArray(v)) return v.slice(0, 50).map((x) => scrub(x, depth + 1));
+  return Object.fromEntries(
+    Object.entries(v as Record<string, unknown>)
+      .slice(0, 80)
+      .map(([k, x]) => [k, /pass|secret|token|apikey|api_key|vnc_?pass|cookie|session/i.test(k) ? "•••" : scrub(x, depth + 1)]),
+  );
+}
+
+/**
+ * Everything needed to see why a VPS can't be created on a node: what VPSes already running there use
+ * (storage, VPS type, plan), the storage list, the Create VPS form for that node, the panel's plans that
+ * use this master, and the last refusals. Secrets are removed.
+ */
+adminInfra.get(
+  "/virtualizor/:serverId/diagnose",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const srv = await prisma.server.findUniqueOrThrow({ where: { id: req.params.serverId } });
+    if (srv.type !== "VIRTUALIZOR") throw badRequest("Not a Virtualizor server");
+    const serid = String(req.query.serid ?? "");
+    if (!/^\d+$/.test(serid)) throw badRequest("serid required");
+    const c = virtualizorFor(srv);
+    const safe = async <T,>(f: () => Promise<T>) => {
+      try {
+        return { ok: true as const, data: await f() };
+      } catch (e) {
+        return { ok: false as const, error: (e as Error).message };
+      }
+    };
+    const node = await prisma.serverNode.findFirst({ where: { serverId: srv.id, externalId: serid } });
+    const [hints, storageRaw, form, plans] = await Promise.all([
+      safe(() => c.learnNode(serid)),
+      safe(() => c.storagesRaw()),
+      safe(async () => c.addvsForm(serid, (((await prisma.product.findFirst({ where: { provisioner: "VIRTUALIZOR" }, select: { moduleConfig: true } }))?.moduleConfig ?? {}) as { virtualizor?: { virt?: string } }).virtualizor?.virt ?? "kvm")),
+      safe(() => c.plans()),
+    ]);
+    const formData = form.ok ? (form.data as Record<string, unknown>) : null;
+    const formStorageKeys = formData ? Object.keys(formData).filter((k) => /stor|space|disk|st_|virt/i.test(k)) : [];
+    const products = await prisma.product.findMany({ where: { provisioner: "VIRTUALIZOR", OR: [{ servers: { some: { serverId: srv.id } } }, { servers: { none: {} } }] }, select: { id: true, name: true, diskGb: true, moduleConfig: true } });
+    const planRows = plans.ok ? (plans.data.plans ?? {}) : {};
+    const lastFailure = await prisma.provisioningLog.findFirst({ where: { success: false, action: "create", service: { serverId: srv.id }, details: { not: Prisma.AnyNull } }, orderBy: { createdAt: "desc" }, select: { createdAt: true, message: true, details: true, serviceId: true } });
+    res.json({
+      generatedAt: new Date(),
+      master: { name: srv.name, host: srv.hostname },
+      node: node ? { name: node.name, serid, online: node.online, meta: node.meta } : { serid },
+      vpsOnThisNode: hints,
+      storageList: storageRaw.ok ? { parsed: parseStorages(storageRaw.data), raw: scrub(storageRaw.data.storage ?? storageRaw.data.storages ?? storageRaw.data) } : storageRaw,
+      createForm: form.ok ? { keys: Object.keys(formData!), storageFields: Object.fromEntries(formStorageKeys.map((k) => [k, scrub(formData![k])])), storagesFound: parseStorages(formData!) } : form,
+      panelPlans: products.map((pr) => {
+        const vz = ((pr.moduleConfig ?? {}) as { virtualizor?: { planId?: number; virt?: string } }).virtualizor ?? {};
+        const vp = vz.planId ? (planRows as Record<string, Record<string, unknown>>)[String(vz.planId)] : undefined;
+        return { name: pr.name, diskGb: pr.diskGb, virtualizorPlanId: vz.planId ?? null, virt: vz.virt ?? null, virtualizorPlan: vp ? scrub({ plid: vp.plid, plan_name: vp.plan_name, virt: vp.virt, space: vp.space, ram: vp.ram, cores: vp.cores }) : null };
+      }),
+      lastFailure,
+    });
+  }),
+);
+
+/** Server groups of a Virtualizor master (for "auto" placement inside a group). */
+adminInfra.get(
+  "/virtualizor/:serverId/groups",
+  requireStaff("products.manage"),
+  ah(async (req, res) => {
+    const s = await prisma.server.findUniqueOrThrow({ where: { id: req.params.serverId } });
+    if (s.type !== "VIRTUALIZOR") throw badRequest("Not a Virtualizor server");
+    const r = await virtualizorFor(s).serverGroups();
+    const groups = Object.entries(r.servergroups ?? {}).map(([k, g]) => ({ sgid: Number((g as any).sgid ?? k), name: String((g as any).sg_name ?? (g as any).name ?? `Group ${k}`), reseller: String((g as any).sg_reseller_name ?? "") }));
+    res.json({ groups });
+  }),
+);
+
+/** Stop / allow new VPS on a node (used by "least loaded" placement). */
+adminInfra.patch(
+  "/monitoring/nodes/:id",
+  requireStaff("servers.manage"),
+  ah(async (req, res) => {
+    const { enabled } = parse(z.object({ enabled: z.boolean() }), req.body);
+    const n = await prisma.serverNode.update({ where: { id: req.params.id }, data: { enabled } });
+    await audit({ actorId: req.user!.id, action: enabled ? "node.enabled" : "node.disabled", entity: "serverNode", entityId: n.id, details: { name: n.name } });
+    res.json({ ok: true });
+  }),
+);
+
+/** Import IP pools + IPs from one Virtualizor master (or all with :serverId = "all") into IP Management. */
+adminInfra.post(
+  "/virtualizor/:serverId/sync-ips",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const servers = await prisma.server.findMany({ where: { type: "VIRTUALIZOR", ...(req.params.serverId === "all" ? { enabled: true } : { id: req.params.serverId }) } });
+    if (!servers.length) throw badRequest("Add a Virtualizor server first (Infrastructure → Servers)");
+    const results = await Promise.all(
+      servers.map((s) =>
+        syncVirtualizorIps(s).then(
+          (r) => ({ serverId: s.id, serverName: s.name, ok: true as const, ...r }),
+          (e) => ({ serverId: s.id, serverName: s.name, ok: false as const, error: String((e as Error).message ?? e) }),
+        ),
+      ),
+    );
+    await audit({ actorId: req.user!.id, action: "ips.synced", entity: "server", entityId: req.params.serverId, details: results });
+    res.json({ results });
+  }),
+);
+
+/** Setup checklist for a plan (servers, connection, plan, OS, IPs, nodes, pricing). */
+adminInfra.get(
+  "/products/:id/readiness",
+  requireStaff("products.manage"),
+  ah(async (req, res) => {
+    res.json(await productReadiness(req.params.id));
+  }),
+);
+
+/** Import OS templates from one Virtualizor master (or all of them with :serverId = "all"). */
+adminInfra.post(
+  "/virtualizor/:serverId/sync-os",
+  requireStaff("products.manage"),
+  ah(async (req, res) => {
+    const servers = await prisma.server.findMany({ where: { type: "VIRTUALIZOR", ...(req.params.serverId === "all" ? { enabled: true } : { id: req.params.serverId }) } });
+    if (!servers.length) throw badRequest("Add a Virtualizor server first (Infrastructure → Servers)");
+    const results = await Promise.all(
+      servers.map((s) =>
+        syncVirtualizorOs(s).then(
+          (r) => ({ serverId: s.id, serverName: s.name, ok: true as const, ...r }),
+          (e) => ({ serverId: s.id, serverName: s.name, ok: false as const, error: String((e as Error).message ?? e) }),
+        ),
+      ),
+    );
+    await audit({ actorId: req.user!.id, action: "os.synced", entity: "server", entityId: req.params.serverId, details: results });
+    res.json({ results });
+  }),
+);
+
+/**
+ * Plans defined in Virtualizor, for the product editor's plan picker.
+ * ?serverIds=a,b limits to those servers; default = every enabled Virtualizor server.
+ */
+adminInfra.get(
+  "/virtualizor/plans",
+  requireStaff("products.manage"),
+  ah(async (req, res) => {
+    const ids = String(req.query.serverIds ?? "").split(",").filter(Boolean);
+    const servers = await prisma.server.findMany({ where: { type: "VIRTUALIZOR", ...(ids.length ? { id: { in: ids } } : { enabled: true }) }, orderBy: { name: "asc" } });
+    const num = (v: unknown) => (v === undefined || v === null || v === "" ? null : Number(v));
+    const out = await Promise.all(
+      servers.map(async (s) => {
+        try {
+          const r = await virtualizorFor(s).plans();
+          const plans = Object.values(r.plans ?? {}).filter((p: any) => p && p.plid !== undefined).map((p: any) => ({
+            plid: Number(p.plid),
+            name: String(p.plan_name ?? `Plan ${p.plid}`),
+            virt: String(p.virt ?? "kvm"),
+            ramMb: num(p.ram),
+            diskGb: num(p.space),
+            cores: num(p.cores),
+            bandwidthGb: num(p.bandwidth),
+            ips: num(p.ips),
+          })).sort((a, b) => a.name.localeCompare(b.name));
+          return { serverId: s.id, serverName: s.name, plans, error: null as string | null };
+        } catch (e: any) {
+          return { serverId: s.id, serverName: s.name, plans: [], error: String(e?.message ?? e) };
+        }
+      }),
+    );
+    res.json({ servers: out });
+  }),
+);
+
+/** Import an existing Virtualizor / Proxmox guest into billing by linking it to a client service. */
+adminInfra.post(
+  "/servers/:serverId/import-guest",
+  requireStaff("services.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ remoteId: z.string(), node: z.string().optional(), userId: z.string(), productId: z.string(), billingCycle: z.enum(["MONTHLY", "QUARTERLY", "SEMIANNUAL", "ANNUAL", "BIENNIAL", "TRIENNIAL"]), recurringAmount: z.number().int().min(0), nextDueDate: z.coerce.date(), hostname: z.string().optional(), ips: z.array(z.string().ip()).default([]) }), req.body);
+    const svc = await prisma.$transaction(async (tx) => {
+      const svc = await tx.service.create({
+        data: { userId: b.userId, productId: b.productId, serverId: req.params.serverId, node: b.node, remoteId: b.remoteId, status: "ACTIVE", billingCycle: b.billingCycle, firstAmount: b.recurringAmount, recurringAmount: b.recurringAmount, nextDueDate: b.nextDueDate, nextInvoiceDate: b.nextDueDate, hostname: b.hostname },
+      });
+      for (const [i, addr] of b.ips.entries()) {
+        const ip = await tx.ipAddress.findUnique({ where: { address: addr } });
+        if (ip?.serviceId) throw conflict(`${addr} is already allocated`);
+        const row = ip
+          ? await tx.ipAddress.update({ where: { id: ip.id }, data: { status: "ALLOCATED", serviceId: svc.id, isPrimary: i === 0, serverId: req.params.serverId } })
+          : await tx.ipAddress.create({ data: { address: addr, status: "ALLOCATED", serviceId: svc.id, isPrimary: i === 0, serverId: req.params.serverId } });
+        await logIp(tx, { ipId: row.id, action: "allocated", to: "ALLOCATED", serviceId: svc.id, actorId: req.user!.id, note: "imported existing guest" });
+      }
+      return svc;
+    });
+    res.status(201).json({ id: svc.id });
+  }),
+);
+
+// ───────────── IP management ─────────────
+adminInfra.get(
+  "/ips",
+  requireStaff("ips.view"),
+  ah(async (req, res) => {
+    const { skip, take, page, pageSize } = pageParams(req.query);
+    const q = req.query as Record<string, string | undefined>;
+    const where: Prisma.IpAddressWhereInput = {
+      ...(q.serverId ? { serverId: q.serverId === "none" ? null : q.serverId } : {}),
+      ...(q.subnetId ? { subnetId: q.subnetId } : {}),
+      ...(q.status ? { status: q.status as IpStatus } : {}),
+      ...(q.version ? { version: Number(q.version) } : {}),
+      ...(q.locationId ? { OR: [{ server: { locationId: q.locationId } }, { subnet: { locationId: q.locationId } }] } : {}),
+      ...(q.serviceId ? { serviceId: q.serviceId } : {}),
+      ...(q.customer ? { service: { user: { OR: [{ email: { contains: q.customer, mode: "insensitive" } }, { id: q.customer }] } } } : {}),
+      ...(q.q ? { OR: [{ address: { contains: q.q } }, { rdns: { contains: q.q } }, { notes: { contains: q.q, mode: "insensitive" } }, { service: { hostname: { contains: q.q } } }] } : {}),
+    };
+    const [rows, total, counts] = await Promise.all([
+      prisma.ipAddress.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ subnetId: "asc" }, { address: "asc" }],
+        include: { server: { select: { id: true, name: true } }, subnet: { select: { id: true, cidr: true } }, service: { select: { id: true, hostname: true, remoteId: true, user: { select: { id: true, email: true } } } }, reservedBy: { select: { email: true } } },
+      }),
+      prisma.ipAddress.count({ where }),
+      prisma.ipAddress.groupBy({ by: ["status"], _count: true }),
+    ]);
+    const { ipSortKey } = await import("../../lib/ip");
+    rows.sort((a, b) => (a.subnetId ?? "").localeCompare(b.subnetId ?? "") || ipSortKey(a.address).localeCompare(ipSortKey(b.address)));
+    res.json({ ips: rows, total, page, pageSize, counts: Object.fromEntries(counts.map((c) => [c.status, c._count])) });
+  }),
+);
+
+adminInfra.get(
+  "/subnets",
+  requireStaff("ips.view"),
+  ah(async (_req, res) => {
+    const subnets = await prisma.ipSubnet.findMany({ orderBy: { cidr: "asc" }, include: { server: { select: { id: true, name: true } }, location: true } });
+    const counts = await prisma.ipAddress.groupBy({ by: ["subnetId", "status"], _count: true });
+    res.json({ subnets: subnets.map((s) => ({ ...s, counts: Object.fromEntries(counts.filter((c) => c.subnetId === s.id).map((c) => [c.status, c._count])) })) });
+  }),
+);
+
+adminInfra.put(
+  "/subnets/:id",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ serverId: z.string().nullable().optional(), locationId: z.string().nullable().optional(), gateway: z.string().ip().nullable().optional(), vlan: z.number().int().nullable().optional(), notes: z.string().nullable().optional(), applyServerToIps: z.boolean().default(true) }), req.body);
+    const { applyServerToIps, ...data } = b;
+    await prisma.ipSubnet.update({ where: { id: req.params.id }, data });
+    if (applyServerToIps && b.serverId !== undefined) await prisma.ipAddress.updateMany({ where: { subnetId: req.params.id, serviceId: null }, data: { serverId: b.serverId } });
+    res.json({ ok: true });
+  }),
+);
+
+adminInfra.delete(
+  "/subnets/:id",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const used = await prisma.ipAddress.count({ where: { subnetId: req.params.id, OR: [{ serviceId: { not: null } }, { status: "RESERVED" }] } });
+    if (used) throw conflict(`${used} IPs in this subnet are allocated or reserved`);
+    await prisma.ipAddress.deleteMany({ where: { subnetId: req.params.id } });
+    await prisma.ipSubnet.delete({ where: { id: req.params.id } });
+    res.json({ ok: true });
+  }),
+);
+
+/** IPs of a Virtualizor master come only from Virtualizor (Sync), never typed in. */
+async function assertNotVirtualizor(serverId?: string | null) {
+  if (!serverId) return;
+  const srv = await prisma.server.findUnique({ where: { id: serverId }, select: { type: true, name: true } });
+  if (srv?.type === "VIRTUALIZOR") throw badRequest(`IPs for ${srv.name} come from Virtualizor — add them to an IP pool in Virtualizor, then click “Sync from Virtualizor”.`);
+}
+
+adminInfra.post(
+  "/ips/import-cidr",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ cidr: z.string(), serverId: z.string().nullable().optional(), locationId: z.string().nullable().optional(), gateway: z.string().ip().nullable().optional(), vlan: z.number().int().nullable().optional(), notes: z.string().nullable().optional(), expand: z.boolean().default(true) }), req.body);
+    await assertNotVirtualizor(b.serverId);
+    let r;
+    try {
+      r = await importCidr({ ...b, actorId: req.user!.id });
+    } catch (e) {
+      throw badRequest((e as Error).message);
+    }
+    await audit({ actorId: req.user!.id, action: "ip.import_cidr", details: { cidr: b.cidr, created: r.created } });
+    res.status(201).json({ subnetId: r.subnet.id, created: r.created, skipped: r.skipped });
+  }),
+);
+
+adminInfra.post(
+  "/ips/import-csv",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ csv: z.string().min(3).max(2_000_000), serverId: z.string().nullable().optional() }), req.body);
+    await assertNotVirtualizor(b.serverId);
+    let rows: Record<string, string>[];
+    try {
+      rows = parseCsv(b.csv, { columns: (h: string[]) => h.map((x) => x.trim().toLowerCase()), skip_empty_lines: true, trim: true });
+    } catch (e) {
+      throw badRequest(`CSV parse error: ${(e as Error).message}`);
+    }
+    if (!rows.length || !("address" in rows[0] || "ip" in rows[0])) throw badRequest('CSV needs a header row with an "address" column');
+    const r = await importCsv(rows, { serverId: b.serverId });
+    await audit({ actorId: req.user!.id, action: "ip.import_csv", details: { created: r.created, errors: r.errors.length } });
+    res.json(r);
+  }),
+);
+
+adminInfra.post(
+  "/ips",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ address: z.string().ip(), serverId: z.string().nullable().optional(), status: z.enum(["AVAILABLE", "BLOCKED", "MAINTENANCE", "QUARANTINED"]).default("AVAILABLE"), rdns: z.string().nullable().optional(), notes: z.string().nullable().optional() }), req.body);
+    const r = await importCsv([{ address: b.address, status: b.status, rdns: b.rdns ?? "", notes: b.notes ?? "" }], { serverId: b.serverId });
+    if (r.errors.length) throw badRequest(r.errors[0].error);
+    res.status(201).json({ ok: true });
+  }),
+);
+
+adminInfra.put(
+  "/ips/:id",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ status: z.enum(["AVAILABLE", "BLOCKED", "MAINTENANCE", "QUARANTINED"]).optional(), rdns: z.string().nullable().optional(), notes: z.string().nullable().optional(), serverId: z.string().nullable().optional(), note: z.string().optional() }), req.body);
+    if (b.status) await setIpStatus(req.params.id, b.status, req.user!.id, b.note);
+    if (b.rdns !== undefined || b.notes !== undefined || b.serverId !== undefined) {
+      const ip = await prisma.ipAddress.findUniqueOrThrow({ where: { id: req.params.id } });
+      if (b.serverId !== undefined && ip.serviceId) throw conflict("Cannot move an allocated IP to another server");
+      await prisma.ipAddress.update({ where: { id: req.params.id }, data: { rdns: b.rdns, notes: b.notes, serverId: b.serverId } });
+      await logIp(prisma, { ipId: ip.id, action: "edited", actorId: req.user!.id, note: Object.keys(b).join(", ") });
+    }
+    res.json({ ok: true });
+  }),
+);
+
+adminInfra.post(
+  "/ips/bulk-status",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ ids: z.array(z.string()).min(1).max(1000), status: z.enum(["AVAILABLE", "BLOCKED", "MAINTENANCE", "QUARANTINED"]) }), req.body);
+    let changed = 0;
+    const skipped: string[] = [];
+    for (const id of b.ids) {
+      try {
+        await setIpStatus(id, b.status, req.user!.id, "bulk update");
+        changed++;
+      } catch {
+        skipped.push(id);
+      }
+    }
+    res.json({ changed, skipped });
+  }),
+);
+
+adminInfra.post(
+  "/ips/:id/assign",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const { serviceId } = parse(z.object({ serviceId: z.string() }), req.body);
+    res.json({ ip: await adminAssignIp(req.params.id, serviceId, req.user!.id) });
+  }),
+);
+
+adminInfra.post(
+  "/ips/:id/unassign",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const { quarantine } = parse(z.object({ quarantine: z.boolean().default(true) }), req.body ?? {});
+    const ip = await prisma.ipAddress.findUniqueOrThrow({ where: { id: req.params.id } });
+    if (!ip.serviceId) throw badRequest("IP is not assigned");
+    const to: IpStatus = quarantine ? "QUARANTINED" : "AVAILABLE";
+    await prisma.ipAddress.update({ where: { id: ip.id }, data: { status: to, serviceId: null, isPrimary: false } });
+    await logIp(prisma, { ipId: ip.id, action: "unassigned", from: ip.status, to, serviceId: ip.serviceId, actorId: req.user!.id });
+    res.json({ ok: true, note: "Remember to remove the address from the VM's network configuration." });
+  }),
+);
+
+adminInfra.delete(
+  "/ips/:id",
+  requireStaff("ips.manage"),
+  ah(async (req, res) => {
+    const ip = await prisma.ipAddress.findUniqueOrThrow({ where: { id: req.params.id } });
+    if (ip.serviceId || ip.status === "RESERVED" || ip.status === "ALLOCATED") throw conflict("IP is in use");
+    await prisma.ipAddress.delete({ where: { id: ip.id } });
+    res.json({ ok: true });
+  }),
+);
+
+adminInfra.get(
+  "/ips/:id/history",
+  requireStaff("ips.view"),
+  ah(async (req, res) => {
+    res.json({ history: await prisma.ipHistory.findMany({ where: { ipId: req.params.id }, orderBy: { createdAt: "desc" }, take: 200 }) });
+  }),
+);

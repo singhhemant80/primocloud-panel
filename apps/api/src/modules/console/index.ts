@@ -1,0 +1,177 @@
+import crypto from "crypto";
+import type { IncomingMessage, Server as HttpServer } from "http";
+import type { Duplex } from "stream";
+import WebSocket, { WebSocketServer } from "ws";
+import { prisma } from "../../db";
+import { redis } from "../../jobs/queues";
+import { HttpError } from "../../lib/http";
+import { virtualizorFor } from "../provisioning/provisioner";
+
+/**
+ * Browser console for Virtualizor VPSes. Like the official WHMCS module we ask Virtualizor for a
+ * console password (act=vnc) and connect noVNC to the master's websocket (port 4083,
+ * /novnc/?virttoken=<vpsid>). The browser talks to the panel, which relays to the master — so it works
+ * even when customers can't reach the master or its certificate is self-signed.
+ */
+const KEY = (t: string) => `primocloud:console:${t}`;
+const ERR = (t: string) => `primocloud:console:err:${t}`;
+/** nodeHosts = the VPS's own node (used when Virtualizor's "Master Proxy Only" is off). */
+type Ticket = { hosts: string[]; nodeHosts?: string[]; port: number; token: string; verifyTls: boolean; serviceId: string; method?: string; nodeName?: string };
+
+const bareHost = (h: string) => h.replace(/^https?:\/\//, "").replace(/[:/].*$/, "");
+
+export async function openConsole(serviceId: string, who: { userId: string; staff: boolean; ip?: string }) {
+  const svc = await prisma.service.findUniqueOrThrow({ where: { id: serviceId }, include: { server: true, product: { select: { provisioner: true } } } });
+  if (svc.product.provisioner !== "VIRTUALIZOR") throw new HttpError(400, "The browser console is available for Virtualizor VPSes");
+  if (!svc.server || !svc.remoteId) throw new HttpError(409, "This VPS hasn't been created yet");
+  if (!who.staff && svc.status !== "ACTIVE") throw new HttpError(409, `The console isn't available while the service is ${svc.status.toLowerCase()}`);
+  const info = await virtualizorFor(svc.server)
+    .vncInfo(svc.remoteId)
+    .catch((e: Error) => {
+      // show the real reason instead of a generic 500
+      throw new HttpError(502, e.message);
+    });
+  const master = bareHost(svc.server.hostname);
+  const nodeInfo = await virtualizorFor(svc.server).nodeAddress(svc.remoteId).catch(() => ({ serid: "", hosts: [] as string[], name: undefined as string | undefined }));
+  const node = info.host ? bareHost(info.host) : "";
+  // Same as the WHMCS module: the websocket lives on the MASTER (https 4083, /novnc/?virttoken=<vpsid>).
+  // Only XCP uses the node's host and "<vpsid>-<password>" as the token. The other host is kept as a fallback.
+  const xcp = info.virt === "xcp";
+  const hosts = [...new Set((xcp ? [node, master] : [master, node]).filter(Boolean))];
+  const nodeHosts = nodeInfo.hosts.filter((h) => !hosts.includes(h));
+  const token = xcp ? `${svc.remoteId}-${info.password}` : svc.remoteId;
+  const ticket = crypto.randomBytes(24).toString("base64url");
+  const t: Ticket = { hosts, nodeHosts, port: 4083, token, verifyTls: svc.server.verifyTls, serviceId: svc.id, method: info.method, nodeName: nodeInfo.name };
+  await redis().set(KEY(ticket), JSON.stringify(t), "EX", 60);
+  await prisma.provisioningLog.create({ data: { serviceId: svc.id, action: "console", success: true, message: `Console opened by ${who.staff ? "staff" : "customer"}${who.ip ? ` from ${who.ip}` : ""} (${info.virt ?? "kvm"}, via ${hosts[0]}:4083, access from ${info.method ?? "?"})` } });
+  return { path: `/api/console/ws?t=${ticket}`, statusPath: `/api/console/status?t=${ticket}`, password: info.password, vpsid: svc.remoteId };
+}
+
+/** Why the last console connection for this ticket failed (shown in the console instead of "connection closed"). */
+export async function consoleError(ticket: string) {
+  return ticket ? redis().get(ERR(ticket)) : null;
+}
+
+async function recordFailure(ticket: string, t: Ticket, reason: string) {
+  await redis().set(ERR(ticket), reason, "EX", 600).catch(() => null);
+  await prisma.provisioningLog.create({ data: { serviceId: t.serviceId, action: "console", success: false, message: reason.slice(0, 500) } }).catch(() => null);
+}
+
+class GatewayError extends Error {}
+
+/** Virtualizor starts its websocket proxy when act=vnc is called — give it a few seconds before giving up. */
+async function connectWithRetry(t: Ticket, host: string, protocols: string[], isClosed: () => boolean, tries = 4, verify = t.verifyTls): Promise<WebSocket> {
+  let last: Error = new Error("no attempt");
+  for (let i = 0; i < tries && !isClosed(); i++) {
+    try {
+      return await connectUpstream(t, host, protocols, verify);
+    } catch (e) {
+      last = e as Error;
+      if (!(e instanceof GatewayError)) throw e;
+      await new Promise((ok) => setTimeout(ok, 1500 * (i + 1)));
+    }
+  }
+  throw last;
+}
+
+function connectUpstream(t: Ticket, host: string, protocols: string[], verify = t.verifyTls): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`wss://${host}:${t.port}/novnc/?virttoken=${encodeURIComponent(t.token)}`, protocols, {
+      rejectUnauthorized: verify,
+      handshakeTimeout: 15_000,
+      perMessageDeflate: false,
+      origin: `https://${host}:${t.port}`,
+    });
+    ws.once("open", () => resolve(ws));
+    ws.once("unexpected-response", (_req, res) => {
+      const code = res.statusCode ?? 0;
+      const msg = `${host}:${t.port} answered HTTP ${code}${code === 404 ? " (no noVNC websocket there)" : code >= 502 && code <= 504 ? " (Virtualizor's noVNC proxy isn't responding)" : ""}`;
+      reject(code >= 502 && code <= 504 ? new GatewayError(msg) : new Error(msg));
+      ws.terminate();
+    });
+    ws.once("error", (e) => reject(new Error(`${host}:${t.port} — ${(e as Error).message}`)));
+  });
+}
+
+/** Relays /api/console/ws?t=<ticket> websocket upgrades to the Virtualizor master. */
+export function attachConsoleProxy(server: HttpServer) {
+  const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false, handleProtocols: (protocols) => (protocols.has("binary") ? "binary" : [...protocols][0] ?? false) });
+  server.on("upgrade", async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    const url = new URL(req.url ?? "/", "http://x");
+    if (url.pathname !== "/api/console/ws") return; // not ours
+    const tk = url.searchParams.get("t") ?? "";
+    const raw = tk ? await redis().getdel(KEY(tk)).catch(() => null) : null;
+    if (!raw) {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      return socket.destroy();
+    }
+    const ticket = JSON.parse(raw) as Ticket;
+    wss.handleUpgrade(req, socket, head, async (client) => {
+      const protocols = String(req.headers["sec-websocket-protocol"] ?? "binary").split(",").map((x) => x.trim()).filter(Boolean);
+      const pending: { m: Buffer | string; bin: boolean }[] = [];
+      let upstream: WebSocket | null = null;
+      let closed = false;
+      client.on("message", (data, isBinary) => {
+        const m = isBinary ? (data as Buffer) : data.toString();
+        upstream?.readyState === WebSocket.OPEN ? upstream.send(m, { binary: isBinary }) : pending.push({ m, bin: isBinary });
+      });
+      client.on("close", () => {
+        closed = true;
+        upstream?.terminate();
+      });
+      client.on("error", () => upstream?.terminate());
+
+      const errors: string[] = [];
+      // 1) the master (Virtualizor "Master Proxy Only"), one quick retry for a proxy that's still starting
+      for (const host of ticket.hosts) {
+        try {
+          upstream = await connectWithRetry(ticket, host, protocols, () => closed, 2);
+          break;
+        } catch (e) {
+          errors.push((e as Error).message);
+        }
+      }
+      // 2) the VPS's own node — where noVNC lives when "Master Proxy Only" is off. Slaves usually have
+      //    Virtualizor's self-signed certificate; the address comes from the master's API, so a certificate
+      //    failure is retried without verification.
+      for (const host of upstream ? [] : ticket.nodeHosts ?? []) {
+        try {
+          upstream = await connectWithRetry(ticket, host, protocols, () => closed, 3);
+          break;
+        } catch (e) {
+          const m = (e as Error).message;
+          if (ticket.verifyTls && /certificate|self[- ]signed|SSL|TLS/i.test(m)) {
+            try {
+              upstream = await connectWithRetry(ticket, host, protocols, () => closed, 3, false);
+              break;
+            } catch (e2) {
+              errors.push((e2 as Error).message);
+              continue;
+            }
+          }
+          errors.push(m);
+        }
+      }
+      if (closed) return upstream?.terminate();
+      if (!upstream) {
+        const gateway = errors.some((e) => /HTTP 50[234]/.test(e));
+        const reason = gateway
+          ? `Virtualizor's noVNC proxy isn't responding (${errors.join("; ")}). ${ticket.nodeHosts?.length ? "" : "The VPS's node address couldn't be read from Virtualizor. "}Easiest fix: in Virtualizor → Configuration → Master Settings → noVNC Settings turn ON "Master Proxy Only", so the master serves every console. Also make sure the VPS is powered on and that VNC opens from Virtualizor's own panel. Console access came from: ${ticket.method ?? "unknown"}.`
+          : `Couldn't open the console websocket: ${errors.join("; ")}. The panel server must reach the Virtualizor master on port 4083${ticket.verifyTls ? " (and its SSL certificate must be valid — or turn off 'Verify SSL' for this server)" : ""}.`;
+        await recordFailure(tk, ticket, reason);
+        return client.close(1011, "console unreachable");
+      }
+      const up = upstream;
+      for (const p of pending.splice(0)) up.send(p.m, { binary: p.bin });
+      up.on("message", (data, isBinary) => client.readyState === WebSocket.OPEN && client.send(data, { binary: isBinary }));
+      const opened = Date.now();
+      let bytes = 0;
+      up.on("message", (d) => (bytes += (d as Buffer).length ?? 0));
+      up.on("close", async (code, reason) => {
+        if (Date.now() - opened < 5000 && bytes < 64) await recordFailure(tk, ticket, `Virtualizor closed the console right away (code ${code}${reason.length ? `: ${reason.toString()}` : ""}). Usually the VPS is powered off, VNC is disabled for it, or the node's VNC service isn't reachable from the master.`);
+        if (client.readyState === WebSocket.OPEN) client.close(code === 1005 || code === 1006 ? 1000 : code, reason.toString().slice(0, 120));
+      });
+      up.on("error", () => client.readyState === WebSocket.OPEN && client.close(1011));
+    });
+  });
+}

@@ -1,0 +1,445 @@
+"use client";
+import Link from "next/link";
+import { forwardRef, useCallback, useEffect, useRef, useState, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { createPortal } from "react-dom";
+import { api } from "@/lib/api";
+
+export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
+
+export function Icon({ name, className = "", fill = false }: { name: string; className?: string; fill?: boolean }) {
+  return (
+    <span className={cx("material-symbols-outlined leading-none select-none", className)} style={fill ? { fontVariationSettings: "'FILL' 1" } : undefined} aria-hidden>
+      {name}
+    </span>
+  );
+}
+
+type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger" | "outline"; size?: "sm" | "md" | "lg"; loading?: boolean; icon?: string; href?: string };
+export function Button({ variant = "primary", size = "md", loading, icon, href, className, children, disabled, ...rest }: BtnProps) {
+  const cls = cx(
+    "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap",
+    size === "sm" && "h-9 px-3.5 text-[13px]",
+    size === "md" && "h-11 px-5 text-sm",
+    size === "lg" && "h-12 px-6 text-[15px]",
+    variant === "primary" && "bg-gradient-to-br from-primary to-primary-dark text-white shadow-glow hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(124,58,237,.4)]",
+    variant === "secondary" && "bg-primary-soft text-primary-dark hover:bg-[#ead9ff]",
+    variant === "outline" && "border border-[#e6dcf8] bg-white text-slate-700 hover:border-primary hover:text-primary-dark",
+    variant === "ghost" && "text-slate-600 hover:bg-primary-tint hover:text-primary-dark",
+    variant === "danger" && "bg-rose-600 text-white hover:bg-rose-700",
+    className,
+  );
+  const inner = (
+    <>
+      {loading ? <Spinner className="h-4 w-4" /> : icon ? <Icon name={icon} className="text-[19px]" /> : null}
+      {children}
+    </>
+  );
+  if (href) return <Link href={href} className={cls} data-variant={variant}>{inner}</Link>;
+  return (
+    <button className={cls} data-variant={variant} disabled={disabled || loading} {...rest}>
+      {inner}
+    </button>
+  );
+}
+
+export function Spinner({ className = "h-5 w-5" }: { className?: string }) {
+  return <span className={cx("inline-block animate-spin rounded-full border-2 border-current border-t-transparent", className)} />;
+}
+
+export function Card({ children, className, title, action, pad = true }: { children: ReactNode; className?: string; title?: ReactNode; action?: ReactNode; pad?: boolean }) {
+  return (
+    <section className={cx("min-w-0 rounded-2xl border border-line bg-white shadow-card", className)}>
+      {title && (
+        <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-4 py-4 sm:px-5">
+          <h3 className="text-[15px] font-extrabold text-ink">{title}</h3>
+          {action}
+        </header>
+      )}
+      <div className={pad ? "p-4 sm:p-5" : ""}>{children}</div>
+    </section>
+  );
+}
+
+export function Stat({ label, value, icon, tone = "purple", href, hint }: { label: string; value: ReactNode; icon: string; tone?: "purple" | "green" | "amber" | "rose" | "sky" | "slate"; href?: string; hint?: string }) {
+  const tones = { purple: "bg-primary-soft text-primary-dark", green: "bg-emerald-50 text-emerald-600", amber: "bg-amber-50 text-amber-600", rose: "bg-rose-50 text-rose-600", sky: "bg-sky-50 text-sky-600", slate: "bg-slate-100 text-slate-600" };
+  const body = (
+    <div className="flex h-full flex-col items-start gap-2.5 rounded-2xl border border-line bg-white p-3.5 shadow-card transition hover:border-[#dccafb] sm:flex-row sm:items-center sm:gap-4 sm:p-5">
+      <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl sm:h-12 sm:w-12", tones[tone])}>
+        <Icon name={icon} className="text-[24px]" />
+      </span>
+      <div className="min-w-0">
+        <div className="truncate text-[13px] font-semibold text-mute">{label}</div>
+        <div className="mt-0.5 truncate text-xl font-extrabold tracking-tight text-ink sm:text-2xl">{value}</div>
+        {hint && <div className="line-clamp-2 text-xs text-mute">{hint}</div>}
+      </div>
+    </div>
+  );
+  return href ? <Link href={href}>{body}</Link> : body;
+}
+
+const STATUS: Record<string, string> = {
+  ACTIVE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  PAID: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  APPROVED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  AVAILABLE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  ANSWERED: "bg-sky-50 text-sky-700 ring-sky-200",
+  COMPLETED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  PARTIAL: "bg-amber-50 text-amber-700 ring-amber-200",
+  RUNNING: "bg-sky-50 text-sky-700 ring-sky-200",
+  running: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  PENDING: "bg-amber-50 text-amber-700 ring-amber-200",
+  PROVISIONING: "bg-violet-50 text-violet-700 ring-violet-200",
+  UNPAID: "bg-amber-50 text-amber-700 ring-amber-200",
+  OPEN: "bg-amber-50 text-amber-700 ring-amber-200",
+  CUSTOMER_REPLY: "bg-orange-50 text-orange-700 ring-orange-200",
+  IN_PROGRESS: "bg-violet-50 text-violet-700 ring-violet-200",
+  RESERVED: "bg-violet-50 text-violet-700 ring-violet-200",
+  PENDING_REVIEW: "bg-violet-50 text-violet-700 ring-violet-200",
+  PENDING_TRANSFER: "bg-amber-50 text-amber-700 ring-amber-200",
+  ALLOCATED: "bg-sky-50 text-sky-700 ring-sky-200",
+  SUSPENDED: "bg-orange-50 text-orange-700 ring-orange-200",
+  TERMINATED: "bg-slate-200 text-slate-700 ring-slate-300",
+  FAILED: "bg-rose-50 text-rose-700 ring-rose-200",
+  SENT: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  DRAFT: "bg-slate-100 text-slate-600 ring-slate-200",
+  CANCELLED: "bg-slate-200 text-slate-600 ring-slate-300",
+  SCHEDULED: "bg-violet-50 text-violet-700 ring-violet-200",
+  SENDING: "bg-sky-50 text-sky-700 ring-sky-200",
+  PAUSED: "bg-amber-50 text-amber-700 ring-amber-200",
+  QUEUED: "bg-slate-100 text-slate-600 ring-slate-200",
+  SKIPPED: "bg-slate-100 text-slate-500 ring-slate-200",
+  BOUNCED: "bg-rose-50 text-rose-700 ring-rose-200",
+  SUPPRESSED: "bg-amber-50 text-amber-700 ring-amber-200",
+  LOGGED: "bg-slate-100 text-slate-600 ring-slate-200",
+  FRAUD: "bg-rose-50 text-rose-700 ring-rose-200",
+  BLOCKED: "bg-rose-50 text-rose-700 ring-rose-200",
+  REJECTED: "bg-rose-50 text-rose-700 ring-rose-200",
+  EXPIRED: "bg-rose-50 text-rose-700 ring-rose-200",
+  DECLINED: "bg-rose-50 text-rose-700 ring-rose-200",
+  ACCEPTED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  INVOICED: "bg-sky-50 text-sky-700 ring-sky-200",
+  NOW: "bg-violet-50 text-violet-700 ring-violet-200",
+  NEXT_INVOICE: "bg-slate-100 text-slate-600 ring-slate-200",
+  ON_DATE: "bg-sky-50 text-sky-700 ring-sky-200",
+  RECURRING: "bg-violet-50 text-violet-700 ring-violet-200",
+  URGENT: "bg-rose-50 text-rose-700 ring-rose-200",
+  HIGH: "bg-orange-50 text-orange-700 ring-orange-200",
+  stopped: "bg-slate-100 text-slate-600 ring-slate-200",
+};
+export function Badge({ status, children }: { status?: string; children?: ReactNode }) {
+  const s = status ?? String(children ?? "");
+  return (
+    <span className={cx("inline-flex items-center rounded-full px-2.5 py-0.5 text-[11.5px] font-bold uppercase tracking-wide ring-1 ring-inset", STATUS[s] ?? "bg-slate-100 text-slate-600 ring-slate-200")}>
+      {children ?? s.replace(/_/g, " ").toLowerCase()}
+    </span>
+  );
+}
+
+export function Field({ label, hint, error, children, className }: { label?: ReactNode; hint?: ReactNode; error?: string; children: ReactNode; className?: string }) {
+  return (
+    <label className={cx("block", className)}>
+      {label && <span className="mb-1.5 block text-[13px] font-bold text-slate-700">{label}</span>}
+      {children}
+      {hint && !error && <span className="mt-1 block text-xs text-mute">{hint}</span>}
+      {error && <span className="mt-1 block text-xs font-semibold text-rose-600">{error}</span>}
+    </label>
+  );
+}
+const inputCls = "w-full rounded-xl border border-[#e6dcf8] bg-white px-3.5 text-[14.5px] text-ink placeholder:text-slate-400 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-slate-50";
+export const Input = (p: InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={cx(inputCls, "h-11", p.className)} />;
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(p, ref) {
+  return <textarea ref={ref} {...p} className={cx(inputCls, "py-2.5", p.className)} />;
+});
+export const Select = ({ children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) => (
+  <select {...p} className={cx(inputCls, "h-11 pr-8", p.className)}>
+    {children}
+  </select>
+);
+export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: ReactNode }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} className="inline-flex items-center gap-2.5 text-sm font-semibold text-slate-700">
+      <span className={cx("relative h-6 w-11 rounded-full transition", checked ? "bg-primary-dark" : "bg-slate-300")}>
+        <span className={cx("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition", checked ? "left-[22px]" : "left-0.5")} />
+      </span>
+      {label}
+    </button>
+  );
+}
+
+export function Alert({ tone = "info", children, className }: { tone?: "info" | "success" | "warn" | "error"; children: ReactNode; className?: string }) {
+  const t = { info: "bg-primary-tint border-[#e9d5ff] text-primary-deep", success: "bg-emerald-50 border-emerald-200 text-emerald-800", warn: "bg-amber-50 border-amber-200 text-amber-800", error: "bg-rose-50 border-rose-200 text-rose-800" };
+  const i = { info: "info", success: "check_circle", warn: "warning", error: "error" };
+  return (
+    <div className={cx("flex items-start gap-3 rounded-xl border px-4 py-3 text-sm", t[tone], className)}>
+      <Icon name={i[tone]} className="mt-px text-[20px]" />
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+export function Empty({ icon = "inbox", title, children }: { icon?: string; title: string; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+      <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary-soft text-primary-dark">
+        <Icon name={icon} className="text-[28px]" />
+      </span>
+      <div className="text-base font-extrabold text-ink">{title}</div>
+      {children && <div className="mt-1.5 max-w-md text-sm text-mute">{children}</div>}
+    </div>
+  );
+}
+
+/** Icon for a page, from its address — used by PageHeader when none is given. */
+const PAGE_ICONS: [RegExp, string][] = [
+  [/\/search/, "search"], [/\/clients|\/customers/, "groups"], [/\/orders/, "shopping_bag"], [/\/invoices/, "receipt_long"], [/\/transactions|\/payments/, "payments"],
+  [/\/payment-reviews/, "fact_check"], [/\/services|\/vps/, "dns"], [/\/domains/, "public"], [/\/tickets/, "support_agent"], [/\/products|\/product-groups/, "inventory_2"],
+  [/\/addons/, "extension"], [/\/promo/, "sell"], [/\/os-templates/, "album"], [/\/servers/, "storage"], [/\/proxmox/, "hub"], [/\/virtualizor/, "lan"],
+  [/\/monitoring/, "monitor_heart"], [/\/ips/, "router"], [/\/locations/, "location_on"], [/\/provisioning/, "rocket_launch"], [/\/resellers|\/reseller/, "storefront"],
+  [/\/affiliates/, "handshake"], [/\/announcements/, "campaign"], [/\/knowledgebase/, "menu_book"], [/\/whatsapp/, "chat"], [/\/email/, "mail"], [/\/gateways/, "account_balance"],
+  [/\/currencies/, "currency_exchange"], [/\/reports/, "bar_chart"], [/\/activity/, "history"], [/\/staff|\/roles/, "badge"], [/\/security/, "shield_lock"],
+  [/\/automation/, "schedule"], [/\/backups/, "backup"], [/\/broker-latency/, "network_ping"], [/\/settings/, "settings"], [/\/migration/, "move_up"], [/\/wallet/, "account_balance_wallet"], [/\/downloads/, "download"], [/\/profile/, "person"],
+  [/\/admin\/?$|\/client\/?$/, "space_dashboard"],
+];
+
+export type HeaderStat = [label: string, value: ReactNode, sub?: ReactNode];
+
+/**
+ * Page header: gradient band with icon, title, optional badge / meta line / actions, and an optional
+ * strip of key facts underneath. Buttons passed as `actions` are restyled for the dark band.
+ */
+export function PageHeader({ title, subtitle, actions, back, icon, badge, meta, stats, children }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; back?: string; icon?: string | ReactNode; badge?: ReactNode; meta?: ReactNode; stats?: HeaderStat[]; children?: ReactNode }) {
+  const [path, setPath] = useState("");
+  useEffect(() => setPath(window.location.pathname), []);
+  const ic = icon ?? PAGE_ICONS.find(([re]) => re.test(path))?.[1] ?? "dashboard";
+  return (
+    <div className="mb-6">
+      {back && (
+        <Link href={back} className="mb-3 inline-flex items-center gap-1 text-[13px] font-bold text-primary-dark hover:underline">
+          <Icon name="arrow_back" className="text-[17px]" /> Back
+        </Link>
+      )}
+      <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+        <div className="relative bg-gradient-to-br from-[#1e0b4b] via-[#3b0f7a] to-[#6d28d9] px-4 py-5 text-white sm:px-6">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] [background-size:28px_28px]" />
+          <div className="relative flex flex-wrap items-start gap-3 sm:items-center sm:gap-4">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-primary-dark shadow-lg sm:h-12 sm:w-12">
+              {typeof ic === "string" ? <Icon name={ic} className="text-[26px]" /> : ic}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="min-w-0 break-words text-xl font-extrabold tracking-tight sm:text-2xl [&_.text-mute]:!text-white/60">{title}</h1>
+                {badge && <span className="rounded-lg bg-white/95 px-1 py-0.5 text-ink">{badge}</span>}
+              </div>
+              {subtitle && <div className="mt-0.5 text-[13.5px] text-white/75 [&_.font-mono]:text-white/90 [&_a]:!text-white [&_a]:underline-offset-2 [&_a:hover]:underline">{subtitle}</div>}
+              {meta && <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-white/90 [&_a:hover]:underline">{meta}</div>}
+            </div>
+            {actions && <div className="hero-actions flex w-full flex-wrap items-center gap-2 sm:w-auto">{actions}</div>}
+          </div>
+          {children && <div className="relative mt-4">{children}</div>}
+        </div>
+        {stats && stats.length > 0 && (
+          <dl className={cx("grid grid-cols-2 sm:grid-cols-3", stats.length >= 6 ? "xl:grid-cols-6" : stats.length === 5 ? "xl:grid-cols-5" : stats.length === 4 ? "lg:grid-cols-4" : "")}>
+            {stats.map(([l, v, sub], i) => (
+              <div key={i} className="min-w-0 border-b border-r border-line px-4 py-3.5 sm:px-5 sm:py-4">
+                <dt className="truncate text-[11px] font-bold uppercase tracking-wider text-mute">{l}</dt>
+                <dd className="mt-1 truncate text-[15px] font-extrabold text-ink">{v}</dd>
+                {sub && <dd className="truncate text-xs text-mute">{sub}</dd>}
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+    </div>
+  );
+}
+
+export function Table({ head, children, empty }: { head: ReactNode[]; children: ReactNode; empty?: ReactNode }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-line bg-[#fbf9ff] text-[11.5px] font-bold uppercase tracking-wider text-mute">
+            {head.map((h, i) => (
+              <th key={i} className="whitespace-nowrap px-4 py-3">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#f3effb]">{children}</tbody>
+      </table>
+      {empty}
+    </div>
+  );
+}
+export const Td = ({ children, className }: { children?: ReactNode; className?: string }) => <td className={cx("px-4 py-3 align-middle", className)}>{children}</td>;
+
+export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; wide?: boolean }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    if (open) document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [open, onClose]);
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+  if (!open || typeof document === "undefined") return null;
+  // portal to <body> so the overlay is never trapped inside an animated/transformed or overflow-hidden parent
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 pt-[8vh] backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={cx("w-full rounded-2xl bg-white shadow-2xl", wide ? "max-w-3xl" : "max-w-lg")}>
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <h3 className="text-base font-extrabold text-ink">{title}</h3>
+          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Close">
+            <Icon name="close" className="text-[20px]" />
+          </button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// ── tiny toast system ──
+type ToastT = { id: number; tone: "success" | "error" | "info"; text: string };
+let pushToast: (t: Omit<ToastT, "id">) => void = () => {};
+export const toast = {
+  success: (text: string) => pushToast({ tone: "success", text }),
+  error: (text: string) => pushToast({ tone: "error", text }),
+  info: (text: string) => pushToast({ tone: "info", text }),
+};
+export function Toaster() {
+  const [items, setItems] = useState<ToastT[]>([]);
+  useEffect(() => {
+    pushToast = (t) => {
+      const id = Date.now() + Math.random();
+      setItems((x) => [...x, { ...t, id }]);
+      setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), 5000);
+    };
+  }, []);
+  return (
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[80] flex w-[min(380px,calc(100vw-32px))] flex-col gap-2">
+      {items.map((t) => (
+        <div key={t.id} className={cx("pointer-events-auto flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold shadow-xl", t.tone === "success" ? "bg-emerald-600 text-white" : t.tone === "error" ? "bg-rose-600 text-white" : "bg-ink text-white")}>
+          <Icon name={t.tone === "success" ? "check_circle" : t.tone === "error" ? "error" : "info"} className="text-[19px]" />
+          <span>{t.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Data fetching hook with reload. */
+export function useApi<T = any>(path: string | null, deps: unknown[] = []) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!path);
+  const alive = useRef(true);
+  const load = useCallback(async () => {
+    if (!path) return;
+    setLoading(true);
+    try {
+      const d = await api<T>(path);
+      if (alive.current) {
+        setData(d);
+        setError(null);
+      }
+    } catch (e: any) {
+      if (alive.current) setError(e.message);
+    } finally {
+      if (alive.current) setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, ...deps]);
+  useEffect(() => {
+    alive.current = true;
+    load();
+    return () => {
+      alive.current = false;
+    };
+  }, [load]);
+  return { data, error, loading, reload: load, setData };
+}
+
+export function Loading({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div className="flex items-center justify-center gap-3 py-16 text-sm font-semibold text-mute">
+      <Spinner className="h-5 w-5 text-primary-dark" /> {label}
+    </div>
+  );
+}
+
+export function Pager({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (pages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm text-mute">
+      <span>
+        {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
+      </span>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          Previous
+        </Button>
+        <Button size="sm" variant="outline" disabled={page >= pages} onClick={() => onPage(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Copies text. navigator.clipboard only exists on https / localhost, so on a plain-http panel this falls
+ * back to a hidden textarea + execCommand("copy"), which every browser still supports.
+ */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    if (typeof window !== "undefined" && window.isSecureContext && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;";
+    document.body.appendChild(ta);
+    const active = document.activeElement as HTMLElement | null;
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    active?.focus?.();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+export function Copy({ text }: { text: string }) {
+  const [ok, setOk] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        if (await copyText(text)) {
+          setOk(true);
+          setTimeout(() => setOk(false), 1500);
+        } else toast.error("Couldn't copy — select the text and press Ctrl+C");
+      }}
+      className="inline-grid h-7 w-7 place-items-center rounded-lg text-slate-500 hover:bg-primary-soft hover:text-primary-dark"
+      title="Copy"
+    >
+      <Icon name={ok ? "check" : "content_copy"} className="text-[16px]" />
+    </button>
+  );
+}
