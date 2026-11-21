@@ -3,7 +3,7 @@
  * Every action is executed by the BullMQ worker (jobs/worker.ts) — never inside an HTTP request.
  */
 import { prisma, Prisma, type Server, ServiceStatus } from "../../db";
-import { inJob, reportProgress, sleep } from "./action-progress";
+import { inJob, isResumedRun, recall, remember, reportProgress, sleep } from "./action-progress";
 import type { VirtualizorClient as VzClient } from "./virtualizor";
 import { config } from "../../config";
 import { decrypt, encrypt, generatePassword } from "../../lib/crypto";
@@ -624,33 +624,66 @@ const START_STEP: Partial<Record<ProvisionAction, string>> = {
  * Follow Virtualizor's own task for this VPS (rebuild, …) until it finishes, reporting its progress.
  * Returns quietly if the master doesn't expose tasks; throws if Virtualizor says the task failed.
  */
-async function waitVirtualizorTask(c: VzClient, vpsid: string, action: string, afterActid: number, label: string, from: number, to: number) {
-  if (!inJob()) return;
+/**
+ * Follow a Virtualizor task (e.g. rebuildvs) until it is done. Virtualizor masters differ in how they mark
+ * "done": status 2/3, an end time, "Task Completed", or just 100% with "Performing final steps…" left on
+ * the row — so any of these counts, and a task that stops changing while the VPS is running counts too.
+ */
+export async function waitVirtualizorTask(c: VzClient, vpsid: string, action: string, afterActid: number, label: string, from: number, to: number, opts: { pollMs?: number; maxMs?: number; settleMs?: number; stallMs?: number } = {}) {
+  if (!inJob()) return "skipped" as const;
+  const pollMs = opts.pollMs ?? 8000;
   const started = Date.now();
-  const deadline = started + 25 * 60_000;
+  const deadline = started + (opts.maxMs ?? 25 * 60_000);
   let seen = false;
+  let lastSig = "";
+  let lastChange = Date.now();
+  let fullSince = 0;
   while (Date.now() < deadline) {
-    await sleep(8000);
+    await sleep(pollMs);
     let t;
     try {
       t = await c.latestTask(vpsid, action);
     } catch {
-      return; // tasks API not available on this master — nothing more to follow
+      return "unknown" as const; // tasks API not available on this master — nothing more to follow
     }
     const mine = t && t.actid > afterActid ? t : null;
     if (!mine) {
-      if (!seen && Date.now() - started > 90_000) return; // Virtualizor never listed it
+      if (!seen && Date.now() - started > 90_000) return "unknown" as const; // Virtualizor never listed it
       reportProgress(`${label}: waiting for Virtualizor to start the task`, from);
       continue;
     }
     seen = true;
-    if (mine.status === -1) throw new ProvisionError(`Virtualizor reported the task failed: ${mine.statusText || "error"}`, false);
-    if (mine.status === 2 || /complet/i.test(mine.statusText)) return;
+    if (mine.status === -1 || /fail|error/i.test(mine.statusText)) throw new ProvisionError(`Virtualizor reported the task failed: ${mine.statusText || "error"}`, false);
+    if (mine.status === 2 || mine.status === 3 || mine.ended > 0 || /complet|success|finished/i.test(mine.statusText)) return "done" as const;
+    // 100% — some masters never flip the status afterwards; give the last step a short moment
+    if ((mine.progress ?? 0) >= 100) {
+      fullSince ||= Date.now();
+      if (Date.now() - fullSince >= (opts.settleMs ?? 60_000)) return "done" as const;
+    } else fullSince = 0;
+    const sig = `${mine.status}|${mine.progress}|${mine.statusText}`;
+    if (sig !== lastSig) {
+      lastSig = sig;
+      lastChange = Date.now();
+    } else if (Date.now() - lastChange >= (opts.stallMs ?? 4 * 60_000)) {
+      // nothing has moved for minutes: if the VPS is up again, the rebuild is over (the task row is just stale)
+      const st = (await c.vpsStatus([vpsid]).catch(() => ({}) as Record<string, number>))[vpsid];
+      if (st === 1) return "done" as const;
+      lastChange = Date.now();
+    }
     // Virtualizor's own % when it gives one; otherwise a time-based estimate (a rebuild takes ~3–8 min)
-    const est = from + ((to - from) * Math.min(0.95, (Date.now() - started) / (6 * 60_000)));
-    reportProgress(label, mine.progress != null ? from + ((to - from) * mine.progress) / 100 : est, [mine.actionText, mine.statusText].filter(Boolean).join(" · "));
+    const est = from + (to - from) * Math.min(0.95, (Date.now() - started) / (6 * 60_000));
+    reportProgress(label, mine.progress != null ? from + ((to - from) * Math.min(99, mine.progress)) / 100 : est, [mine.actionText, mine.statusText].filter(Boolean).join(" · "));
   }
   reportProgress(`${label}: still running in Virtualizor`, to, "It's taking longer than usual — it will finish on its own");
+  return "timeout" as const;
+}
+
+/** Virtualizor's rebuild task for the VPS if one is running or ended in the last 40 minutes. */
+async function recentRebuild(c: VzClient, vpsid: string) {
+  const t = await c.latestTask(vpsid, "rebuildvs").catch(() => null);
+  if (!t) return null;
+  const age = Date.now() / 1000 - t.time;
+  return t.status === 1 || (t.time > 0 && age < 40 * 60) ? t : null;
 }
 
 /** After a power action, wait (up to a few minutes) until the VPS reports the expected state. */
@@ -956,20 +989,46 @@ async function runProvisionActionUnlocked(serviceId: string, action: ProvisionAc
           const { server, remoteId } = requireRemote(svc);
           if (!os.virtualizorOsId) throw new ProvisionError("OS has no Virtualizor id", false);
           const vz = virtualizorFor(server);
-          const before = await vz.latestTask(remoteId, "rebuildvs").catch(() => null);
-          reportProgress(`Sending the reinstall of ${os.name} to Virtualizor`, 10);
-          await vz.rebuild(remoteId, os.virtualizorOsId, password);
+          // a run interrupted by a restart must never send a second rebuild — follow the one already running
+          const sent = recall<{ after: number; passwordEnc: string }>("vzRebuild");
+          let after: number;
+          let login: string | null = password;
+          if (sent) {
+            after = sent.after;
+            login = decrypt(sent.passwordEnc);
+            reportProgress(`Reinstalling ${os.name}: picking up the reinstall already running in Virtualizor`, 15);
+          } else if (isResumedRun() && (await recentRebuild(vz, remoteId))) {
+            // interrupted before this panel kept notes (older version): follow Virtualizor's task
+            const t = (await recentRebuild(vz, remoteId))!;
+            after = t.actid - 1;
+            login = params.passwordEnc ? decrypt(String(params.passwordEnc)) : null;
+            reportProgress(`Reinstalling ${os.name}: picking up the reinstall already running in Virtualizor`, 15);
+          } else {
+            const before = await vz.latestTask(remoteId, "rebuildvs").catch(() => null);
+            after = before?.actid ?? 0;
+            await remember("vzRebuild", { after, passwordEnc: encrypt(password) });
+            reportProgress(`Sending the reinstall of ${os.name} to Virtualizor`, 10);
+            await vz.rebuild(remoteId, os.virtualizorOsId, password);
+          }
           // Virtualizor rebuilds in the background: follow its task so "done" means really done
-          await waitVirtualizorTask(vz, remoteId, "rebuildvs", before?.actid ?? 0, `Reinstalling ${os.name}`, 15, 95);
+          await waitVirtualizorTask(vz, remoteId, "rebuildvs", after, `Reinstalling ${os.name}`, 15, 95);
           reportProgress("Saving the new login", 97);
-          await prisma.service.update({ where: { id: svc.id }, data: { osTemplateId: os.id, passwordEnc: encrypt(password), username: loginUserOf(os) } });
-          await queueEmail("service.vps_ready", svc.user.email, { ...vars, password, username: loginUserOf(os), ip: svc.ips[0]?.address ?? "", os: os.name }, svc.userId);
+          if (login) {
+            await prisma.service.update({ where: { id: svc.id }, data: { osTemplateId: os.id, passwordEnc: encrypt(login), username: loginUserOf(os) } });
+            await queueEmail("service.vps_ready", svc.user.email, { ...vars, password: login, username: loginUserOf(os), ip: svc.ips[0]?.address ?? "", os: os.name }, svc.userId);
+          } else {
+            await prisma.service.update({ where: { id: svc.id }, data: { osTemplateId: os.id, username: loginUserOf(os) } });
+            await log(svc.id, action, true, `Reinstalled with ${os.name} — the run was interrupted by a restart, so the new root password wasn't kept: use Reset password`);
+            return { ok: true, passwordUnknown: true };
+          }
         }
         await log(svc.id, action, true, `Reinstalled with ${os.name}`);
         return { ok: true };
       }
       case "change_ip": {
         if (prov !== "VIRTUALIZOR") throw new ProvisionError("Changing IPs from the panel is supported for Virtualizor VPSes", false);
+        // repeating an interrupted IP change would swap the IP a second time
+        if (isResumedRun()) throw new ProvisionError("The IP change was interrupted by a panel restart — check the VPS's IPs on this page before changing them again", false);
         const ips = Array.isArray(params.ips) ? (params.ips as string[]) : undefined;
         const r = await replaceVirtualizorIps(svc.id, ips?.length ? ips : undefined);
         return { ok: true, ...r };

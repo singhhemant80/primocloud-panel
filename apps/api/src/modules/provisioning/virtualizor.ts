@@ -22,6 +22,10 @@ export interface VirtualizorTask {
   statusText: string;
   actionText: string;
   progress: number | null;
+  /** unix seconds the task ended (0/absent while running) */
+  ended: number;
+  /** unix seconds the task was queued */
+  time: number;
 }
 
 export class VirtualizorError extends Error {
@@ -574,6 +578,8 @@ export class VirtualizorClient {
       statusText: String(t.status_txt ?? ""),
       actionText: String(t.action_txt ?? t.action ?? ""),
       progress: Number.isFinite(pct) && pct >= 0 ? pct : null,
+      ended: Number(t.ended) || 0,
+      time: Number(t.time ?? t.started) || 0,
     };
   }
 

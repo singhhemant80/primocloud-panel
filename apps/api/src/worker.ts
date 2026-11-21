@@ -29,7 +29,14 @@ const connection = bullConnection();
 const provisioning = new Worker<ProvisionJob>(
   "provisioning",
   // each step the provisioning code reports shows live on the service page (GET …/activity)
-  async (job: Job<ProvisionJob>) => withProgress((p) => job.updateProgress(p as never), () => runProvisionAction(job.data.serviceId, job.data.action, job.data.params ?? {})),
+  async (job: Job<ProvisionJob>) => {
+    const data = job.data as ProvisionJob & { memo?: Record<string, unknown> };
+    // a job that already started once and is picked up again after a restart: carry on, don't repeat
+    const resumed = !!data.memo?.started || (job.stalledCounter ?? 0) > 0;
+    const memo = { values: { ...(data.memo ?? {}), started: true }, resumed, save: (values: Record<string, unknown>) => job.updateData({ ...job.data, memo: values } as never) };
+    await memo.save(memo.values).catch(() => undefined);
+    return withProgress((p) => job.updateProgress(p as never), () => runProvisionAction(job.data.serviceId, job.data.action, job.data.params ?? {}), memo);
+  },
   // short lock, renewed automatically while a job runs: a run killed by a restart is picked up again
   // within about a minute instead of looking "active" for half an hour
   { connection, concurrency: 10, lockDuration: 60_000, stalledInterval: 30_000, maxStalledCount: 3, autorun: false },

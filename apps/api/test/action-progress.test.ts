@@ -6,7 +6,8 @@
  */
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { reportProgress, withProgress, inJob } from "../src/modules/provisioning/action-progress";
+import { reportProgress, withProgress, inJob, remember, recall, isResumedRun } from "../src/modules/provisioning/action-progress";
+import { waitVirtualizorTask } from "../src/modules/provisioning/provisioner";
 import { serviceActivity } from "../src/modules/provisioning/activity";
 import { provisioningQueue, closeQueues } from "../src/jobs/queues";
 import { VirtualizorClient } from "../src/modules/provisioning/virtualizor";
@@ -84,5 +85,50 @@ test("latestTask reads Virtualizor's newest task for the VPS (status, progress, 
     };
   };
   const t = await c.latestTask("293", "rebuildvs");
-  assert.deepEqual(t, { actid: 912, status: 1, statusText: "In progress", actionText: "Rebuilding VPS", progress: 37 });
+  assert.deepEqual(t, { actid: 912, status: 1, statusText: "In progress", actionText: "Rebuilding VPS", progress: 37, ended: 0, time: 0 });
+});
+
+// a fake Virtualizor whose rebuild task follows a script (one row per poll; the last row repeats)
+function scripted(rows: Partial<{ status: number; progress: number | null; statusText: string; ended: number }>[], vpsRunning = false) {
+  let i = 0;
+  return {
+    latestTask: async () => {
+      const r = rows[Math.min(i++, rows.length - 1)];
+      return { actid: 50, status: 1, statusText: "", actionText: "Rebuilding VPS", progress: null, ended: 0, time: 0, ...r };
+    },
+    vpsStatus: async (ids: string[]) => Object.fromEntries(ids.map((x) => [x, vpsRunning ? 1 : 0])),
+  } as never;
+}
+const fast = { pollMs: 5, settleMs: 40, stallMs: 60, maxMs: 3000 };
+const run = <T>(fn: () => Promise<T>) => withProgress(() => undefined, fn);
+
+test("reinstall wait: a master that leaves the task at 100% 'Performing final steps' still finishes", async () => {
+  const r = await run(() => waitVirtualizorTask(scripted([{ progress: 40 }, { progress: 100, statusText: "Performing final steps..." }]), "293", "rebuildvs", 49, "Reinstalling", 15, 95, fast));
+  assert.equal(r, "done");
+});
+
+test("reinstall wait: an end time or status 2/3 means done; status -1 fails", async () => {
+  assert.equal(await run(() => waitVirtualizorTask(scripted([{ progress: 60, ended: 1763735000 }]), "293", "rebuildvs", 49, "R", 15, 95, fast)), "done");
+  assert.equal(await run(() => waitVirtualizorTask(scripted([{ status: 3 }]), "293", "rebuildvs", 49, "R", 15, 95, fast)), "done");
+  await assert.rejects(run(() => waitVirtualizorTask(scripted([{ status: -1, statusText: "Error" }]), "293", "rebuildvs", 49, "R", 15, 95, fast)), /failed/);
+});
+
+test("reinstall wait: a task stuck below 100% finishes once the VPS is running again, keeps waiting while it isn't", async () => {
+  assert.equal(await run(() => waitVirtualizorTask(scripted([{ progress: 95, statusText: "Performing final steps..." }], true), "293", "rebuildvs", 49, "R", 15, 95, fast)), "done");
+  assert.equal(await run(() => waitVirtualizorTask(scripted([{ progress: 95 }], false), "293", "rebuildvs", 49, "R", 15, 95, { ...fast, maxMs: 300 })), "timeout");
+});
+
+test("job memory survives a re-pick: remember() saves on the job, a resumed run can recall it", async () => {
+  const saved: Record<string, unknown>[] = [];
+  const memo = { values: { started: true }, resumed: false, save: async (v: Record<string, unknown>) => saved.push(v) };
+  await withProgress(() => undefined, async () => {
+    assert.equal(isResumedRun(), false);
+    await remember("vzRebuild", { after: 7, passwordEnc: "x" });
+  }, memo);
+  assert.deepEqual(saved.at(-1), { started: true, vzRebuild: { after: 7, passwordEnc: "x" } });
+  await withProgress(() => undefined, async () => {
+    assert.equal(isResumedRun(), true);
+    assert.deepEqual(recall("vzRebuild"), { after: 7, passwordEnc: "x" });
+  }, { values: saved.at(-1)!, resumed: true, save: async () => 0 });
+  assert.equal(recall("vzRebuild"), undefined); // outside a job
 });

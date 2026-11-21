@@ -17,14 +17,36 @@ export interface ActionProgress {
 }
 
 type Reporter = (p: ActionProgress) => unknown;
-const store = new AsyncLocalStorage<Reporter>();
+/**
+ * A job's memory: values saved on the queued job itself, so a run that a restart interrupted (and the
+ * queue picks up again) can carry on — e.g. follow the reinstall already running in Virtualizor with the
+ * same password — instead of repeating a destructive step.
+ */
+export interface JobMemo {
+  values: Record<string, unknown>;
+  save: (values: Record<string, unknown>) => Promise<unknown>;
+  /** this run is a re-pick of a run that was interrupted part-way */
+  resumed: boolean;
+}
+const store = new AsyncLocalStorage<{ report: Reporter; memo?: JobMemo }>();
 
-export function withProgress<T>(reporter: Reporter, fn: () => Promise<T>): Promise<T> {
-  return store.run(reporter, fn);
+export function withProgress<T>(reporter: Reporter, fn: () => Promise<T>, memo?: JobMemo): Promise<T> {
+  return store.run({ report: reporter, memo }, fn);
 }
 
+/** Save a value on the running job before a step that must not be repeated (no-op outside a job). */
+export async function remember(key: string, value: unknown) {
+  const m = store.getStore()?.memo;
+  if (!m) return;
+  m.values = { ...m.values, [key]: value };
+  await m.save(m.values);
+}
+export const recall = <T = unknown>(key: string): T | undefined => store.getStore()?.memo?.values[key] as T | undefined;
+/** True when this run re-picks a job that was interrupted (worker restart / crash) part-way. */
+export const isResumedRun = () => !!store.getStore()?.memo?.resumed;
+
 export function reportProgress(step: string, pct?: number, detail?: string) {
-  const r = store.getStore();
+  const r = store.getStore()?.report;
   if (!r) return;
   const p: ActionProgress = { step, at: new Date().toISOString(), ...(pct === undefined ? {} : { pct: Math.max(0, Math.min(100, Math.round(pct))) }), ...(detail ? { detail } : {}) };
   void Promise.resolve()
