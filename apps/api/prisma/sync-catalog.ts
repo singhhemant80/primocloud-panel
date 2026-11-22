@@ -92,6 +92,14 @@ export async function syncCatalog() {
   }
 
 
+  // plans sold as unlimited bandwidth that picked up a cap they don't have (the old 10 TB default, a
+  // Virtualizor plan's 10 TB, or a "huge" placeholder): back to unmetered. Real caps set by staff are kept.
+  const unlimitedSlugs = CATALOG.flatMap((g) => g.plans).filter((p) => p.bw === null || p.bw === undefined).map((p) => p.slug);
+  const uncapped = await prisma.product.updateMany({
+    where: { slug: { in: unlimitedSlugs }, OR: [{ bandwidthGb: { in: [10_000, 10_240] } }, { bandwidthGb: { gte: 1_000_000 } }] },
+    data: { bandwidthGb: null },
+  });
+  if (uncapped.count) console.log(`[catalog] ${uncapped.count} unlimited-bandwidth plan(s) had a 10 TB / placeholder cap — reset to unmetered`);
   const retired = await prisma.product.updateMany({ where: { slug: { in: RETIRED }, hidden: false }, data: { hidden: true } });
   return { added, hidden: retired.count };
 }
