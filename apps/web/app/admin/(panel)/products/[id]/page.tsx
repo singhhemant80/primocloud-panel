@@ -384,8 +384,10 @@ type VPlan = { plid: number; name: string; virt: string; ramMb: number | null; d
 
 /** Lists the plans configured in Virtualizor so staff pick one instead of typing an id; picking also fills CPU/RAM/disk. */
 function VirtualizorPlanPicker({ serverIds, planId, virt, onPick }: { serverIds: string[]; planId: string | number; virt: string; onPick: (planId: number | "", virt: string, specs?: Partial<VPlan>) => void }) {
-  const q = serverIds.length ? `?serverIds=${serverIds.join(",")}` : "";
-  const { data, loading, reload, error } = useApi(`/admin/virtualizor/plans${q}`);
+  const [fresh, setFresh] = useState(0);
+  const q = new URLSearchParams({ ...(serverIds.length ? { serverIds: serverIds.join(",") } : {}), ...(fresh ? { refresh: String(fresh) } : {}) }).toString();
+  const { data, loading, error } = useApi(`/admin/virtualizor/plans${q ? `?${q}` : ""}`);
+  const reload = () => setFresh(Date.now());
   const groups: { serverId: string; serverName: string; plans: VPlan[]; error: string | null }[] = data?.servers ?? [];
   const all = groups.flatMap((g) => g.plans);
   const errors = groups.filter((g) => g.error);

@@ -43,3 +43,32 @@ test("parallel Virtualizor calls reuse at most 4 connections per master", async 
     server.close();
   }
 });
+
+test("plan list loads while every background connection is busy (own quick pool)", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "vz-quick-"));
+  execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=localhost", "-keyout", `${dir}/k.pem`, "-out", `${dir}/c.pem`], { stdio: "ignore" });
+  const held: import("node:http").ServerResponse[] = [];
+  const server = https.createServer({ key: readFileSync(`${dir}/k.pem`), cert: readFileSync(`${dir}/c.pem`) }, (req, res) => {
+    if (String(req.url).includes("act=plans")) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ plans: { 1: { plid: 1, plan_name: "V-Primo 2GB" } } }));
+    }
+    held.push(res); // a slow background call: never answered while the test runs
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const creds = { host: "127.0.0.1", port, apiKey: "k", apiPass: "p", verifyTls: false };
+    // fill the shared pool with calls that hang
+    for (let i = 0; i < 8; i++) new VirtualizorClient(creds).call("vs").catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 200));
+    const t0 = Date.now();
+    const r = await new VirtualizorClient(creds).plans({ quick: true });
+    assert.equal((r.plans as any)[1].plan_name, "V-Primo 2GB");
+    assert.ok(Date.now() - t0 < 3000, "not queued behind the busy pool");
+  } finally {
+    for (const res of held) res.destroy();
+    server.closeAllConnections();
+    server.close();
+  }
+});

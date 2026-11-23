@@ -63,7 +63,7 @@ export function isNoAnswer(e: unknown) {
  * kept-alive connections and queue when they're all busy.
  */
 const MAX_CONNECTIONS = Math.max(1, Number(process.env.VIRTUALIZOR_MAX_CONNECTIONS) || 4);
-const pools = new Map<string, { agent: Agent; slowAgent: Agent }>();
+const pools = new Map<string, { agent: Agent; slowAgent: Agent; quickAgent: Agent }>();
 function poolFor(creds: VirtualizorCreds) {
   const key = `${creds.host.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase()}|${creds.verifyTls}`;
   let p = pools.get(key);
@@ -73,6 +73,8 @@ function poolFor(creds: VirtualizorCreds) {
       agent: new Agent({ connect, connections: MAX_CONNECTIONS, keepAliveTimeout: 30_000, keepAliveMaxTimeout: 60_000, headersTimeout: 120_000, bodyTimeout: 300_000 }),
       // creates/rebuilds can run for many minutes: their own small pool so they never hold up the quick calls
       slowAgent: new Agent({ connect, connections: 2, headersTimeout: CREATE_TIMEOUT_MS, bodyTimeout: CREATE_TIMEOUT_MS, keepAliveTimeout: 1000 }),
+      // what staff wait for on screen (plan / OS lists): never queued behind background syncs, and gives up in 30s
+      quickAgent: new Agent({ connect: { ...connect, timeout: 10_000 }, connections: 2, keepAliveTimeout: 30_000, headersTimeout: 30_000, bodyTimeout: 60_000 }),
     };
     pools.set(key, p);
   }
@@ -82,8 +84,9 @@ function poolFor(creds: VirtualizorCreds) {
 export class VirtualizorClient {
   private agent: Agent;
   private slowAgent: Agent;
+  private quickAgent: Agent;
   constructor(private creds: VirtualizorCreds) {
-    ({ agent: this.agent, slowAgent: this.slowAgent } = poolFor(creds));
+    ({ agent: this.agent, slowAgent: this.slowAgent, quickAgent: this.quickAgent } = poolFor(creds));
   }
 
   private url(act: string, query: Record<string, string | number | undefined> = {}, port = this.creds.port) {
@@ -97,7 +100,7 @@ export class VirtualizorClient {
     return `https://${host}:${port}/index.php?${q.toString()}`;
   }
 
-  async call<T = Record<string, unknown>>(act: string, query: Record<string, string | number | undefined> = {}, post?: Record<string, unknown>, opts: { slow?: boolean; cookies?: Record<string, string>; port?: number } = {}): Promise<T> {
+  async call<T = Record<string, unknown>>(act: string, query: Record<string, string | number | undefined> = {}, post?: Record<string, unknown>, opts: { slow?: boolean; quick?: boolean; cookies?: Record<string, string>; port?: number } = {}): Promise<T> {
     let body: string | undefined;
     if (post) {
       const form = new URLSearchParams();
@@ -110,7 +113,7 @@ export class VirtualizorClient {
     const host = this.creds.host.replace(/^https?:\/\//, "").replace(/\/$/, "");
     const res = await request(this.url(act, query, opts.port), {
       method: post ? "POST" : "GET",
-      dispatcher: opts.slow ? this.slowAgent : this.agent,
+      dispatcher: opts.slow ? this.slowAgent : opts.quick ? this.quickAgent : this.agent,
       headers: {
         ...(post ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
         ...(opts.cookies && Object.keys(opts.cookies).length ? { Cookie: Object.entries(opts.cookies).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("; ") } : {}),
@@ -368,8 +371,8 @@ export class VirtualizorClient {
     return pickVps(await this.getVps(vpsid), vpsid);
   }
   /** Every plan (Virtualizor sends one page of 50 unless asked for more). */
-  plans() {
-    return this.call<{ plans: Record<string, Record<string, unknown>> }>("plans", { page: 1, reslen: 1000 });
+  plans(opts: { quick?: boolean } = {}) {
+    return this.call<{ plans: Record<string, Record<string, unknown>> }>("plans", { page: 1, reslen: 1000 }, undefined, { quick: opts.quick });
   }
   /** All OS templates on the master (`ostemplates` keyed by osid; older versions also send `oslist`). */
   osTemplates() {

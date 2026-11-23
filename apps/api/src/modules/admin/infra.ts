@@ -483,6 +483,10 @@ adminInfra.post(
  * Plans defined in Virtualizor, for the product editor's plan picker.
  * ?serverIds=a,b limits to those servers; default = every enabled Virtualizor server.
  */
+/** Last good plan list per server — the editor opens instantly, and a slow/unreachable master shows it (marked) instead of spinning. */
+const planCache = new Map<string, { at: number; plans: unknown[] }>();
+const PLAN_CACHE_MS = 10 * 60_000;
+
 adminInfra.get(
   "/virtualizor/plans",
   requireStaff("products.manage"),
@@ -492,8 +496,10 @@ adminInfra.get(
     const num = (v: unknown) => (v === undefined || v === null || v === "" ? null : Number(v));
     const out = await Promise.all(
       servers.map(async (s) => {
+        const cached = planCache.get(s.id);
+        if (cached && !req.query.refresh && Date.now() - cached.at < PLAN_CACHE_MS) return { serverId: s.id, serverName: s.name, plans: cached.plans as any[], error: null as string | null, cachedAt: new Date(cached.at).toISOString() };
         try {
-          const r = await virtualizorFor(s).plans();
+          const r = await virtualizorFor(s).plans({ quick: true });
           const plans = Object.values(r.plans ?? {}).filter((p: any) => p && p.plid !== undefined).map((p: any) => ({
             plid: Number(p.plid),
             name: String(p.plan_name ?? `Plan ${p.plid}`),
@@ -504,9 +510,13 @@ adminInfra.get(
             bandwidthGb: num(p.bandwidth),
             ips: num(p.ips),
           })).sort((a, b) => a.name.localeCompare(b.name));
-          return { serverId: s.id, serverName: s.name, plans, error: null as string | null };
+          planCache.set(s.id, { at: Date.now(), plans });
+          return { serverId: s.id, serverName: s.name, plans, error: null as string | null, cachedAt: null as string | null };
         } catch (e: any) {
-          return { serverId: s.id, serverName: s.name, plans: [], error: String(e?.message ?? e) };
+          const msg = String(e?.message ?? e);
+          // keep the editor usable: the last list we had, flagged as such
+          if (cached) return { serverId: s.id, serverName: s.name, plans: cached.plans as any[], error: `${msg} — showing the list from ${Math.round((Date.now() - cached.at) / 60_000)} min ago`, cachedAt: new Date(cached.at).toISOString() };
+          return { serverId: s.id, serverName: s.name, plans: [], error: msg, cachedAt: null as string | null };
         }
       }),
     );
