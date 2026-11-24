@@ -56,9 +56,9 @@ export async function dashboardChart(range: keyof typeof CHART_RANGES, now = new
     keys = Array.from({ length: r.months! }, (_, i) => new Date(istMonthStart(now, i - (r.months! - 1)).getTime() + IST).toISOString().slice(0, 7));
   }
   const [inc, ord, cli] = await Promise.all([
-    prisma.$queryRaw<{ k: string; v: number }[]>`SELECT to_char(date_trunc(${unit}, t."createdAt" AT TIME ZONE 'Asia/Kolkata'), ${fmt}) AS k, SUM(t."amount" * COALESCE(i."exchangeRate", 1)) AS v FROM "Transaction" t LEFT JOIN "Invoice" i ON i."id" = t."invoiceId" WHERE t."type" = 'PAYMENT' AND t."createdAt" >= ${from} GROUP BY 1`,
-    prisma.$queryRaw<{ k: string; v: bigint }[]>`SELECT to_char(date_trunc(${unit}, "createdAt" AT TIME ZONE 'Asia/Kolkata'), ${fmt}) AS k, COUNT(*) AS v FROM "Order" WHERE "createdAt" >= ${from} GROUP BY 1`,
-    prisma.$queryRaw<{ k: string; v: bigint }[]>`SELECT to_char(date_trunc(${unit}, "createdAt" AT TIME ZONE 'Asia/Kolkata'), ${fmt}) AS k, COUNT(*) AS v FROM "User" WHERE "type" = 'CLIENT' AND "createdAt" >= ${from} GROUP BY 1`,
+    prisma.$queryRaw<{ k: string; v: number }[]>`SELECT to_char(date_trunc(${unit}, (t."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), ${fmt}) AS k, SUM(t."amount" * COALESCE(i."exchangeRate", 1)) AS v FROM "Transaction" t LEFT JOIN "Invoice" i ON i."id" = t."invoiceId" WHERE t."type" = 'PAYMENT' AND t."createdAt" >= ${from} GROUP BY 1`,
+    prisma.$queryRaw<{ k: string; v: bigint }[]>`SELECT to_char(date_trunc(${unit}, ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), ${fmt}) AS k, COUNT(*) AS v FROM "Order" WHERE "createdAt" >= ${from} GROUP BY 1`,
+    prisma.$queryRaw<{ k: string; v: bigint }[]>`SELECT to_char(date_trunc(${unit}, ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), ${fmt}) AS k, COUNT(*) AS v FROM "User" WHERE "type" = 'CLIENT' AND "createdAt" >= ${from} GROUP BY 1`,
   ]);
   const pick = (rows: { k: string; v: unknown }[], k: string) => Math.round(Number(rows.find((x) => x.k === k)?.v ?? 0));
   const rows = keys.map((k) => ({ key: k, income: pick(inc, k), orders: pick(ord, k), clients: pick(cli, k) }));
@@ -135,9 +135,9 @@ adminDashboard.get(
     // 12 months: income, orders, new clients
     const from12 = istMonthStart(now, -11);
     const [incSeries, orderSeries, clientSeries] = await Promise.all([
-      prisma.$queryRaw<{ m: string; v: number }[]>`SELECT to_char(date_trunc('month', t."createdAt" AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS m, SUM(t."amount" * COALESCE(i."exchangeRate", 1)) AS v FROM "Transaction" t LEFT JOIN "Invoice" i ON i."id" = t."invoiceId" WHERE t."type" = 'PAYMENT' AND t."createdAt" >= ${from12} GROUP BY 1`,
-      prisma.$queryRaw<{ m: string; v: bigint }[]>`SELECT to_char(date_trunc('month', "createdAt" AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS m, COUNT(*) AS v FROM "Order" WHERE "createdAt" >= ${from12} GROUP BY 1`,
-      prisma.$queryRaw<{ m: string; v: bigint }[]>`SELECT to_char(date_trunc('month', "createdAt" AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS m, COUNT(*) AS v FROM "User" WHERE "type" = 'CLIENT' AND "createdAt" >= ${from12} GROUP BY 1`,
+      prisma.$queryRaw<{ m: string; v: number }[]>`SELECT to_char(date_trunc('month', (t."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS m, SUM(t."amount" * COALESCE(i."exchangeRate", 1)) AS v FROM "Transaction" t LEFT JOIN "Invoice" i ON i."id" = t."invoiceId" WHERE t."type" = 'PAYMENT' AND t."createdAt" >= ${from12} GROUP BY 1`,
+      prisma.$queryRaw<{ m: string; v: bigint }[]>`SELECT to_char(date_trunc('month', ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS m, COUNT(*) AS v FROM "Order" WHERE "createdAt" >= ${from12} GROUP BY 1`,
+      prisma.$queryRaw<{ m: string; v: bigint }[]>`SELECT to_char(date_trunc('month', ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS m, COUNT(*) AS v FROM "User" WHERE "type" = 'CLIENT' AND "createdAt" >= ${from12} GROUP BY 1`,
     ]);
     const months = Array.from({ length: 12 }, (_, i) => new Date(istMonthStart(now, i - 11).getTime() + IST).toISOString().slice(0, 7));
     const pick = (rows: { m: string; v: unknown }[], m: string) => Math.round(Number(rows.find((r) => r.m === m)?.v ?? 0));

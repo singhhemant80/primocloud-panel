@@ -2,7 +2,7 @@
  * Background worker — run as a separate PM2 process: `node dist/worker.js`
  * Queues: provisioning, email, maintenance (IP reservation expiry, server health, daily billing).
  */
-import { Worker, type Job } from "bullmq";
+import { Worker, type Job, UnrecoverableError } from "bullmq";
 import { bullConnection, maintenanceQueue, backupQueue, latencyQueue, campaignQueue, closeQueues, type EmailJob, type ProvisionJob } from "./jobs/queues";
 import { runProvisionAction, markCreateFailed } from "./modules/provisioning/provisioner";
 import { sendTemplatedEmail } from "./modules/email/mailer";
@@ -35,6 +35,8 @@ const provisioning = new Worker<ProvisionJob>(
     const resumed = !!data.memo?.started || (job.stalledCounter ?? 0) > 0;
     const memo = { values: { ...(data.memo ?? {}), started: true }, resumed, save: (values: Record<string, unknown>) => job.updateData({ ...job.data, memo: values } as never) };
     await memo.save(memo.values).catch(() => undefined);
+    // the service was deleted after the job was queued: nothing to do, and retrying can't help
+    if (!(await prisma.service.findUnique({ where: { id: job.data.serviceId }, select: { id: true } }))) throw new UnrecoverableError(`Service ${job.data.serviceId} no longer exists`);
     return withProgress((p) => job.updateProgress(p as never), () => runProvisionAction(job.data.serviceId, job.data.action, job.data.params ?? {}), memo);
   },
   // short lock, renewed automatically while a job runs: a run killed by a restart is picked up again

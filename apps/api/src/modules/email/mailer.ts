@@ -272,7 +272,15 @@ export async function sendTemplatedEmail(job: EmailJob, opts: { ignoreSuppressio
   const attachments: Mail.Attachment[] = [];
   if (job.attachments?.length) {
     const { renderInvoicePdf } = await import("../billing/pdf");
-    for (const a of job.attachments) attachments.push({ filename: a.filename, content: await renderInvoicePdf(a.invoiceId), contentType: "application/pdf" });
+    for (const a of job.attachments) {
+      // an invoice removed or merged since the email was queued: send the email without its PDF rather than
+      // failing (and retrying) the whole message
+      const pdf = await renderInvoicePdf(a.invoiceId).catch((e) => {
+        if (/No record was found|not found/i.test(String(e?.message))) return null;
+        throw e;
+      });
+      if (pdf) attachments.push({ filename: a.filename, content: pdf, contentType: "application/pdf" });
+    }
   }
 
   const c = await getMailConfig();

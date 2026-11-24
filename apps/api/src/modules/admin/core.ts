@@ -1,7 +1,7 @@
 import { readSyncAll, startSyncAll } from "../provisioning/virtualizor-sync-all";
 import { getSettings } from "../../lib/settings";
 import { inrPerUnit, listCurrencies, requireCurrency } from "../../lib/currency";
-import { istDayStart, addDays } from "../../lib/money";
+import { istDayStart, addDays, istDate } from "../../lib/money";
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -58,7 +58,7 @@ adminCore.get(
     const months: Record<BillingCycle, number> = { ONETIME: 0, MONTHLY: 1, QUARTERLY: 3, SEMIANNUAL: 6, ANNUAL: 12, BIENNIAL: 24, TRIENNIAL: 36 };
     const mrr = recurring.reduce((s, r) => s + (months[r.billingCycle] ? (r.recurringAmount * (rates[r.currency] ?? 1)) / months[r.billingCycle] : 0), 0);
     const revenue = await prisma.$queryRaw<{ month: string; total: bigint }[]>`
-      SELECT to_char(date_trunc('month', t."createdAt" AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS month, ROUND(SUM(t."amount" * COALESCE(i."exchangeRate", 1)))::bigint AS total
+      SELECT to_char(date_trunc('month', (t."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS month, ROUND(SUM(t."amount" * COALESCE(i."exchangeRate", 1)))::bigint AS total
       FROM "Transaction" t LEFT JOIN "Invoice" i ON i."id" = t."invoiceId"
       WHERE t."type" = 'PAYMENT' AND t."createdAt" > now() - interval '12 months'
       GROUP BY 1 ORDER BY 1`;
@@ -801,7 +801,7 @@ adminCore.post(
           expiresAt: pc.expiresAt,
           usesLeft: pc.maxUses ? Math.max(0, pc.maxUses - pc.uses) : null,
         };
-        if (pc.startsAt && pc.startsAt > now) return { ...info, applicable: false, reason: `Starts ${pc.startsAt.toISOString().slice(0, 10)}` };
+        if (pc.startsAt && pc.startsAt > now) return { ...info, applicable: false, reason: `Starts ${istDate(pc.startsAt)}` };
         if (pc.expiresAt && pc.expiresAt < now) return { ...info, applicable: false, reason: "Expired" };
         if (pc.maxUses && pc.uses >= pc.maxUses) return { ...info, applicable: false, reason: "All uses taken" };
         try {
@@ -809,7 +809,7 @@ adminCore.post(
           return { ...info, applicable: true, reason: null, discount: r.promo?.discount ?? 0, currency: r.currency, total: r.lines.reduce((t, l) => t + l.amount, 0), subtotal };
         } catch (e) {
           // pricing explains why: not for this plan / cycle, new customers only…
-          return { ...info, applicable: false, reason: (e as Error).message.replace(/^This promo code /, "").replace(/^./, (c) => c.toUpperCase()) };
+          return { ...info, applicable: false, reason: (e as Error).message.replace(/^This promo code /, "").replace(/\b(in )?your cart\b/gi, "in this order").replace(/\bin in this order\b/g, "in this order").replace(/^./, (c) => c.toUpperCase()) };
         }
       }),
     );
@@ -868,7 +868,7 @@ adminCore.post(
       },
     });
     await prisma.provisioningLog.create({
-      data: { serviceId: s.id, action: "create", success: true, message: `Creating a new VPS for this order (previous VPS ${s.remoteId ?? "—"} was ${s.status.toLowerCase()}${s.terminationDate ? ` on ${s.terminationDate.toISOString().slice(0, 10)}` : ""})` },
+      data: { serviceId: s.id, action: "create", success: true, message: `Creating a new VPS for this order (previous VPS ${s.remoteId ?? "—"} was ${s.status.toLowerCase()}${s.terminationDate ? ` on ${istDate(s.terminationDate)}` : ""})` },
     });
     const { provisioningQueue } = await import("../../jobs/queues");
     const old = await provisioningQueue().getJob(`create-${s.id}`);
@@ -1398,7 +1398,7 @@ adminCore.get(
     const [gst, byType, newClients, gateways] = await Promise.all([
       // everything in INR (foreign invoices at their stored rate); exports = zero-rated supplies for GSTR-1 table 6A
       prisma.$queryRaw<{ month: string; invoices: bigint; taxable: bigint; cgst: bigint; sgst: bigint; igst: bigint; total: bigint; exports: bigint; foreign: bigint }[]>`
-        SELECT to_char(date_trunc('month', "paidAt" AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS month, COUNT(*)::bigint AS invoices,
+        SELECT to_char(date_trunc('month', ("paidAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS month, COUNT(*)::bigint AS invoices,
           ROUND(SUM("taxableAmount" * "exchangeRate"))::bigint AS taxable, ROUND(SUM("cgst" * "exchangeRate"))::bigint AS cgst, ROUND(SUM("sgst" * "exchangeRate"))::bigint AS sgst,
           ROUND(SUM("igst" * "exchangeRate"))::bigint AS igst, ROUND(SUM("total" * "exchangeRate"))::bigint AS total,
           ROUND(SUM(CASE WHEN "taxTotal" = 0 AND "placeOfSupplyCode" = '96' THEN "taxableAmount" * "exchangeRate" ELSE 0 END))::bigint AS exports,
@@ -1411,7 +1411,7 @@ adminCore.get(
             / CASE WHEN s."currency" = 'INR' OR c."rate" IS NULL OR c."rate" = 0 THEN 1 ELSE c."rate" END))::bigint AS mrr
         FROM "Service" s JOIN "Product" p ON p."id" = s."productId" LEFT JOIN "Currency" c ON c."code" = s."currency" WHERE s."status" IN ('ACTIVE','SUSPENDED') GROUP BY 1 ORDER BY 3 DESC`,
       prisma.$queryRaw<{ month: string; clients: bigint }[]>`
-        SELECT to_char(date_trunc('month', "createdAt" AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS month, COUNT(*)::bigint AS clients
+        SELECT to_char(date_trunc('month', ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata'), 'YYYY-MM') AS month, COUNT(*)::bigint AS clients
         FROM "User" WHERE "type" = 'CLIENT' AND "createdAt" BETWEEN ${from} AND ${to} GROUP BY 1 ORDER BY 1`,
       prisma.$queryRaw<{ gateway: string; payments: bigint; amount: bigint }[]>`
         SELECT t."gateway", COUNT(*)::bigint AS payments, ROUND(SUM(t."amount" * COALESCE(i."exchangeRate", 1)))::bigint AS amount FROM "Transaction" t LEFT JOIN "Invoice" i ON i."id" = t."invoiceId"

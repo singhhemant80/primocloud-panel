@@ -44,6 +44,9 @@ export function formatMoney(minor: number, currency = "INR"): string {
 }
 
 /** Start of day in Asia/Kolkata expressed as a UTC Date. */
+/** The calendar date in India (YYYY-MM-DD) — a UTC slice shows the day before for times before 05:30 IST. */
+export const istDate = (d: Date) => new Date(d.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+
 export function istDayStart(d = new Date()): Date {
   const ist = new Date(d.getTime() + 330 * 60000);
   return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - 330 * 60000);

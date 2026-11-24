@@ -10,7 +10,7 @@ import { coloInvoiceDetails } from "../lib/product-kind";
  * suspended, …) so Admin → Automation can show daily counts and the exact items behind each count.
  */
 import { prisma } from "../db";
-import { addCycle, addDays, istDayStart, addMonths, CYCLE_LABEL } from "../lib/money";
+import { addCycle, addDays, istDayStart, addMonths, CYCLE_LABEL, istDate } from "../lib/money";
 import { getSettings } from "../lib/settings";
 import { sweepEndedServiceInvoices } from "../modules/billing/termination";
 import { expireQuotes, pendingForNextInvoice, runBillableItems } from "../modules/billing/extras";
@@ -223,7 +223,7 @@ export async function processSuspensions(rec: Recorder = noop) {
       const manual = !["PROXMOX", "VIRTUALIZOR", "CPANEL"].includes(svc.product.provisioner);
       if (manual && !(a as { terminateManualServices?: boolean }).terminateManualServices) {
         const flagged = (await prisma.automationEvent.count({ where: { action: "termination_held", entityId: svc.id, createdAt: { gt: new Date(Date.now() - 7 * 86400_000) } } })) > 0;
-        if (!flagged) await rec({ action: "termination_held", entity: "service", entityId: svc.id, userId: svc.userId, label: svc.hostname ?? svc.product.name, message: `Unpaid since ${item.invoice.dueDate.toISOString().slice(0, 10)} — manually delivered, so not terminated automatically. Terminate it from the service page if needed.` });
+        if (!flagged) await rec({ action: "termination_held", entity: "service", entityId: svc.id, userId: svc.userId, label: svc.hostname ?? svc.product.name, message: `Unpaid since ${istDate(item.invoice.dueDate)} — manually delivered, so not terminated automatically. Terminate it from the service page if needed.` });
         continue;
       }
       try {

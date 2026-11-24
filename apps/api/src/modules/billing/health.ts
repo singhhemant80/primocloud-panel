@@ -3,7 +3,7 @@
  * and fixes the ones that have exactly one right answer. Everything else is listed for staff to review.
  */
 import { prisma } from "../../db";
-import { addCycle } from "../../lib/money";
+import { addCycle, istDate } from "../../lib/money";
 import { applyCreditToInvoice, assignTaxNumber, cancelInvoice } from "./invoices";
 
 export type HealthRow = { id: string; label: string; userId?: string | null; customer?: string | null; detail: string; href: string };
@@ -21,7 +21,7 @@ export type HealthCheck = {
 
 const SAMPLE = 50;
 const rupees = (p: number, c = "INR") => `${c === "INR" ? "₹" : `${c} `}${(p / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "—");
+const day = (d: Date | null | undefined) => (d ? istDate(d) : "—");
 const who = (u: { email: string; firstName: string | null; lastName: string | null } | null | undefined) => (u ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email : null);
 const invNo = (i: { number: string | null; proformaNumber: string }) => i.number ?? i.proformaNumber;
 const userSel = { select: { email: true, firstName: true, lastName: true } } as const;
