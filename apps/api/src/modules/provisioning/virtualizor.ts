@@ -63,6 +63,61 @@ export function isNoAnswer(e: unknown) {
  * kept-alive connections and queue when they're all busy.
  */
 const MAX_CONNECTIONS = Math.max(1, Number(process.env.VIRTUALIZOR_MAX_CONNECTIONS) || 4);
+
+/**
+ * Pace API calls per master. Virtualizor answers each call with a PHP worker; hundreds of status calls a
+ * minute (e.g. many open list pages) used every worker on the master and its own admin pages stopped
+ * answering. Each panel process sends at most VIRTUALIZOR_MAX_RPS calls a second on average (default 2,
+ * short bursts of 8 allowed); calls staff are waiting for on screen go before background work.
+ */
+const maxRps = () => Math.max(0.1, Number(process.env.VIRTUALIZOR_MAX_RPS) || 2);
+const BURST = 8;
+class Pacer {
+  private tokens = BURST;
+  private last = Date.now();
+  private waiting: { urgent: boolean; go: () => void }[] = [];
+  private timer: NodeJS.Timeout | null = null;
+  private refill() {
+    const now = Date.now();
+    this.tokens = Math.min(BURST, this.tokens + ((now - this.last) / 1000) * maxRps());
+    this.last = now;
+  }
+  take(urgent: boolean): Promise<void> {
+    this.refill();
+    if (this.tokens >= 1 && !this.waiting.length) {
+      this.tokens--;
+      return Promise.resolve();
+    }
+    return new Promise<void>((go) => {
+      // urgent calls go ahead of background ones, in their own arrival order
+      const at = urgent ? this.waiting.findIndex((w) => !w.urgent) : -1;
+      if (at >= 0) this.waiting.splice(at, 0, { urgent, go });
+      else this.waiting.push({ urgent, go });
+      this.schedule();
+    });
+  }
+  private schedule() {
+    if (this.timer) return;
+    const ms = Math.max(5, ((1 - this.tokens) / maxRps()) * 1000);
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      this.refill();
+      while (this.tokens >= 1 && this.waiting.length) {
+        this.tokens--;
+        this.waiting.shift()!.go();
+      }
+      if (this.waiting.length) this.schedule();
+    }, ms);
+    this.timer.unref?.();
+  }
+  get queued() {
+    return this.waiting.length;
+  }
+}
+const pacers = new Map<string, Pacer>();
+const vpsSnapshots = new Map<string, { at: number; pending: Promise<Map<string, Record<string, unknown>>> | null; rows: Map<string, Record<string, unknown>> | null }>();
+/** Identical read calls already on their way share one answer instead of each asking the master. */
+const inflight = new Map<string, Promise<{ statusCode: number; location: string; text: string }>>();
 const pools = new Map<string, { agent: Agent; slowAgent: Agent; quickAgent: Agent }>();
 function poolFor(creds: VirtualizorCreds) {
   const key = `${creds.host.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase()}|${creds.verifyTls}`;
@@ -85,8 +140,12 @@ export class VirtualizorClient {
   private agent: Agent;
   private slowAgent: Agent;
   private quickAgent: Agent;
+  private pacer: Pacer;
   constructor(private creds: VirtualizorCreds) {
     ({ agent: this.agent, slowAgent: this.slowAgent, quickAgent: this.quickAgent } = poolFor(creds));
+    const key = `${creds.host.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase()}:${creds.port}`;
+    if (!pacers.has(key)) pacers.set(key, new Pacer());
+    this.pacer = pacers.get(key)!;
   }
 
   private url(act: string, query: Record<string, string | number | undefined> = {}, port = this.creds.port) {
@@ -111,18 +170,34 @@ export class VirtualizorClient {
       body = form.toString();
     }
     const host = this.creds.host.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const res = await request(this.url(act, query, opts.port), {
-      method: post ? "POST" : "GET",
-      dispatcher: opts.slow ? this.slowAgent : opts.quick ? this.quickAgent : this.agent,
-      headers: {
-        ...(post ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-        ...(opts.cookies && Object.keys(opts.cookies).length ? { Cookie: Object.entries(opts.cookies).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("; ") } : {}),
-      },
-      body,
-    }).catch((e) => {
-      throw explainNetError(e, host, this.creds.port, "Virtualizor");
-    });
-    const text = await res.body.text();
+    const send = async () => {
+      await this.pacer.take(!!opts.quick);
+      const r = await request(this.url(act, query, opts.port), {
+        method: post ? "POST" : "GET",
+        dispatcher: opts.slow ? this.slowAgent : opts.quick ? this.quickAgent : this.agent,
+        headers: {
+          ...(post ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+          ...(opts.cookies && Object.keys(opts.cookies).length ? { Cookie: Object.entries(opts.cookies).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("; ") } : {}),
+        },
+        body,
+      }).catch((e) => {
+        throw explainNetError(e, host, this.creds.port, "Virtualizor");
+      });
+      return { statusCode: r.statusCode, location: String(r.headers.location ?? ""), text: await r.body.text() };
+    };
+    // read calls (no form, no session) with the same question share one request
+    const shareKey = !post && !opts.cookies ? `${host}:${opts.port ?? this.creds.port}|${this.creds.apiKey}|${act}|${JSON.stringify(Object.entries(query).filter(([, v]) => v !== undefined).sort())}` : null;
+    let pending = shareKey ? inflight.get(shareKey) : undefined;
+    if (!pending) {
+      pending = send();
+      if (shareKey) {
+        inflight.set(shareKey, pending);
+        void pending.catch(() => undefined).finally(() => inflight.delete(shareKey));
+      }
+    }
+    const got = await pending;
+    const res = { statusCode: got.statusCode, headers: { location: got.location } };
+    const text = got.text;
     let json: Record<string, unknown>;
     try {
       json = JSON.parse(text);
@@ -147,6 +222,36 @@ export class VirtualizorClient {
 
   listVps(page = 1, reslen = 50) {
     return this.call<{ vs: Record<string, Record<string, unknown>> }>("vs", { page, reslen });
+  }
+  /**
+   * Every VPS on the master (vpsid → row), read 200 at a time. Stops when a page adds nothing new — some
+   * masters ignore "page" and send the same rows every time, which used to loop up to 500 times.
+   * Shared and remembered per master for `maxAgeMs` (default 2 min) so callers don't each re-read it.
+   */
+  async allVps(maxAgeMs = 120_000): Promise<Map<string, Record<string, unknown>>> {
+    const key = `${this.creds.host}|${this.creds.port}|${this.creds.apiKey}`;
+    const hit = vpsSnapshots.get(key);
+    if (hit && (hit.rows || hit.pending) && Date.now() - hit.at < maxAgeMs) return hit.rows ?? hit.pending!;
+    const pending = (async () => {
+      const rows = new Map<string, Record<string, unknown>>();
+      const per = 200;
+      for (let page = 1; page <= 100; page++) {
+        const list = Object.entries((await this.listVps(page, per)).vs ?? {});
+        const before = rows.size;
+        for (const [k, v] of list) rows.set(String((v as Record<string, unknown>).vpsid ?? k), v as Record<string, unknown>);
+        if (list.length < per || rows.size === before) break;
+      }
+      return rows;
+    })();
+    vpsSnapshots.set(key, { at: Date.now(), pending, rows: null });
+    try {
+      const rows = await pending;
+      vpsSnapshots.set(key, { at: Date.now(), pending: null, rows });
+      return rows;
+    } catch (e) {
+      vpsSnapshots.delete(key);
+      throw e;
+    }
   }
   /** Virtualizor user accounts (uid → email) — the owner of each VPS, for matching VPSes to customers. */
   async userEmails(): Promise<Map<string, string>> {

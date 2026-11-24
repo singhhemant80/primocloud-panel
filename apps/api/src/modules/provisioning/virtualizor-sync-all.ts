@@ -99,13 +99,8 @@ export async function runSyncAll(s: SyncAllState) {
     const rows = new Map<string, Record<string, unknown>>();
     try {
       const client = virtualizorFor(m);
-      const per = 200;
-      for (let page = 1; page <= 500; page++) {
-        const r = await client.listVps(page, per);
-        const list = Object.entries(r.vs ?? {});
-        for (const [k, v] of list) rows.set(String((v as Record<string, unknown>).vpsid ?? k), v as Record<string, unknown>);
-        if (list.length < per) break;
-      }
+      // a fresh read (sync must see the truth), paged safely; copies so the shared snapshot isn't changed
+      for (const [k, v] of await client.allVps(0)) rows.set(k, { ...v });
       // some Virtualizor versions don't put IPs in the VPS list — take them from the IP list instead
       if ([...rows.values()].some((r) => !ipsOf(r).length)) {
         const byVps = await client.ipsByVps().catch(() => null);

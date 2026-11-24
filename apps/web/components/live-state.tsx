@@ -38,7 +38,8 @@ export function useLiveStates(path: string | null) {
         .catch(() => {})
         .finally(() => alive && setLoading(false));
     load();
-    const t = setInterval(load, 30_000);
+    // refresh every minute while the page is on screen (states are shared server-side for 30s anyway)
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 60_000);
     return () => {
       alive = false;
       clearInterval(t);

@@ -67,6 +67,8 @@ export const maintenanceQueue = () => q<Record<string, unknown>>("maintenance");
 export const campaignQueue = () => q<Record<string, never>>("campaign");
 
 export async function enqueueProvision(job: ProvisionJob) {
+  // the next look at this VPS must ask the master again, not show the state from before the action
+  void import("../modules/provisioning/provisioner").then((m) => m.forgetLiveStatus(job.serviceId)).catch(() => undefined);
   // jobId de-duplicates repeated "create" requests for the same service
   const jobId = job.action === "create" ? `create-${job.serviceId}` : undefined;
   if (jobId) {

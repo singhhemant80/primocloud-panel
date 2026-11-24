@@ -1125,7 +1125,28 @@ async function oneVpsState(client: VirtualizorClient, serverId: string, vpsid: s
   return st;
 }
 
+const liveStateCache = new Map<string, { at: number; st: { state: LiveState; reason?: string } }>();
+/** Live states, shared between everyone looking for 30s (list pages poll; the master shouldn't be asked per viewer). */
 export async function liveStates(serviceIds: string[]) {
+  const now = Date.now();
+  const out: Record<string, { state: LiveState; reason?: string }> = {};
+  const need: string[] = [];
+  for (const id of serviceIds.slice(0, 200)) {
+    const hit = liveStateCache.get(id);
+    if (hit && now - hit.at < 30_000) out[id] = hit.st;
+    else need.push(id);
+  }
+  if (!need.length) return out;
+  const fresh = await liveStatesUncached(need);
+  for (const [id, st] of Object.entries(fresh)) {
+    liveStateCache.set(id, { at: Date.now(), st });
+    out[id] = st;
+  }
+  if (liveStateCache.size > 20_000) for (const [k, v] of liveStateCache) if (now - v.at > 60_000) liveStateCache.delete(k);
+  return out;
+}
+
+async function liveStatesUncached(serviceIds: string[]) {
   const svcs = await prisma.service.findMany({ where: { id: { in: serviceIds.slice(0, 200) }, remoteId: { not: null } }, include: { server: true, product: { select: { provisioner: true } }, _count: { select: { ips: true } } } });
   refreshMissingIps(svcs.filter((s) => s.product.provisioner === "VIRTUALIZOR" && s.server && !s._count.ips && ["ACTIVE", "SUSPENDED"].includes(s.status)).map((s) => s.id));
   const out: Record<string, { state: LiveState; reason?: string }> = {};
@@ -1143,13 +1164,15 @@ export async function liveStates(serviceIds: string[]) {
         if (st.state === "unknown") missing.push(s);
         else out[s.id] = st;
       }
-      // the bulk call didn't say for these: read each VPS (a few at a time; remembered for a minute)
-      for (let i = 0; i < missing.length; i += 6)
-        await Promise.all(
-          missing.slice(i, i + 6).map(async (s) => {
-            out[s.id] = await oneVpsState(client, list[0].server!.id, s.remoteId!);
-          }),
-        );
+      // the bulk call didn't say for these: take them from the master's VPS list (one shared read, at most every
+      // 2 minutes) — never one call per VPS, which flooded the master when many list pages were open
+      if (missing.length) {
+        const rows = await client.allVps().catch(() => null);
+        for (const s of missing) {
+          const row = rows?.get(String(s.remoteId));
+          out[s.id] = !rows ? { state: "unknown", reason: "Virtualizor didn't answer" } : !row ? { state: "unknown", reason: "Not found in Virtualizor" } : virtualizorState(codes?.[s.remoteId!], row);
+        }
+      }
     }),
   );
   await Promise.all(
@@ -1203,7 +1226,23 @@ export async function replaceVirtualizorIps(serviceId: string, newIps?: string[]
   return { before, after };
 }
 
-export async function liveStatus(serviceId: string) {
+const liveOneCache = new Map<string, { at: number; p: Promise<Awaited<ReturnType<typeof liveStatusUncached>>> }>();
+/** One service's live data — shared for 15s between viewers and polls (a power action clears it). */
+export function liveStatus(serviceId: string, opts: { fresh?: boolean } = {}) {
+  const hit = liveOneCache.get(serviceId);
+  if (!opts.fresh && hit && Date.now() - hit.at < 15_000) return hit.p;
+  const p = liveStatusUncached(serviceId);
+  liveOneCache.set(serviceId, { at: Date.now(), p });
+  p.catch(() => liveOneCache.delete(serviceId));
+  if (liveOneCache.size > 5000) for (const [k, v] of liveOneCache) if (Date.now() - v.at > 60_000) liveOneCache.delete(k);
+  return p;
+}
+export const forgetLiveStatus = (serviceId: string) => {
+  liveOneCache.delete(serviceId);
+  liveStateCache.delete(serviceId);
+};
+
+async function liveStatusUncached(serviceId: string) {
   {
     const s = await loadService(serviceId);
     if (s.product.provisioner === "CPANEL") return s.server && s.remoteId ? cpanelStatus(s) : { state: "unknown" as const, reason: "Not created yet" };
