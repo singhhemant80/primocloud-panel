@@ -931,6 +931,46 @@ adminCore.post(
   }),
 );
 
+/**
+ * Link this service to a VPS that already exists in Virtualizor — one made directly in Virtualizor, or a
+ * WHMCS-imported service pointing at the wrong server entry. Finds the VPS on the chosen server by id,
+ * hostname or IP, then takes over its server, VPS id, node, IPs, OS and state. Nothing is created,
+ * changed or deleted in Virtualizor.
+ */
+adminCore.post(
+  "/services/:id/link-vps",
+  requireStaff("services.manage"),
+  ah(async (req, res) => {
+    const b = parse(z.object({ serverId: z.string().min(1), vps: z.string().trim().min(1).max(253) }), req.body);
+    const svc = await prisma.service.findUnique({ where: { id: req.params.id }, include: { product: { select: { provisioner: true } } } });
+    if (!svc) throw notFound("Service not found");
+    if (svc.product.provisioner !== "VIRTUALIZOR") throw badRequest("Only Virtualizor plans can be linked to a Virtualizor VPS");
+    const server = await prisma.server.findUnique({ where: { id: b.serverId } });
+    if (!server || server.type !== "VIRTUALIZOR") throw badRequest("Choose a Virtualizor server");
+    const { virtualizorFor, forgetLiveStatus } = await import("../provisioning/provisioner");
+    const rows = await virtualizorFor(server).allVps(0);
+    const want = b.vps.toLowerCase();
+    const ipsOf = (r: Record<string, unknown>) => Object.values((r.ips ?? {}) as Record<string, unknown>).map(String);
+    const matches = [...rows.entries()].filter(([vpsid, r]) => vpsid === want || String(r.vpsid ?? "") === want || String(r.hostname ?? "").toLowerCase() === want || ipsOf(r).includes(want) || String(r.vps_name ?? "").toLowerCase() === want);
+    if (!matches.length) throw notFound(`No VPS "${b.vps}" on ${server.name} — check the VPS id, hostname or IP in Virtualizor → List VPS`);
+    if (matches.length > 1) throw conflict(`"${b.vps}" matches ${matches.length} VPSes on ${server.name} (ids ${matches.map(([k]) => k).join(", ")}) — enter the VPS id instead`);
+    const [vpsid, row] = matches[0];
+    const taken = await prisma.service.findFirst({ where: { id: { not: svc.id }, serverId: server.id, remoteId: vpsid, status: { notIn: ["TERMINATED", "CANCELLED"] } }, select: { id: true, hostname: true, user: { select: { email: true } } } });
+    if (taken) throw conflict(`VPS ${vpsid} is already linked to another service (${taken.hostname ?? taken.id}, ${taken.user.email}) — unlink or terminate that one first`);
+    const was = { serverId: svc.serverId, remoteId: svc.remoteId, status: svc.status };
+    // IPs recorded against the old (wrong) server don't belong to this VPS
+    if (svc.serverId !== server.id) await prisma.ipAddress.updateMany({ where: { serviceId: svc.id }, data: { serviceId: null, status: "AVAILABLE", isPrimary: false } }).catch(() => undefined);
+    await prisma.service.update({
+      where: { id: svc.id },
+      data: { serverId: server.id, remoteId: vpsid, node: row.serid !== undefined ? String(row.serid) : null, ...(["PENDING", "PROVISIONING", "FAILED"].includes(svc.status) ? { status: "ACTIVE" } : {}) },
+    });
+    forgetLiveStatus(svc.id);
+    const r = await syncVirtualizorService(svc.id);
+    await audit({ actorId: req.user!.id, userId: svc.userId, action: "service.vps_linked", entity: "service", entityId: svc.id, details: { from: was, to: { serverId: server.id, remoteId: vpsid }, found: b.vps } });
+    res.json({ ok: true, vpsid, server: server.name, ...r });
+  }),
+);
+
 /** Replace the VPS's IPs in Virtualizor with free IPs of its node (or the ones given). */
 adminCore.post(
   "/services/:id/replace-ips",

@@ -71,9 +71,11 @@ adminVirtualizorCheck.get(
         try {
           const c = virtualizorFor(m);
           const emails = await c.userEmails().catch(() => new Map<string, string>());
-          for (let page = 1; page <= 200 && candidates.length < 25; page++) {
-            const list = Object.entries((await c.listVps(page, 200)).vs ?? {});
+          {
+            // the whole list once, paged safely (some masters ignore "page")
+            const list = [...(await c.allVps()).entries()];
             for (const [k, row] of list) {
+              if (candidates.length >= 25) break;
               const vpsid = String(row.vpsid ?? k);
               const ips = vpsIpsOf(row);
               const email = String(row.email ?? emails.get(String(row.uid)) ?? "").toLowerCase();
@@ -81,7 +83,6 @@ adminVirtualizorCheck.get(
               const why = [ips.some((i) => want.ips.has(i)) && "same IP", want.host && host === want.host && "same hostname", email && email === want.email && "customer's email"].filter(Boolean);
               if (why.length) candidates.push({ serverId: m.id, master: m.name, vpsid, hostname: row.hostname ?? null, ips, email: email || null, why, inUse: taken.has(`${m.id}|${vpsid}`) });
             }
-            if (list.length < 200) break;
           }
         } catch (e) {
           candidates.push({ master: m.name, error: (e as Error).message });

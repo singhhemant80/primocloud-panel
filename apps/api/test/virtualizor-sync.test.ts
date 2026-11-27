@@ -227,3 +227,55 @@ test("VPS login follows the OS: Administrator on Windows, root on Linux", async 
     await prisma.service.deleteMany({ where: { id: { in: [win.id, custom.id] } } });
   }
 });
+
+test("link a service to a VPS made directly in Virtualizor (it pointed at the wrong server entry)", async () => {
+  const bcrypt = (await import("bcryptjs")).default;
+  const wrong = await prisma.server.create({ data: { name: `srv9-${RUN} (WHMCS)`, type: "VIRTUALIZOR", hostname: "virt-wrong.invalid", apiUser: "k", apiSecretEnc: encrypt("p") } });
+  const row = { vpsid: `${V + 20}`, hostname: `manual-${RUN}`, serid: "4", ips: { "120": ip(20) }, osid: "271", os_name: "ubuntu-22.04-x86_64" };
+  VPS[`${V + 20}`] = row;
+  const prev = VirtualizorClient.prototype.call;
+  VirtualizorClient.prototype.call = async function (this: any, act: string, params: Record<string, unknown> = {}) {
+    if (act === "vs" && params.vpsid === `${V + 20}`) return { vs: { [`${V + 20}`]: row } };
+    return prev.call(this, act, params as never);
+  } as never;
+  const s = await prisma.service.create({ data: { userId, productId, status: "ACTIVE", billingCycle: "MONTHLY", firstAmount: 99900, recurringAmount: 99900, currency: "INR", serverId: wrong.id, remoteId: "3564", hostname: `devil-${RUN}.com` } });
+  await prisma.ipAddress.create({ data: { address: ip(21), status: "ALLOCATED", serviceId: s.id, isPrimary: true } });
+  const { createApp } = await import("../src/app");
+  const app = createApp().listen(0);
+  const base = `http://127.0.0.1:${(app.address() as import("node:net").AddressInfo).port}/api`;
+  const role = await prisma.role.create({ data: { name: `QA link ${RUN}`, permissions: ["*"] } });
+  const staff = await prisma.user.create({ data: { email: `link-staff-${RUN}@t.test`, passwordHash: await bcrypt.hash("Staff@12345", 10), firstName: "S", lastName: "T", type: "STAFF", status: "ACTIVE", roleId: role.id } });
+  try {
+    const login = await fetch(`${base}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "primocloud" }, body: JSON.stringify({ email: staff.email, password: "Staff@12345", portal: "admin" }) });
+    const h = { "Content-Type": "application/json", "X-Requested-With": "primocloud", Cookie: login.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ") };
+    const post = (body: unknown, id = s.id) => fetch(`${base}/admin/services/${id}/link-vps`, { method: "POST", headers: h, body: JSON.stringify(body) });
+
+    assert.equal((await post({ serverId, vps: "no-such-vps.example" })).status, 404);
+    const r = await post({ serverId, vps: ip(20) }); // found by its IP
+    assert.equal(r.status, 200, await r.clone().text());
+    const after = await look(s.id);
+    assert.equal(after.serverId, serverId);
+    assert.equal(after.remoteId, `${V + 20}`);
+    assert.equal(after.node, "4");
+    assert.deepEqual(after.ips.map((i) => i.address), [ip(20)]);
+    assert.equal((await prisma.ipAddress.findUniqueOrThrow({ where: { address: ip(21) } })).serviceId, null, "the old server's IP is freed");
+    // a VPS another live service uses can't be taken
+    const dup = await post({ serverId, vps: `${V + 1}` });
+    assert.equal(dup.status, 409);
+    assert.match((await dup.json()).error, /already linked/);
+  } finally {
+    app.close();
+    VirtualizorClient.prototype.call = prev;
+    delete VPS[`${V + 20}`];
+    await prisma.loginHistory.deleteMany({ where: { userId: staff.id } });
+    await prisma.session.deleteMany({ where: { userId: staff.id } });
+    await prisma.activityLog.deleteMany({ where: { OR: [{ actorId: staff.id }, { userId: staff.id }] } }).catch(() => undefined);
+    await prisma.user.delete({ where: { id: staff.id } });
+    await prisma.role.delete({ where: { id: role.id } });
+    await prisma.provisioningLog.deleteMany({ where: { serviceId: s.id } });
+    await prisma.ipAddress.deleteMany({ where: { serviceId: s.id } });
+    await prisma.ipAddress.deleteMany({ where: { address: ip(21) } });
+    await prisma.service.delete({ where: { id: s.id } });
+    await prisma.server.delete({ where: { id: wrong.id } });
+  }
+});

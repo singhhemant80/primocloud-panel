@@ -2,22 +2,26 @@
 /** "Why no IP?" — what Virtualizor says about a service, and link it to the right VPS. */
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { Alert, Badge, Button, Loading, Modal, toast } from "@/components/ui";
+import { Alert, Badge, Button, Field, Input, Loading, Modal, toast } from "@/components/ui";
+import { HypervisorSelect } from "@/components/admin/hypervisor-select";
 
 export function VirtualizorCheck({ serviceId, onLinked }: { serviceId: string; onLinked: () => void }) {
   const [open, setOpen] = useState(false);
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [manualServer, setManualServer] = useState("");
+  const [manualVps, setManualVps] = useState("");
   const run = async () => {
     setOpen(true);
     setD(null);
     try { setD(await api(`/admin/services/${serviceId}/virtualizor-check`)); } catch (e: any) { setD({ error: e.message }); }
   };
-  const link = async (c: any) => {
+  // re-link to an existing VPS and pull its IPs, node, OS and state in one go
+  const link = async (c: { serverId: string; vpsid: string }) => {
     setBusy(c.vpsid);
     try {
-      const r = await api(`/admin/services/${serviceId}/virtualizor-link`, { body: { serverId: c.serverId, vpsid: c.vpsid } });
-      toast.success(`Linked to VPS ${c.vpsid} — ${r.ips?.join(", ") || "no IPs yet"}`);
+      const r = await api(`/admin/services/${serviceId}/link-vps`, { body: { serverId: c.serverId, vps: c.vpsid } });
+      toast.success(`Linked to VPS ${r.vpsid} on ${r.server} — ${r.ips?.join(", ") || "no IPs yet"} · ${r.state}`);
       setOpen(false);
       onLinked();
     } catch (e: any) { toast.error(e.message); }
@@ -50,7 +54,7 @@ export function VirtualizorCheck({ serviceId, onLinked }: { serviceId: string; o
               {d.candidates && (
                 <div>
                   <div className="mb-2 text-[13px] font-bold text-slate-700">VPSes in Virtualizor that could be this service</div>
-                  {!d.candidates.length ? <p className="text-sm text-mute">None found by IP, hostname ({d.hostname || "—"}) or the customer's email ({d.customerEmail}). Find the VPS in Virtualizor and type its VPS id in “VMID / VPS id” on this page.</p> : (
+                  {!d.candidates.length ? <p className="text-sm text-mute">None found by IP, hostname ({d.hostname || "—"}) or the customer's email ({d.customerEmail}). Enter it below.</p> : (
                     <ul className="divide-y divide-line rounded-xl border border-line">
                       {d.candidates.map((c: any, i: number) => c.error ? <li key={i} className="px-3 py-2 text-sm text-rose-600">{c.master}: {c.error}</li> : (
                         <li key={c.serverId + c.vpsid} className="flex flex-wrap items-center gap-3 px-3 py-2.5 text-sm">
@@ -63,6 +67,15 @@ export function VirtualizorCheck({ serviceId, onLinked }: { serviceId: string; o
                   )}
                 </div>
               )}
+              <div className="rounded-xl border border-line bg-[#f7fbf9] p-4">
+                <div className="mb-1 text-[13px] font-bold text-slate-700">Link to a VPS by hand</div>
+                <p className="mb-3 text-xs text-mute">For a VPS made directly in Virtualizor, or a service pointing at the wrong server. Nothing is changed in Virtualizor — the panel just takes over its IPs, node, OS and state.</p>
+                <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                  <HypervisorSelect type="VIRTUALIZOR" planServerIds={[]} value={manualServer} onChange={setManualServer} hint="The Virtualizor master the VPS is on" />
+                  <Field label="VPS id, hostname or IP"><Input value={manualVps} onChange={(e) => setManualVps(e.target.value.trim())} placeholder="e.g. 3564 or 103.x.x.x" /></Field>
+                  <Button icon="link" loading={busy === manualVps} disabled={!manualServer || !manualVps} onClick={() => link({ serverId: manualServer, vpsid: manualVps })}>Find & link</Button>
+                </div>
+              </div>
             </div>
           )}
         </Modal>

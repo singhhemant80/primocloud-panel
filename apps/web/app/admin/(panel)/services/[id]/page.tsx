@@ -324,7 +324,7 @@ export default function AdminService() {
                 </Field>
               )}
               {!isColo && (P.provisioner === "VIRTUALIZOR" || P.provisioner === "PROXMOX") && (
-                <HypervisorSelect type={P.provisioner} planServerIds={(P.servers ?? []).map((x: any) => x.serverId ?? x.server?.id)} value={edit.serverId} onChange={(v) => setEdit({ ...edit, serverId: v, node: "" })} disabled={!!s.remoteId && ["ACTIVE", "SUSPENDED"].includes(s.status)} hint={s.remoteId && ["ACTIVE", "SUSPENDED"].includes(s.status) ? "Built — terminate and recreate to move it" : undefined} />
+                <HypervisorSelect type={P.provisioner} planServerIds={(P.servers ?? []).map((x: any) => x.serverId ?? x.server?.id)} value={edit.serverId} onChange={(v) => setEdit({ ...edit, serverId: v, node: "" })} disabled={!!s.remoteId && ["ACTIVE", "SUSPENDED"].includes(s.status)} hint={s.remoteId && ["ACTIVE", "SUSPENDED"].includes(s.status) ? "Built — to point it at a VPS that exists in Virtualizor, use “Check Virtualizor link” → Link to a VPS by hand" : undefined} />
               )}
               {isColo ? null : P.provisioner === "VIRTUALIZOR" ? (
                 <NodeSelect serverIds={edit.serverId ? [edit.serverId] : s.server ? [s.server.id] : []} value={edit.node} onChange={(v) => setEdit({ ...edit, node: v })} disabled={!!s.remoteId && ["ACTIVE", "SUSPENDED"].includes(s.status)} hint={s.remoteId ? "Change only if it was migrated in Virtualizor" : undefined} />
