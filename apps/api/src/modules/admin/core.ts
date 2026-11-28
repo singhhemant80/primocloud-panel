@@ -931,6 +931,18 @@ adminCore.post(
   }),
 );
 
+/** Every IP this service was given or lost — by the panel, staff, an import, or directly in Virtualizor. */
+adminCore.get(
+  "/services/:id/ip-history",
+  requireStaff("services.view"),
+  ah(async (req, res) => {
+    const events = await prisma.serviceIpEvent.findMany({ where: { serviceId: req.params.id }, orderBy: [{ createdAt: "desc" }, { action: "asc" }], take: 500 });
+    const actorIds = [...new Set(events.map((e) => e.actorId).filter(Boolean))] as string[];
+    const actors = new Map((await prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, firstName: true, lastName: true, email: true } })).map((u) => [u.id, [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email]));
+    res.json({ events: events.map((e) => ({ ...e, actorName: e.actorId ? actors.get(e.actorId) ?? null : null })) });
+  }),
+);
+
 /**
  * Link this service to a VPS that already exists in Virtualizor — one made directly in Virtualizor, or a
  * WHMCS-imported service pointing at the wrong server entry. Finds the VPS on the chosen server by id,
@@ -959,7 +971,7 @@ adminCore.post(
     if (taken) throw conflict(`VPS ${vpsid} is already linked to another service (${taken.hostname ?? taken.id}, ${taken.user.email}) — unlink or terminate that one first`);
     const was = { serverId: svc.serverId, remoteId: svc.remoteId, status: svc.status };
     // IPs recorded against the old (wrong) server don't belong to this VPS
-    if (svc.serverId !== server.id) await prisma.ipAddress.updateMany({ where: { serviceId: svc.id }, data: { serviceId: null, status: "AVAILABLE", isPrimary: false } }).catch(() => undefined);
+    if (svc.serverId !== server.id) await prisma.ipAddress.updateMany({ where: { serviceId: svc.id }, data: { serviceId: null, status: "AVAILABLE", isPrimary: false, changeSource: "PANEL", changeNote: "Re-linked to another VPS", changeActorId: req.user!.id } }).catch(() => undefined);
     await prisma.service.update({
       where: { id: svc.id },
       data: { serverId: server.id, remoteId: vpsid, node: row.serid !== undefined ? String(row.serid) : null, ...(["PENDING", "PROVISIONING", "FAILED"].includes(svc.status) ? { status: "ACTIVE" } : {}) },

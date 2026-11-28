@@ -258,7 +258,7 @@ export async function runSyncAll(s: SyncAllState) {
         continue;
       }
       try {
-        if (ipsChanged) await recordServiceIps(svc.id, m.id, after);
+        if (ipsChanged) await recordServiceIps(svc.id, m.id, after, { source: "VIRTUALIZOR", note: "Changed in Virtualizor (found by Sync all)" });
         if (nodeChanged || hostChanged || osChanged || user) await prisma.service.update({ where: { id: svc.id }, data: { ...(nodeChanged ? { node } : {}), ...(hostChanged ? { hostname } : {}), ...(osChanged ? { osTemplateId: osId } : {}), ...(user ? { username: user } : {}) } });
         let osName: string | undefined;
         if (osChanged) {

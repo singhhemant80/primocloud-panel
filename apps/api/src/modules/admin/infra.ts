@@ -538,8 +538,8 @@ adminInfra.post(
         const ip = await tx.ipAddress.findUnique({ where: { address: addr } });
         if (ip?.serviceId) throw conflict(`${addr} is already allocated`);
         const row = ip
-          ? await tx.ipAddress.update({ where: { id: ip.id }, data: { status: "ALLOCATED", serviceId: svc.id, isPrimary: i === 0, serverId: req.params.serverId } })
-          : await tx.ipAddress.create({ data: { address: addr, status: "ALLOCATED", serviceId: svc.id, isPrimary: i === 0, serverId: req.params.serverId } });
+          ? await tx.ipAddress.update({ where: { id: ip.id }, data: { status: "ALLOCATED", serviceId: svc.id, isPrimary: i === 0, serverId: req.params.serverId, changeSource: "PANEL", changeNote: "Imported existing guest", changeActorId: req.user!.id } })
+          : await tx.ipAddress.create({ data: { address: addr, status: "ALLOCATED", serviceId: svc.id, isPrimary: i === 0, serverId: req.params.serverId, changeSource: "PANEL", changeNote: "Imported existing guest", changeActorId: req.user!.id } });
         await logIp(tx, { ipId: row.id, action: "allocated", to: "ALLOCATED", serviceId: svc.id, actorId: req.user!.id, note: "imported existing guest" });
       }
       return svc;
@@ -722,7 +722,7 @@ adminInfra.post(
     const ip = await prisma.ipAddress.findUniqueOrThrow({ where: { id: req.params.id } });
     if (!ip.serviceId) throw badRequest("IP is not assigned");
     const to: IpStatus = quarantine ? "QUARANTINED" : "AVAILABLE";
-    await prisma.ipAddress.update({ where: { id: ip.id }, data: { status: to, serviceId: null, isPrimary: false } });
+    await prisma.ipAddress.update({ where: { id: ip.id }, data: { status: to, serviceId: null, isPrimary: false, changeSource: "PANEL", changeNote: "Unassigned in IP Management", changeActorId: req.user!.id } });
     await logIp(prisma, { ipId: ip.id, action: "unassigned", from: ip.status, to, serviceId: ip.serviceId, actorId: req.user!.id });
     res.json({ ok: true, note: "Remember to remove the address from the VM's network configuration." });
   }),

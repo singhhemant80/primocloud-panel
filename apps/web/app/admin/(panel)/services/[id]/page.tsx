@@ -8,6 +8,7 @@ import { NodeSelect } from "@/components/admin/node-select";
 import { HypervisorSelect } from "@/components/admin/hypervisor-select";
 import { ChangePlanButton } from "@/components/admin/change-plan";
 import { VirtualizorCheck } from "@/components/admin/virtualizor-check";
+import { IpHistory } from "@/components/admin/ip-history";
 import { ProvisioningTracker } from "@/components/provisioning-tracker";
 import { FailureExplain } from "@/components/failure-explain";
 import { LiveBadge } from "@/components/live-state";
@@ -217,6 +218,7 @@ export default function AdminService() {
                   </div>
                 ) : <p className="text-sm text-mute">No IP assigned.</p>}
                 {ok && live.ips?.length > 0 && live.ips.join(",") !== s.ips.map((i: any) => i.address).join(",") && <p className="mt-2 text-xs font-semibold text-amber-700">Virtualizor shows {live.ips.join(", ")} — click “Sync from Virtualizor” to update this one, or <span className="inline-block align-middle"><VirtualizorSyncAll label="sync all services" variant="outline" /></span>.</p>}
+                <IpHistory serviceId={s.id} />
               </div>
               {(s.hasPassword || s.username) && (
                 <div className="mt-5 border-t border-line pt-4">

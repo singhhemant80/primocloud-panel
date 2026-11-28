@@ -83,7 +83,7 @@ export async function syncVirtualizorIps(server: Server) {
     if (serviceId) perService.set(serviceId, [...(perService.get(serviceId) ?? []), address]);
     const existing = await prisma.ipAddress.findUnique({ where: { address } });
     if (!existing) {
-      await prisma.ipAddress.create({ data: { address, version: 4, subnetId, serverId: server.id, status, serviceId, notes } });
+      await prisma.ipAddress.create({ data: { address, version: 4, subnetId, serverId: server.id, status, serviceId, notes, changeSource: "VIRTUALIZOR", changeNote: "Found in Virtualizor's IP list" } });
       created++;
     } else {
       await prisma.ipAddress.update({
@@ -98,6 +98,8 @@ export async function syncVirtualizorIps(server: Server) {
           reservedById: null,
           reservedOrderId: null,
           reservedUntil: null,
+          // a different VPS in Virtualizor's IP list = the IP was moved there
+          ...(existing.serviceId !== serviceId ? { changeSource: "VIRTUALIZOR", changeNote: serviceId ? "Assigned in Virtualizor (IP sync)" : vpsid !== "0" ? `Moved to Virtualizor VPS ${vpsid} (IP sync)` : "Freed in Virtualizor (IP sync)" } : {}),
         },
       });
     }
@@ -111,7 +113,10 @@ export async function syncVirtualizorIps(server: Server) {
   // remove what Virtualizor doesn't have (typo'd or hand-added ranges) — only when Virtualizor answered with IPs
   if (seen.size) {
     const stale = await prisma.ipAddress.findMany({ where: { version: 4, OR: [{ serverId: server.id }, { subnet: { serverId: server.id } }], address: { notIn: [...seen] } }, select: { id: true } });
-    if (stale.length) removed = (await prisma.ipAddress.deleteMany({ where: { id: { in: stale.map((x) => x.id) } } })).count;
+    if (stale.length) {
+      await prisma.ipAddress.updateMany({ where: { id: { in: stale.map((x) => x.id) } }, data: { changeSource: "VIRTUALIZOR", changeNote: "No longer in Virtualizor (IP sync)" } });
+      removed = (await prisma.ipAddress.deleteMany({ where: { id: { in: stale.map((x) => x.id) } } })).count;
+    }
     const keep = [...subnetByPool.values()];
     await prisma.ipSubnet.deleteMany({ where: { serverId: server.id, id: { notIn: keep }, ips: { none: {} } } });
   }

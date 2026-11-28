@@ -185,7 +185,7 @@ export async function releaseServiceIps(db: Db, serviceId: string, opts: { quara
   const ips = await db.ipAddress.findMany({ where: { serviceId } });
   const to: IpStatus = opts.quarantine === false ? "AVAILABLE" : "QUARANTINED";
   for (const ip of ips) {
-    await db.ipAddress.update({ where: { id: ip.id }, data: { status: to, serviceId: null, isPrimary: false, rdns: null } });
+    await db.ipAddress.update({ where: { id: ip.id }, data: { status: to, serviceId: null, isPrimary: false, rdns: null, changeSource: "PANEL", changeNote: "Service terminated", changeActorId: opts.actorId ?? null } });
     await logIp(db, { ipId: ip.id, action: "released", from: ip.status, to, serviceId, actorId: opts.actorId, note: "service terminated" });
   }
   return ips.length;

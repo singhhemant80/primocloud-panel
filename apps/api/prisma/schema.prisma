@@ -630,6 +630,10 @@ model IpAddress {
   updatedAt        DateTime    @updatedAt
   createdAt        DateTime    @default(now())
   history          IpHistory[]
+  /// Where the next assignment change comes from — read (then cleared) by the service IP history trigger
+  changeSource     String?
+  changeNote       String?
+  changeActorId    String?
 
   @@index([status, serverId])
   @@index([reservedUntil])
@@ -649,6 +653,26 @@ model IpHistory {
   createdAt  DateTime  @default(now())
 
   @@index([ipId, createdAt])
+}
+
+/// Every IP a service was given or lost, written by a database trigger on IpAddress — so nothing slips
+/// past it: panel actions, staff in IP Management, imports, and changes made directly in Virtualizor that
+/// a sync finds. Keeps the address as text (survives the IP row being deleted); no FK to Service on purpose.
+model ServiceIpEvent {
+  id        String   @id @default(cuid())
+  serviceId String
+  address   String
+  /// ASSIGNED | REMOVED
+  action    String
+  /// PANEL | VIRTUALIZOR | IMPORT
+  source    String
+  isPrimary Boolean  @default(false)
+  note      String?
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  @@index([serviceId, createdAt])
+  @@index([address, createdAt])
 }
 
 // ───────────────────────────── Orders & services ─────────────────────────────

@@ -565,7 +565,7 @@ async function virtualizorCreate(svc: FullService) {
   // record the IPs the VPS really has in Virtualizor (whatever was requested)
   const actual = await client.vpsIps(vpsid).catch(() => [] as string[]);
   const addresses = actual.length ? actual : ips.map((i) => i.address);
-  if (actual.length) await recordServiceIps(svc.id, server.id, actual);
+  if (actual.length) await recordServiceIps(svc.id, server.id, actual, { source: "PANEL", note: `VPS ${vpsid} created` });
   void import("./virtualizor-ips").then((m) => m.syncVirtualizorIps(server)).catch(() => null);
   // linked to the customer's existing VPS: the password made up for this attempt isn't theirs — keep only a known one
   await prisma.service.update({ where: { id: svc.id }, data: { status: "ACTIVE", remoteId: vpsid, serverId: server.id, ...(linkedExisting && !svc.passwordEnc ? { passwordEnc: null } : {}) } });
@@ -1071,17 +1071,19 @@ export async function markCreateFailed(serviceId: string, error: string) {
  * Make IP Management match the VPS: its real IPs become ALLOCATED to the service (first = primary);
  * IPs the panel had given the service but the VPS doesn't have go back to the pool.
  */
-export async function recordServiceIps(serviceId: string, serverId: string, actual: string[]) {
+export async function recordServiceIps(serviceId: string, serverId: string, actual: string[], origin: { source: "PANEL" | "VIRTUALIZOR"; note?: string; actorId?: string } = { source: "VIRTUALIZOR", note: "Found in Virtualizor" }) {
+  // read by the service IP history trigger (then cleared): who/what made this change
+  const tag = { changeSource: origin.source, changeNote: origin.note ?? null, changeActorId: origin.actorId ?? null };
   await prisma.$transaction(async (tx) => {
     await tx.ipAddress.updateMany({
       where: { serviceId, address: { notIn: actual } },
-      data: { serviceId: null, status: "AVAILABLE", isPrimary: false, reservedById: null, reservedOrderId: null, reservedUntil: null },
+      data: { serviceId: null, status: "AVAILABLE", isPrimary: false, reservedById: null, reservedOrderId: null, reservedUntil: null, ...tag },
     });
     for (const [n, address] of actual.entries()) {
       await tx.ipAddress.upsert({
         where: { address },
-        update: { status: "ALLOCATED", serviceId, serverId, isPrimary: n === 0, reservedById: null, reservedOrderId: null, reservedUntil: null },
-        create: { address, version: address.includes(":") ? 6 : 4, status: "ALLOCATED", serviceId, serverId, isPrimary: n === 0, notes: "Assigned by Virtualizor" },
+        update: { status: "ALLOCATED", serviceId, serverId, isPrimary: n === 0, reservedById: null, reservedOrderId: null, reservedUntil: null, ...tag },
+        create: { address, version: address.includes(":") ? 6 : 4, status: "ALLOCATED", serviceId, serverId, isPrimary: n === 0, notes: "Assigned by Virtualizor", ...tag },
       });
     }
   });
@@ -1195,7 +1197,7 @@ export async function syncVirtualizorService(serviceId: string) {
   const row = await client.findVps(svc.remoteId);
   if (!row) throw new ProvisionError(`VPS ${svc.remoteId} wasn't found on ${svc.server.name} — it may have been deleted in Virtualizor`, false);
   const ips = await client.vpsIps(svc.remoteId).catch(() => [] as string[]);
-  if (ips.length) await recordServiceIps(svc.id, svc.server.id, ips);
+  if (ips.length) await recordServiceIps(svc.id, svc.server.id, ips, { source: "VIRTUALIZOR", note: "Sync from Virtualizor" });
   const { osTemplateForVps } = await import("./virtualizor-os");
   const osId = await osTemplateForVps(svc.server, row as Record<string, unknown>).catch(() => null);
   const osRow = osId ? await prisma.osTemplate.findUnique({ where: { id: osId }, select: { family: true, name: true, remoteName: true } }) : null;
@@ -1220,7 +1222,7 @@ export async function replaceVirtualizorIps(serviceId: string, newIps?: string[]
   reportProgress("Confirming the new IP with Virtualizor", 75);
   const after = await client.vpsIps(svc.remoteId).catch(() => [] as string[]);
   reportProgress("Updating IP Management", 90);
-  if (after.length) await recordServiceIps(svc.id, svc.server.id, after);
+  if (after.length) await recordServiceIps(svc.id, svc.server.id, after, { source: "PANEL", note: `Change IP: ${before.join(", ") || "none"} → ${after.join(", ")}` });
   void import("./virtualizor-ips").then((m) => m.syncVirtualizorIps(svc.server!)).catch(() => null);
   await log(svc.id, "change_ip", true, `IPs changed in Virtualizor: ${before.join(", ") || "none"} → ${after.join(", ") || "?"}`);
   return { before, after };
@@ -1273,7 +1275,7 @@ async function liveStatusUncached(serviceId: string) {
     if (!liveIps.length && !svc.ips.length) liveIps = (await client.ipsByVps().catch(() => new Map<string, string[]>())).get(String(svc.remoteId)) ?? [];
     const have = svc.ips.map((i) => i.address);
     if (liveIps.length && (liveIps.length !== have.length || liveIps.some((a) => !have.includes(a)))) {
-      await recordServiceIps(svc.id, svc.server.id, liveIps).catch(() => undefined);
+      await recordServiceIps(svc.id, svc.server.id, liveIps, { source: "VIRTUALIZOR", note: `Changed in Virtualizor: ${have.join(", ") || "none"} → ${liveIps.join(", ")}` }).catch(() => undefined);
       await log(svc.id, "sync", true, `IPs from Virtualizor: ${have.join(", ") || "none"} → ${liveIps.join(", ")}`).catch(() => undefined);
     }
     const n = (x: unknown) => (x === undefined || x === null || x === "" ? undefined : Number(x));

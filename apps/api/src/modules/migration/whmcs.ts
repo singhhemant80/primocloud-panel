@@ -655,8 +655,8 @@ export async function runWhmcsImport(src: SourceDb, opts: ImportOptions, onProgr
           }
           if (!live) continue; // history only: don't hold IPs of dead services
           const row = ip
-            ? await tx.ipAddress.update({ where: { id: ip.id }, data: { status: "ALLOCATED", serviceId: localId, isPrimary: idx === 0, serverId: ip.serverId ?? data.serverId, reservedById: null, reservedOrderId: null, reservedUntil: null } })
-            : await tx.ipAddress.create({ data: { address, version: v6 ? 6 : 4, status: "ALLOCATED", serviceId: localId, isPrimary: idx === 0, serverId: data.serverId } });
+            ? await tx.ipAddress.update({ where: { id: ip.id }, data: { changeSource: "IMPORT", changeNote: "Imported from WHMCS", status: "ALLOCATED", serviceId: localId, isPrimary: idx === 0, serverId: ip.serverId ?? data.serverId, reservedById: null, reservedOrderId: null, reservedUntil: null } })
+            : await tx.ipAddress.create({ data: { changeSource: "IMPORT", changeNote: "Imported from WHMCS", address, version: v6 ? 6 : 4, status: "ALLOCATED", serviceId: localId, isPrimary: idx === 0, serverId: data.serverId } });
           if (!ip || ip.serviceId !== localId) await tx.ipHistory.create({ data: { ipId: row.id, action: "allocated", fromStatus: ip?.status ?? null, toStatus: "ALLOCATED", userId, serviceId: localId, note: `imported from WHMCS service #${h.id}` } });
         }
         if ((product.provisioner === "PROXMOX" || product.provisioner === "VIRTUALIZOR") && status === "ACTIVE" && !remoteId) warn("services", h.id, `${h.domain || h.id}: no VM/VPS id custom field found — set it on the service to enable power controls`);
