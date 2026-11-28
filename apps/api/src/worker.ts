@@ -152,7 +152,8 @@ async function schedule() {
   await q.upsertJobScheduler("automation-tick", { every: 5 * 60_000 }, { name: "automation-tick" });
   // before billing runs, so renewal invoices use today's rate
   await q.upsertJobScheduler("sync-os", { pattern: "0 3 * * *", tz: "Asia/Kolkata" }, { name: "sync-os" });
-  await q.upsertJobScheduler("sync-ips", { every: 10 * 60_000 }, { name: "sync-ips" });
+  // the full IP list is one of Virtualizor's heaviest calls — every 30 minutes is plenty
+  await q.upsertJobScheduler("sync-ips", { every: 30 * 60_000 }, { name: "sync-ips" });
   await q.upsertJobScheduler("sync-services", { every: 30 * 60_000 }, { name: "sync-services" });
   await q.upsertJobScheduler("autopay", { every: 60 * 60_000 }, { name: "autopay" });
   await q.upsertJobScheduler("fx-rates", { pattern: "30 8 * * *", tz: "Asia/Kolkata" }, { name: "fx-rates" });

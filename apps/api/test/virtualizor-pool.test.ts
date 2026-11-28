@@ -11,9 +11,12 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
-import { VirtualizorClient } from "../src/modules/provisioning/virtualizor";
+import { VirtualizorClient, VirtualizorBusyError, virtualizorPausedFor } from "../src/modules/provisioning/virtualizor";
+import { closeQueues, redis } from "../src/jobs/queues";
+import { after } from "node:test";
 
 process.env.VIRTUALIZOR_MAX_RPS = "1000"; // connection tests below; pacing has its own test
+process.env.VIRTUALIZOR_SHARED_LIMIT = "0"; // the panel-wide (Redis) limit has its own tests at the end
 
 test("parallel Virtualizor calls reuse at most 4 connections per master", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "vz-pool-"));
@@ -127,6 +130,83 @@ test("listing all VPSes stops when the master ignores 'page' (used to loop 500 t
     // remembered: a second caller within 2 minutes doesn't ask again
     await new VirtualizorClient(m.creds).allVps();
     assert.ok(hits <= 2);
+  } finally {
+    m.close();
+  }
+});
+
+after(() => closeQueues().catch(() => undefined));
+
+test("panel-wide limit: all clients together send about 1 call a second to a master", async () => {
+  let hits = 0;
+  const at: number[] = [];
+  const m = await fakeMaster((_u, res) => (hits++, at.push(Date.now()), json(res, { ok: 1 })));
+  process.env.VIRTUALIZOR_SHARED_LIMIT = "1";
+  process.env.VIRTUALIZOR_TOTAL_RPS = "4";
+  try {
+    const t0 = Date.now();
+    // two "processes" worth of clients asking at once
+    await Promise.all(Array.from({ length: 12 }, (_, i) => new VirtualizorClient(m.creds).call("vs", { vpsid: 1000 + i })));
+    const took = Date.now() - t0;
+    assert.equal(hits, 12);
+    assert.ok(took >= 900, `12 calls at 4/s can't all go at once (took ${took} ms)`);
+    // never more than 4 reach the master in any one-second window
+    const perSecond = new Map<number, number>();
+    for (const t of at) perSecond.set(Math.floor(t / 1000), (perSecond.get(Math.floor(t / 1000)) ?? 0) + 1);
+    assert.ok(Math.max(...perSecond.values()) <= 4, JSON.stringify([...perSecond.values()]));
+  } finally {
+    process.env.VIRTUALIZOR_SHARED_LIMIT = "0";
+    delete process.env.VIRTUALIZOR_TOTAL_RPS;
+    m.close();
+  }
+});
+
+test("back-off: a master that keeps failing gets a pause for background calls; staff actions still go", async () => {
+  let fail = true;
+  let posts = 0;
+  const m = await fakeMaster((u, res) => {
+    if (fail && !u.includes("act=addvs")) return res.socket?.destroy();
+    if (u.includes("act=addvs")) posts++;
+    json(res, { ok: 1 });
+  });
+  process.env.VIRTUALIZOR_SHARED_LIMIT = "1";
+  process.env.VIRTUALIZOR_TOTAL_RPS = "50";
+  const key = `127.0.0.1:${m.creds.port}`;
+  try {
+    for (let i = 0; i < 4; i++) await new VirtualizorClient(m.creds).call("vs", { vpsid: 2000 + i }).catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 100));
+    assert.ok((await virtualizorPausedFor(key)) > 0, "paused after 4 failures in a minute");
+    fail = false;
+    const t0 = Date.now();
+    await assert.rejects(new VirtualizorClient(m.creds).call("vs", { vpsid: 3000 }), (e) => e instanceof VirtualizorBusyError);
+    assert.ok(Date.now() - t0 < 500, "refused at once, without touching the master");
+    // a staff action (form post) and an on-screen list still reach it
+    await new VirtualizorClient(m.creds).call("addvs", {}, { hostname: "x" });
+    assert.equal(posts, 1);
+    await new VirtualizorClient(m.creds).plans({ quick: true });
+  } finally {
+    process.env.VIRTUALIZOR_SHARED_LIMIT = "0";
+    delete process.env.VIRTUALIZOR_TOTAL_RPS;
+    await redis().del(`vz:pause:${key}`, `vz:fail:${key}`);
+    m.close();
+  }
+});
+
+test("IP list paging stops when the master ignores 'page' (used to read it up to 99 times)", async () => {
+  let hits = 0;
+  const rows = Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [String(i + 1), { ipid: String(i + 1), ip: `10.9.${Math.floor(i / 250)}.${i % 250}` }]));
+  const m = await fakeMaster((u, res) => (u.includes("act=ips") ? (hits++, json(res, { ips: rows })) : json(res, {})));
+  try {
+    const c = new VirtualizorClient(m.creds);
+    const seen = new Set<string>();
+    for (let page = 1; page < 100; page++) {
+      const entries = Object.entries((await c.ips(page, 1000)).ips ?? {});
+      let fresh = 0;
+      for (const [k] of entries) if (!seen.has(k)) (seen.add(k), fresh++);
+      if (entries.length < 1000 || fresh === 0) break;
+    }
+    assert.equal(seen.size, 1000);
+    assert.equal(hits, 2);
   } finally {
     m.close();
   }

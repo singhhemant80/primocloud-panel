@@ -51,11 +51,20 @@ export async function syncVirtualizorIps(server: Server) {
   }
   // walk all pages of IPs
   const ips: Record<string, unknown>[] = [];
+  const seenIds = new Set<string>();
   for (let page = 1; page < 100; page++) {
     const r = (await c.ips(page, 1000)).ips ?? {};
-    const rows = Object.values(r);
-    ips.push(...rows);
-    if (rows.length < 1000) break;
+    const entries = Object.entries(r);
+    let fresh = 0;
+    for (const [k, row] of entries) {
+      const id = String((row as Record<string, unknown>).ipid ?? k);
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      ips.push(row as Record<string, unknown>);
+      fresh++;
+    }
+    // stop on a short page — or a page with nothing new (masters that ignore "page" send the same list again)
+    if (entries.length < 1000 || fresh === 0) break;
   }
   const ourVps = new Map((await prisma.service.findMany({ where: { serverId: server.id, remoteId: { not: null } }, select: { id: true, remoteId: true } })).map((s) => [s.remoteId!, s.id]));
   let available = 0, used = 0, created = 0, removed = 0;

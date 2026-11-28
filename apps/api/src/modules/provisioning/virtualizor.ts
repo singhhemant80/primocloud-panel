@@ -6,6 +6,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Agent, request } from "undici";
 import { explainNetError } from "../../lib/net-errors";
+import { inJob } from "./action-progress";
 
 export interface VirtualizorCreds {
   host: string;
@@ -62,7 +63,77 @@ export function isNoAnswer(e: unknown) {
  * of the master treats as an attack and blocks the panel's IP for a while. Now calls reuse a few
  * kept-alive connections and queue when they're all busy.
  */
-const MAX_CONNECTIONS = Math.max(1, Number(process.env.VIRTUALIZOR_MAX_CONNECTIONS) || 4);
+const MAX_CONNECTIONS = Math.max(1, Number(process.env.VIRTUALIZOR_MAX_CONNECTIONS) || 2);
+
+/**
+ * Protecting the master (shared by every panel process through Redis):
+ *  - one limit for the whole panel: VIRTUALIZOR_TOTAL_RPS calls a second per master (default 1), plus one
+ *    extra a second kept for what staff are waiting for on screen;
+ *  - back-off: when the master times out, errors or answers very slowly several times within a minute,
+ *    background calls stop for VIRTUALIZOR_PAUSE_S seconds (default 90) so it can recover. Staff actions
+ *    (power, reinstall, create) and on-screen lists still go through.
+ * Without Redis (tests, a broken Redis) the per-process pacer below still applies.
+ */
+const totalRps = () => Math.max(0.2, Number(process.env.VIRTUALIZOR_TOTAL_RPS) || 1);
+const pauseSeconds = () => Math.max(10, Number(process.env.VIRTUALIZOR_PAUSE_S) || 90);
+type MiniRedis = { incr(k: string): Promise<number>; pexpire(k: string, ms: number): Promise<number>; set(k: string, v: string, mode: "EX", s: number): Promise<unknown>; ttl(k: string): Promise<number>; del(k: string): Promise<number> };
+let redisP: Promise<MiniRedis | null> | null = null;
+function vzRedis(): Promise<MiniRedis | null> {
+  if (process.env.VIRTUALIZOR_SHARED_LIMIT === "0") return Promise.resolve(null);
+  redisP ??= import("../../jobs/queues")
+    .then((m) => m.redis() as unknown as MiniRedis)
+    .catch(() => null);
+  return redisP;
+}
+const nap = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Wait for a slot in the panel-wide limit for this master. */
+async function sharedSlot(master: string, urgent: boolean) {
+  const r = await vzRedis();
+  if (!r) return;
+  const rps = urgent ? 1 : totalRps();
+  const win = Math.max(1000, Math.round(1000 / rps));
+  const allowance = Math.max(1, Math.round((rps * win) / 1000));
+  for (let i = 0; i < 1200; i++) {
+    const slot = Math.floor(Date.now() / win);
+    const k = `vz:rate:${master}:${urgent ? "u" : "b"}:${slot}`;
+    let n: number;
+    try {
+      n = await r.incr(k);
+      if (n === 1) await r.pexpire(k, win * 3);
+    } catch {
+      return; // Redis trouble: the local pacer still applies
+    }
+    if (n <= allowance) return;
+    await nap((slot + 1) * win - Date.now() + Math.floor(Math.random() * 120));
+  }
+}
+/** Seconds left of a back-off pause for this master (0 = not paused). */
+export async function virtualizorPausedFor(master: string) {
+  const r = await vzRedis();
+  if (!r) return 0;
+  const t = await r.ttl(`vz:pause:${master}`).catch(() => -2);
+  return t > 0 ? t : 0;
+}
+async function noteHealth(master: string, ok: boolean) {
+  const r = await vzRedis();
+  if (!r) return;
+  try {
+    if (ok) {
+      await r.del(`vz:fail:${master}`);
+      return;
+    }
+    const n = await r.incr(`vz:fail:${master}`);
+    if (n === 1) await r.pexpire(`vz:fail:${master}`, 60_000);
+    if (n >= 4) {
+      await r.set(`vz:pause:${master}`, "1", "EX", pauseSeconds());
+      await r.del(`vz:fail:${master}`);
+      console.warn(`[virtualizor] ${master} is struggling (timeouts / slow answers) — background calls paused for ${pauseSeconds()}s`);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+export class VirtualizorBusyError extends Error {}
 
 /**
  * Pace API calls per master. Virtualizor answers each call with a PHP worker; hundreds of status calls a
@@ -125,11 +196,12 @@ function poolFor(creds: VirtualizorCreds) {
   if (!p) {
     const connect = { rejectUnauthorized: creds.verifyTls, timeout: 20_000, autoSelectFamily: true };
     p = {
-      agent: new Agent({ connect, connections: MAX_CONNECTIONS, keepAliveTimeout: 30_000, keepAliveMaxTimeout: 60_000, headersTimeout: 120_000, bodyTimeout: 300_000 }),
+      // a read that takes over a minute holds one of the master's few PHP workers — give up instead
+      agent: new Agent({ connect, connections: MAX_CONNECTIONS, keepAliveTimeout: 30_000, keepAliveMaxTimeout: 60_000, headersTimeout: 60_000, bodyTimeout: 120_000 }),
       // creates/rebuilds can run for many minutes: their own small pool so they never hold up the quick calls
       slowAgent: new Agent({ connect, connections: 2, headersTimeout: CREATE_TIMEOUT_MS, bodyTimeout: CREATE_TIMEOUT_MS, keepAliveTimeout: 1000 }),
       // what staff wait for on screen (plan / OS lists): never queued behind background syncs, and gives up in 30s
-      quickAgent: new Agent({ connect: { ...connect, timeout: 10_000 }, connections: 2, keepAliveTimeout: 30_000, headersTimeout: 30_000, bodyTimeout: 60_000 }),
+      quickAgent: new Agent({ connect: { ...connect, timeout: 10_000 }, connections: 1, keepAliveTimeout: 30_000, headersTimeout: 30_000, bodyTimeout: 60_000 }),
     };
     pools.set(key, p);
   }
@@ -170,8 +242,19 @@ export class VirtualizorClient {
       body = form.toString();
     }
     const host = this.creds.host.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const master = `${host.toLowerCase()}:${opts.port ?? this.creds.port}`;
+    // staff actions (forms / sessions) and creates always go; on-screen lists jump the queue
+    // …and so does everything a setup job (create / reinstall / IP change) reads while it runs
+    const inSetupJob = inJob();
+    const essential = !!post || !!opts.slow || !!opts.cookies;
     const send = async () => {
+      if (!essential && !opts.quick && !inSetupJob) {
+        const left = await virtualizorPausedFor(master);
+        if (left > 0) throw new VirtualizorBusyError(`Virtualizor at ${host} is overloaded — the panel paused its background checks for ${left}s so it can recover`);
+      }
+      if (!essential) await sharedSlot(master, !!opts.quick || inSetupJob);
       await this.pacer.take(!!opts.quick);
+      const started = Date.now();
       const r = await request(this.url(act, query, opts.port), {
         method: post ? "POST" : "GET",
         dispatcher: opts.slow ? this.slowAgent : opts.quick ? this.quickAgent : this.agent,
@@ -181,9 +264,16 @@ export class VirtualizorClient {
         },
         body,
       }).catch((e) => {
+        if (!opts.slow) void noteHealth(master, false); // timeouts / refused connections
         throw explainNetError(e, host, this.creds.port, "Virtualizor");
       });
-      return { statusCode: r.statusCode, location: String(r.headers.location ?? ""), text: await r.body.text() };
+      const text = await r.body.text().catch((e) => {
+        if (!opts.slow) void noteHealth(master, false);
+        throw e;
+      });
+      // 5xx or a very slow answer = the master is under strain; a quick good answer clears the count
+      if (!opts.slow) void noteHealth(master, !(r.statusCode >= 500 || Date.now() - started > 20_000));
+      return { statusCode: r.statusCode, location: String(r.headers.location ?? ""), text };
     };
     // read calls (no form, no session) with the same question share one request
     const shareKey = !post && !opts.cookies ? `${host}:${opts.port ?? this.creds.port}|${this.creds.apiKey}|${act}|${JSON.stringify(Object.entries(query).filter(([, v]) => v !== undefined).sort())}` : null;
