@@ -153,6 +153,7 @@ function ServiceCard({ s, st }: { s: any; st?: { state: string; reason?: string 
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {st && st.state !== "unknown" && s.status === "ACTIVE" ? <LiveBadge state={st.state} reason={st.reason} /> : <Badge status={s.status} />}
+          {s.status === "SUSPENDED" && s.suspendedAt && <span className="text-[11.5px] font-semibold text-amber-700">since {date(s.suspendedAt)}</span>}
           <span className="text-[11px] font-semibold uppercase tracking-wide text-mute">{kind === "hosting" ? (s.product.type === "RESELLER_HOSTING" ? "Reseller" : "cPanel hosting") : kind === "vps" ? `${s.product.virtType ?? "KVM"} VPS` : "Service"}</span>
         </div>
       </Link>

@@ -115,7 +115,7 @@ export default function ServicePage() {
       )}
       {svc.status === "SUSPENDED" && (
         <Alert tone="error" className="mb-5">
-          Suspended: {svc.suspendReason ?? "contact support"}. Paying overdue invoices restores the service automatically.
+          Suspended{svc.suspendedAt ? <> on <b>{date(svc.suspendedAt, true)}</b></> : ""}: {svc.suspendReason ?? "contact support"}. Paying overdue invoices restores the service automatically.
         </Alert>
       )}
 

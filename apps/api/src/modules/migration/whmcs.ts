@@ -635,6 +635,8 @@ export async function runWhmcsImport(src: SourceDb, opts: ImportOptions, onProgr
             data: { ...data, userId, productId, orderId: get("order", h.orderid) ?? null, currency: clientCurrency.get(String(h.userid)) ?? defaultCurrency, firstAmount: paise(h.firstpaymentamount), registrationDate: dt(h.regdate) ?? new Date(), virtType: product.provisioner === "PROXMOX" || product.provisioner === "VIRTUALIZOR" ? product.virtType : null, config: { importedFrom: "whmcs", whmcsId: String(h.id) } },
           });
           localId = created.id;
+          // WHMCS doesn't keep when it was suspended: leave it unknown rather than show the import date
+          if (status === "SUSPENDED") await tx.service.update({ where: { id: localId }, data: { suspendedAt: null } });
           await setMap("service", h.id, localId);
           c("services").created++;
         }

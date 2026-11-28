@@ -16,7 +16,7 @@ import { PasswordField, generatePassword, passwordProblem } from "@/components/p
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, CYCLES, date, invNo, money } from "@/lib/api";
+import { ago, api, CYCLES, date, invNo, money } from "@/lib/api";
 import { ServiceActivity, kickServiceActivity } from "@/components/service-activity";
 import { Alert, Badge, Button, Card, Copy, Field, Icon, Input, Loading, Modal, Select, Table, Td, Textarea, Toggle, cx, toast, useApi } from "@/components/ui";
 
@@ -111,7 +111,13 @@ export default function AdminService() {
       )}
       {s.status === "FAILED" && <FailurePanel s={s} />}
       <ServiceActivity base={`/admin/services/${id}`} onFinished={(it) => { reload(); refreshLive(); if (it.state === "failed") toast.error(`${it.label} failed${it.error ? `: ${it.error}` : ""}`); else toast.success(`${it.label} finished`); }} />
-      {s.status === "SUSPENDED" && <Alert tone="warn" className="mb-6"><b>Suspended</b>{s.suspendReason ? ` — ${s.suspendReason}` : ""}</Alert>}
+      {s.status === "SUSPENDED" && (
+        <Alert tone="warn" className="mb-6">
+          <b>Suspended</b>
+          {s.suspendedAt ? <> on <b>{date(s.suspendedAt, true)}</b> ({ago(s.suspendedAt)})</> : " — date not recorded (suspended before the panel kept it, or imported from WHMCS)"}
+          {s.suspendReason ? ` — ${s.suspendReason}` : ""}
+        </Alert>
+      )}
       {["TERMINATED", "CANCELLED"].includes(s.status) && <Alert tone="info" className="mb-6"><b>{s.status === "CANCELLED" ? "Cancelled" : "Terminated"}{s.terminationDate ? ` on ${date(s.terminationDate)}` : ""}</b>{s.terminationReason ? ` — ${s.terminationReason}` : " — no reason recorded (add one under Billing & overrides)"}</Alert>}
       {terminating && <TerminateModal hosting={isHosting} username={s.username} onClose={() => setTerminating(false)} onConfirm={(reason) => { setTerminating(false); act("terminate", { reason }); }} />}
       {isVps && ended && <RecreatePanel s={s} onDone={reload} />}

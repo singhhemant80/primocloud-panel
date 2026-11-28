@@ -751,6 +751,8 @@ model Service {
   virtType         VirtType?
   ipv6Address      String?
   suspendReason    String?
+  /// when it was suspended — set and cleared by a database trigger whenever the status goes to / from SUSPENDED
+  suspendedAt      DateTime?
   overrideAutoSuspend Boolean    @default(false)
   resellerId       String? // created by a reseller for their customer
   reseller         Reseller?     @relation(fields: [resellerId], references: [id])
