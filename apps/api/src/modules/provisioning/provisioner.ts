@@ -371,14 +371,23 @@ async function virtualizorCreate(svc: FullService) {
     }
     osId = same.virtualizorOsId;
   }
-  // IPs always come from Virtualizor: like its WHMCS module, the panel only asks for how many
-  // (num_ips) and records the ones Virtualizor gave the VPS. The panel never picks an address.
+  // IPs come from Virtualizor: like its WHMCS module, the panel asks for how many (num_ips) and records
+  // the ones Virtualizor gave the VPS — unless the customer picked one at checkout: then that address is
+  // requested, and only nodes whose IP pool holds it are used (if Virtualizor refuses it, we fall back).
   const ipCount = Math.max(1, p.ipv4Count);
   const ips: { id: string; address: string }[] = [];
   const ipNodes: string[] = [];
-  // release anything the panel had set aside for this order (from before IPs came only from Virtualizor)
+  const chosen = typeof cfg.requestedIpId === "string" && !svc.remoteId
+    ? await prisma.ipAddress.findFirst({ where: { id: cfg.requestedIpId, serverId: server.id, version: 4, OR: [{ serviceId: null }, { serviceId: svc.id }], status: { in: ["AVAILABLE", "RESERVED", "ALLOCATED"] } }, include: { subnet: true } })
+    : null;
+  if (chosen) {
+    ips.push({ id: chosen.id, address: chosen.address });
+    ipNodes.push(...(chosen.subnet?.nodeIds ?? []).map(String));
+    reportProgress(`Using the IP you chose: ${chosen.address}`, 12);
+  } else if (typeof cfg.requestedIpId === "string" && !svc.remoteId) await log(svc.id, "create", true, "The IP chosen at checkout is no longer free — Virtualizor will assign one");
+  // release anything the panel had set aside for this order (the chosen IP is requested from Virtualizor below)
   await prisma.ipAddress.updateMany({
-    where: { OR: [{ serviceId: svc.id }, ...(svc.orderId ? [{ reservedOrderId: svc.orderId }] : [])], status: { in: ["RESERVED", "ALLOCATED"] }, serverId: server.id },
+    where: { OR: [{ serviceId: svc.id }, ...(svc.orderId ? [{ reservedOrderId: svc.orderId }] : [])], status: { in: ["RESERVED", "ALLOCATED"] }, serverId: server.id, ...(chosen ? { id: { not: chosen.id } } : {}) },
     data: { serviceId: null, status: "AVAILABLE", isPrimary: false, reservedById: null, reservedOrderId: null, reservedUntil: null },
   });
   const password = svc.passwordEnc ? decrypt(svc.passwordEnc) : generatePassword(18);
@@ -536,12 +545,21 @@ async function virtualizorCreate(svc: FullService) {
         }
         if (mc.planId) attempts.push({ label: "node's primary storage with the plan's sizes", diskMode: "scalar" });
         const virtMismatch = hints?.virts.length && !hints.virts.includes(virt) ? hints.virts : null;
-        const nodeIps: string[] = [];
-        await log(svc.id, "create", true, `Placing VPS: ${n.reason} · ${attempts[0].label}${attempts.length > 2 ? ` (${attempts.length} ways to try)` : ""}`);
+        // the customer's chosen IP, when this node's pools hold it (no pool info = let Virtualizor decide)
+        let nodeIps: string[] = ips.length && (!ipNodes.length || ipNodes.includes(String(n.serid))) ? ips.map((i) => i.address) : [];
+        await log(svc.id, "create", true, `Placing VPS: ${n.reason} · ${attempts[0].label}${attempts.length > 2 ? ` (${attempts.length} ways to try)` : ""}${nodeIps.length ? ` · IP ${nodeIps.join(", ")}` : ""}`);
         const errs: string[] = [];
         for (const a of attempts) {
           try {
-            vpsid = await createOrAdopt({ ...base, ips: nodeIps, numIps: ipCount, serverId: n.serid, storage: a.storage, diskMode: a.diskMode });
+            try {
+              vpsid = await createOrAdopt({ ...base, ips: nodeIps, numIps: ipCount, serverId: n.serid, storage: a.storage, diskMode: a.diskMode });
+            } catch (e) {
+              // Virtualizor wouldn't give the chosen IP (taken meanwhile, other pool…): never fail the order for it
+              if (!nodeIps.length || isStorageError(e)) throw e;
+              await log(svc.id, "create", true, `Virtualizor didn't accept the chosen IP ${nodeIps.join(", ")} (${short(e)}) — letting it assign one`);
+              nodeIps = [];
+              vpsid = await createOrAdopt({ ...base, ips: nodeIps, numIps: ipCount, serverId: n.serid, storage: a.storage, diskMode: a.diskMode });
+            }
             if (a !== attempts[0]) await log(svc.id, "create", true, `Created on ${n.name} using ${a.label}`);
             await prisma.service.update({ where: { id: svc.id }, data: { node: String(n.serid) } });
             break;

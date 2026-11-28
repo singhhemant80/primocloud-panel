@@ -69,7 +69,7 @@ function publicProduct(p: Awaited<ReturnType<typeof findProduct>>, rs: Resolvers
     // shared / reseller / WordPress plans are ordered with a domain first, whichever way they're set up
     isHosting: isHostingProduct(p),
     freeDomain: p.freeDomain === "once" || p.freeDomain === "recurring" ? { type: p.freeDomain, cycles: p.freeDomainCycles, tlds: p.freeDomainTlds } : null,
-    allowIpSelection: p.allowIpSelection && p.provisioner !== "VIRTUALIZOR",
+    allowIpSelection: p.allowIpSelection,
     requireHostname: p.requireHostname,
     featured: p.featured,
     outOfStock: p.outOfStock || (p.stockControl && p.stockQty <= 0),
@@ -191,24 +191,40 @@ catalogRouter.get(
   ah(async (req, res) => {
     const p = await prisma.product.findFirst({ where: { enabled: true, OR: [{ id: req.params.key }, { slug: req.params.key }] }, include: { servers: { include: { server: { include: { location: true } } } } } });
     if (!p) throw notFound("Product not found");
-    const out = [];
+    // one entry per location, however many servers it has (two masters in Noida = one "Noida"); the order
+    // goes to the server there with the most free IPs, or to the server of the IP the customer picks
+    const byLoc = new Map<string, { serverId: string; serverIds: string[]; name: string; code: string | null; country: string; freeIps: number; best: number }>();
     for (const { server } of p.servers.filter((s) => s.server.enabled)) {
       const free = await prisma.ipAddress.count({ where: { serverId: server.id, version: 4, serviceId: null, OR: [{ status: "AVAILABLE" }, { status: "RESERVED", reservedUntil: { lt: new Date() } }] } });
-      out.push({ serverId: server.id, name: server.location?.name ?? server.name, code: server.location?.code ?? null, country: server.location?.country ?? "IN", freeIps: free });
+      const name = server.location?.name ?? server.name;
+      const country = server.location?.country ?? "IN";
+      // same Location row, or two Location rows with the same name in the same country
+      const key = server.location ? `loc:${name.trim().toLowerCase()}|${country}` : `srv:${server.id}`;
+      const cur = byLoc.get(key);
+      if (!cur) byLoc.set(key, { serverId: server.id, serverIds: [server.id], name, code: server.location?.code ?? null, country, freeIps: free, best: free });
+      else {
+        cur.serverIds.push(server.id);
+        cur.freeIps += free;
+        if (free > cur.best) Object.assign(cur, { serverId: server.id, best: free });
+      }
     }
-    res.json({ locations: out });
+    res.json({ locations: [...byLoc.values()].map(({ best: _b, ...l }) => l) });
   }),
 );
 
 catalogRouter.get(
   "/products/:key/ips",
+  // choosing an IP is for registered customers who are signed in; everyone else gets one automatically
+  requireClient,
   ah(async (req, res) => {
-    const q = parse(z.object({ serverId: z.string().optional(), search: z.string().max(40).optional() }), req.query);
+    const q = parse(z.object({ serverId: z.string().max(2000).optional(), search: z.string().max(40).optional() }), req.query);
     const p = await prisma.product.findFirst({ where: { enabled: true, OR: [{ id: req.params.key }, { slug: req.params.key }] }, include: { servers: true } });
     if (!p) throw notFound("Product not found");
-    if (!p.allowIpSelection || p.provisioner === "VIRTUALIZOR") throw badRequest("This plan assigns IPs automatically");
+    if (!p.allowIpSelection) throw badRequest("This plan assigns IPs automatically");
     const allowed = p.servers.map((s) => s.serverId);
-    const serverIds = q.serverId ? allowed.filter((id) => id === q.serverId) : allowed;
+    // one server, or every server of a location ("a,b")
+    const wanted = q.serverId ? q.serverId.split(",").filter(Boolean) : [];
+    const serverIds = wanted.length ? allowed.filter((id) => wanted.includes(id)) : allowed;
     const ips = await listAvailableIps({ serverIds, search: q.search, limit: 256 });
     res.json({ ips });
   }),
@@ -220,7 +236,7 @@ catalogRouter.post(
   ah(async (req, res) => {
     const { productId } = parse(z.object({ productId: z.string() }), req.body);
     const p = await prisma.product.findFirst({ where: { OR: [{ id: productId }, { slug: productId }], enabled: true }, include: { servers: true } });
-    if (!p || !p.allowIpSelection || p.provisioner === "VIRTUALIZOR") throw badRequest("This plan does not support IP selection");
+    if (!p || !p.allowIpSelection) throw badRequest("This plan does not support IP selection");
     const ip = await reserveIp({ ipId: req.params.ipId, userId: req.user!.id, serverIds: p.servers.map((s) => s.serverId) });
     res.json({ reservation: { ipId: ip.id, address: ip.address, serverId: ip.serverId, expiresAt: ip.reservedUntil } });
   }),

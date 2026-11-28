@@ -215,7 +215,7 @@ export default function ProductEditor() {
               <Field label="Bandwidth (GB, empty = unmetered)"><Input type="number" value={p.bandwidthGb ?? ""} onChange={(e) => set({ bandwidthGb: e.target.value })} /></Field>
               <Field label="IPv4 addresses"><Input type="number" value={p.ipv4Count} onChange={(e) => set({ ipv4Count: e.target.value })} /></Field>
               <div className="flex flex-wrap gap-5 sm:col-span-2">
-                {p.provisioner === "VIRTUALIZOR" ? <span className="text-xs font-semibold text-mute">IPv4 is assigned by Virtualizor from its own pools</span> : <Toggle checked={p.allowIpSelection} onChange={(v) => set({ allowIpSelection: v })} label="Customer chooses IPv4" />}
+                <Toggle checked={p.allowIpSelection} onChange={(v) => set({ allowIpSelection: v })} label={p.provisioner === "VIRTUALIZOR" ? "Signed-in customers choose their IPv4 (from Virtualizor's free IPs; otherwise Virtualizor assigns one)" : "Signed-in customers choose their IPv4"} />
                 <Toggle checked={p.ipv6Enabled} onChange={(v) => set({ ipv6Enabled: v })} label="IPv6" />
                 <Toggle checked={p.requireHostname} onChange={(v) => set({ requireHostname: v })} label="Require hostname" />
               </div>

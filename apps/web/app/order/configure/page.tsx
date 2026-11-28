@@ -109,16 +109,17 @@ function Configure() {
   }, [locs.data, serverId]);
 
   useEffect(() => {
-    if (!p?.allowIpSelection || !serverId) return;
+    // the IP list is for signed-in customers only
+    if (!p?.allowIpSelection || !serverId || me?.type !== "CLIENT") return;
     setIpsLoading(true);
     const t = setTimeout(() => {
-      api(`/catalog/products/${p.slug}/ips?serverId=${serverId}${search ? `&search=${encodeURIComponent(search)}` : ""}`)
+      api(`/catalog/products/${p.slug}/ips?serverId=${(locs.data?.locations.find((l: any) => l.serverId === serverId)?.serverIds ?? [serverId]).join(",")}${search ? `&search=${encodeURIComponent(search)}` : ""}`)
         .then((r) => setIps(r.ips))
         .catch(() => setIps([]))
         .finally(() => setIpsLoading(false));
     }, 250);
     return () => clearTimeout(t);
-  }, [p?.slug, p?.allowIpSelection, serverId, search]);
+  }, [p?.slug, p?.allowIpSelection, serverId, search, me?.type]);
 
   useEffect(() => {
     if (countdown && countdown.s === 0 && reservation) {
@@ -332,6 +333,18 @@ function Configure() {
 
           {p.allowIpSelection && serverId && (
             <Step n={num("ip")} title="Choose your IPv4 address" sub="Optional — skip it and we'll assign one." action={reservation && countdown && <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700 ring-1 ring-amber-200"><Icon name="timer" className="text-[16px]" />held {countdown.label}</span>}>
+              {me?.type !== "CLIENT" ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f7fbf9] p-4 ring-1 ring-line">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary-dark"><Icon name="lock_person" /></span>
+                    <div><div className="font-bold text-ink">Sign in to choose your IP address</div><div className="text-xs text-mute">Registered customers can pick a specific free IPv4. Or skip this — we'll assign one automatically.</div></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" href={`/client/login?next=${encodeURIComponent(`/order/configure?product=${p.slug}`)}`}>Sign in</Button>
+                    <Button size="sm" variant="outline" href={`/client/register?next=${encodeURIComponent(`/order/configure?product=${p.slug}`)}`}>Create account</Button>
+                  </div>
+                </div>
+              ) : <>
               {reservation ? (
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-primary-soft to-white p-4 ring-1 ring-[#c9f5da]">
                   <div className="flex items-center gap-3">
@@ -357,7 +370,7 @@ function Configure() {
                   })}
                 </div>
               )}
-              {!me && <p className="mt-3 text-xs text-mute">You'll be asked to sign in or create an account to hold an IP.</p>}
+              </>}
             </Step>
           )}
 

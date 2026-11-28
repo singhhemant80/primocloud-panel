@@ -536,3 +536,50 @@ test("order without its service: staff add the service by hand, it takes the inv
   // automated plans start their setup; manual ones are marked delivered
   assert.equal((await prisma.service.findUniqueOrThrow({ where: { id: svc.id } })).status, ["CPANEL", "PROXMOX", "VIRTUALIZOR"].includes(plan.provisioner) ? "PROVISIONING" : "ACTIVE");
 });
+
+test("two masters in one location show once; choosing an IP needs a signed-in customer (Virtualizor plans too)", async () => {
+  const loc = await prisma.location.create({ data: { name: `Noida ${RUN}`, code: `ND${RUN.slice(-3)}`, country: "IN" } });
+  const mk = (name: string) => prisma.server.create({ data: { name, type: "VIRTUALIZOR", hostname: `${name}.invalid`, enabled: true, locationId: loc.id } });
+  const a = await mk(`noida-a-${RUN}`);
+  const b = await mk(`noida-b-${RUN}`);
+  const grp = await prisma.productGroup.create({ data: { name: `QA LOC ${RUN}`, slug: `qa-loc-${RUN}` } });
+  const plan = await prisma.product.create({ data: { groupId: grp.id, name: `Loc VPS ${RUN}`, slug: `qa-loc-${RUN}`, type: "VPS_LINUX", provisioner: "VIRTUALIZOR", allowIpSelection: true, enabled: true, pricing: { create: [{ cycle: "MONTHLY", currency: "INR", price: 39900, enabled: true }] }, servers: { create: [{ serverId: a.id }, { serverId: b.id }] } } });
+  const oct = 30 + (Number.parseInt(RUN.slice(-3), 36) % 200);
+  await prisma.ipAddress.createMany({ data: [
+    { address: `10.77.${oct}.10`, serverId: a.id, status: "AVAILABLE" },
+    { address: `10.77.${oct}.11`, serverId: b.id, status: "AVAILABLE" },
+    { address: `10.77.${oct}.12`, serverId: b.id, status: "AVAILABLE" },
+  ] });
+  try {
+    const guest = new Session();
+    const l = await guest.req("GET", `/api/catalog/products/${plan.slug}/locations`);
+    assert.equal(l.status, 200);
+    assert.equal(l.body.locations.length, 1, "one Noida, not two");
+    assert.equal(l.body.locations[0].freeIps, 3);
+    assert.equal(l.body.locations[0].serverId, b.id, "orders go to the master with the most free IPs");
+    assert.deepEqual(new Set(l.body.locations[0].serverIds), new Set([a.id, b.id]));
+    const all = l.body.locations[0].serverIds.join(",");
+
+    assert.equal((await guest.req("GET", `/api/catalog/products/${plan.slug}/ips?serverId=${all}`)).status, 401, "guests can't list IPs");
+    const cust = new Session();
+    await registerClient(cust, `pickip-${RUN}@t.test`);
+    const ips = await cust.req("GET", `/api/catalog/products/${plan.slug}/ips?serverId=${all}`);
+    assert.equal(ips.status, 200, JSON.stringify(ips.body));
+    assert.equal(ips.body.ips.length, 3, "free IPs of both Noida masters");
+    const pick = ips.body.ips.find((x: any) => x.address === `10.77.${oct}.10`);
+    const r = await cust.req("POST", `/api/catalog/ips/${pick.id}/reserve`, { productId: plan.id });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const os = await prisma.osTemplate.findFirst({ where: { enabled: true } });
+    if (os) await prisma.productOs.create({ data: { productId: plan.id, osTemplateId: os.id } });
+    const order = await cust.req("POST", "/api/catalog/cart/checkout", { items: [{ productId: plan.id, cycle: "MONTHLY", quantity: 1, hostname: `pick-${RUN}.example.com`, osTemplateId: os?.id ?? null, ipId: pick.id, serverId: b.id, config: {}, addonIds: [] }], domains: [], acceptTos: true });
+    assert.equal(order.status, 201, JSON.stringify(order.body));
+    const svc = await prisma.service.findFirstOrThrow({ where: { orderId: order.body.orderId } });
+    assert.equal(svc.serverId, a.id, "the master that owns the chosen IP");
+    assert.equal((svc.config as any).requestedIpId, pick.id);
+  } finally {
+    await prisma.service.deleteMany({ where: { productId: plan.id } });
+    await prisma.ipAddress.deleteMany({ where: { address: { startsWith: `10.77.${oct}.` } } });
+    await prisma.productOs.deleteMany({ where: { productId: plan.id } });
+    await prisma.product.update({ where: { id: plan.id }, data: { enabled: false } });
+  }
+});
