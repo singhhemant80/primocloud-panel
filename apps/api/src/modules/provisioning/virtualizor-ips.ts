@@ -66,7 +66,15 @@ export async function syncVirtualizorIps(server: Server) {
     // stop on a short page — or a page with nothing new (masters that ignore "page" send the same list again)
     if (entries.length < 1000 || fresh === 0) break;
   }
-  const ourVps = new Map((await prisma.service.findMany({ where: { serverId: server.id, remoteId: { not: null } }, select: { id: true, remoteId: true } })).map((s) => [s.remoteId!, s.id]));
+  const LIVE = { notIn: ["TERMINATED", "CANCELLED"] as ("TERMINATED" | "CANCELLED")[] };
+  // live services of this master first (a terminated one may share a reused VPS id)
+  const ourVps = new Map<string, string>();
+  for (const s of await prisma.service.findMany({ where: { serverId: server.id, remoteId: { not: null } }, select: { id: true, remoteId: true, status: true }, orderBy: { createdAt: "asc" } }))
+    if (!ourVps.has(s.remoteId!) || !["TERMINATED", "CANCELLED"].includes(s.status)) ourVps.set(s.remoteId!, s.id);
+  // who holds each IP today, and which VPS that service points at — whatever server entry it's linked to
+  // (WHMCS-imported duplicates like "srv9 … (WHMCS)" point at the same VPS ids): never take an IP away
+  // from a live service that points at the very VPS Virtualizor gives it to
+  const holders = new Map((await prisma.ipAddress.findMany({ where: { serviceId: { not: null }, service: { status: LIVE } }, select: { address: true, serviceId: true, service: { select: { remoteId: true, product: { select: { provisioner: true } } } } } })).map((r) => [r.address, r]));
   let available = 0, used = 0, created = 0, removed = 0;
   const seen = new Set<string>();
   const perService = new Map<string, string[]>();
@@ -77,7 +85,9 @@ export async function syncVirtualizorIps(server: Server) {
     const vpsid = String(ip.vpsid ?? "0");
     const locked = String(ip.locked ?? "0") === "1";
     const subnetId = subnetByPool.get(Number(ip.ippid)) ?? null;
-    const serviceId = vpsid !== "0" ? ourVps.get(vpsid) ?? null : null;
+    const holder = holders.get(address);
+    const keepHolder = vpsid !== "0" && holder?.service?.remoteId === vpsid && holder.service.product.provisioner === "VIRTUALIZOR";
+    const serviceId = vpsid === "0" ? null : keepHolder ? holder!.serviceId : ourVps.get(vpsid) ?? null;
     const status = locked ? "BLOCKED" : vpsid !== "0" ? (serviceId ? "ALLOCATED" : "BLOCKED") : "AVAILABLE";
     const notes = vpsid !== "0" && !serviceId ? `In use by Virtualizor VPS ${vpsid}` : locked ? "Locked in Virtualizor" : serviceId ? "Assigned by Virtualizor" : null;
     if (serviceId) perService.set(serviceId, [...(perService.get(serviceId) ?? []), address]);
@@ -110,9 +120,11 @@ export async function syncVirtualizorIps(server: Server) {
     const hasPrimary = await prisma.ipAddress.count({ where: { serviceId, isPrimary: true } });
     if (!hasPrimary) await prisma.ipAddress.update({ where: { address: addrs.sort()[0] }, data: { isPrimary: true } });
   }
-  // remove what Virtualizor doesn't have (typo'd or hand-added ranges) — only when Virtualizor answered with IPs
-  if (seen.size) {
-    const stale = await prisma.ipAddress.findMany({ where: { version: 4, OR: [{ serverId: server.id }, { subnet: { serverId: server.id } }], address: { notIn: [...seen] } }, select: { id: true } });
+  // remove what Virtualizor doesn't have (typo'd or hand-added ranges) — only when its answer looks complete
+  // (a short or broken list must never wipe IPs), and never an IP a live service holds
+  const known = await prisma.ipAddress.count({ where: { version: 4, OR: [{ serverId: server.id }, { subnet: { serverId: server.id } }] } });
+  if (seen.size && seen.size >= known * 0.8) {
+    const stale = await prisma.ipAddress.findMany({ where: { version: 4, OR: [{ serverId: server.id }, { subnet: { serverId: server.id } }], address: { notIn: [...seen] }, NOT: { service: { status: LIVE } } }, select: { id: true } });
     if (stale.length) {
       await prisma.ipAddress.updateMany({ where: { id: { in: stale.map((x) => x.id) } }, data: { changeSource: "VIRTUALIZOR", changeNote: "No longer in Virtualizor (IP sync)" } });
       removed = (await prisma.ipAddress.deleteMany({ where: { id: { in: stale.map((x) => x.id) } } })).count;

@@ -353,7 +353,7 @@ adminCore.get(
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, profile: { select: { companyName: true } } } },
           invoice: { select: { id: true, status: true, total: true, amountPaid: true, dueDate: true, paidAt: true } },
-          services: { select: { id: true, hostname: true, status: true, billingCycle: true, product: { select: { name: true, type: true, provisioner: true } }, ips: { select: { address: true }, take: 1 } } },
+          services: { select: { id: true, hostname: true, status: true, lastKnownIps: true, billingCycle: true, product: { select: { name: true, type: true, provisioner: true } }, ips: { select: { address: true }, take: 1 } } },
           domains: { select: { id: true, name: true, action: true, status: true } },
         },
       }),

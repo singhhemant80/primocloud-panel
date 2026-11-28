@@ -39,7 +39,7 @@ function Services() {
     if (status && st !== status) return false;
     if (!q.trim()) return true;
     const t = q.trim().toLowerCase();
-    return [s.product.name, s.hostname, ...s.ips.map((i: any) => i.address)].some((x) => String(x ?? "").toLowerCase().includes(t));
+    return [s.product.name, s.hostname, ...s.ips.map((i: any) => i.address), ...(s.lastKnownIps ?? [])].some((x) => String(x ?? "").toLowerCase().includes(t));
   });
 
   return (
@@ -95,7 +95,7 @@ function Services() {
         <div className="overflow-hidden rounded-2xl border border-[#e7f7ef] bg-white shadow-card">
           <ul className="divide-y divide-[#edf9f3]">
             {list.map((s) => {
-              const ip = s.ips.find((i: any) => i.isPrimary)?.address ?? s.ips[0]?.address;
+              const ip = s.ips.find((i: any) => i.isPrimary)?.address ?? s.ips[0]?.address ?? s.lastKnownIps?.[0];
               const kind = kindOf(s);
               return (
                 <li key={s.id}>
@@ -130,7 +130,7 @@ function KindIcon({ kind, os, size = 44 }: { kind: string; os?: any; size?: numb
 }
 
 function ServiceCard({ s, st }: { s: any; st?: { state: string; reason?: string } }) {
-  const ip = s.ips.find((i: any) => i.isPrimary)?.address ?? s.ips[0]?.address;
+  const ip = s.ips.find((i: any) => i.isPrimary)?.address ?? s.ips[0]?.address ?? s.lastKnownIps?.[0];
   const kind = kindOf(s);
   const setup = ["PENDING", "PROVISIONING", "FAILED"].includes(s.status) && kind !== "other";
   const days = s.nextDueDate ? Math.ceil((new Date(s.nextDueDate).getTime() - Date.now()) / 86400_000) : null;

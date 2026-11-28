@@ -28,7 +28,7 @@ export function clientWhere(qRaw: string): Prisma.UserWhereInput {
     { id: q },
     { id: { endsWith: q.toLowerCase() } },
     // anything on their services: IP, hostname, VPS id, cPanel user
-    { services: { some: { OR: [{ hostname: ci(q) }, { remoteId: q }, { username: q }, { ips: { some: { address: { startsWith: q } } } }] } } },
+    { services: { some: { OR: [{ hostname: ci(q) }, { remoteId: q }, { username: q }, { ips: { some: { address: { startsWith: q } } } }, ...(/^[0-9.:a-f]+$/i.test(q) && q.length >= 7 ? [{ lastKnownIps: { has: q } }] : [])] } } },
     { domains: { some: { name: ci(q) } } },
     { contacts: { some: { OR: [{ email: ci(q) }, { firstName: ci(q) }, ...(phone ? [{ phone: { contains: phone } }] : [])] } } },
   ];
@@ -47,7 +47,7 @@ export function serviceWhere(qRaw: string): Prisma.ServiceWhereInput {
       { remoteId: q },
       { username: q },
       { id: q },
-      { ips: { some: { address: { startsWith: q } } } },
+      { ips: { some: { address: { startsWith: q } } } }, ...(/^[0-9.:a-f]+$/i.test(q) && q.length >= 7 ? [{ lastKnownIps: { has: q } }] : []),
       { ips: { some: { rdns: ci(q) } } },
       { product: { name: ci(q) } },
       { order: { number: ci(q) } },
@@ -79,5 +79,5 @@ export function invoiceWhere(qRaw: string): Prisma.InvoiceWhereInput {
 
 export function orderWhere(qRaw: string): Prisma.OrderWhereInput {
   const q = qRaw.trim();
-  return { OR: [{ number: ci(q) }, { id: q }, { ip: { startsWith: q } }, { services: { some: { OR: [{ hostname: ci(q) }, { ips: { some: { address: { startsWith: q } } } }, { remoteId: q }] } } }, { domains: { some: { name: ci(q) } } }, { user: clientWhereLite(q, phoneDigits(q)) }] };
+  return { OR: [{ number: ci(q) }, { id: q }, { ip: { startsWith: q } }, { services: { some: { OR: [{ hostname: ci(q) }, { ips: { some: { address: { startsWith: q } } } }, ...(/^[0-9.:a-f]+$/i.test(q) && q.length >= 7 ? [{ lastKnownIps: { has: q } }] : []), { remoteId: q }] } } }, { domains: { some: { name: ci(q) } } }, { user: clientWhereLite(q, phoneDigits(q)) }] };
 }

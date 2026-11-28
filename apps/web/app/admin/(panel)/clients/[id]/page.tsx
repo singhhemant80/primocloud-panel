@@ -326,7 +326,7 @@ function Records({ tab, setTab, data, services, id, cur }: { tab: string; setTab
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary-dark"><Icon name={planIcon(s.product.type, s.product.provisioner)} className="text-[19px]" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14px] font-bold text-ink">{s.product.name}</span>
-                      <span className="block truncate text-[12px] text-mute">{s.hostname || "—"}{s.ips[0] ? ` · ${s.ips[0].address}` : ""}</span>
+                      <span className="block truncate text-[12px] text-mute">{s.hostname || "—"}{s.ips[0] ? ` · ${s.ips[0].address}` : s.lastKnownIps?.[0] ? ` · ${s.lastKnownIps[0]} (last known)` : ""}</span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1"><Badge status={s.status} /><span className="text-[12px] font-semibold tabular-nums text-slate-600">{money(s.recurringAmount, s.currency)}</span></span>
                   </Link>
@@ -360,7 +360,7 @@ function Records({ tab, setTab, data, services, id, cur }: { tab: string; setTab
                 return (
                   <tr key={s.id} className="hover:bg-[#f6fbf8]">
                     <Td><Link className="flex items-center gap-2.5 font-bold text-ink hover:text-primary-dark" href={`/admin/services/${s.id}`}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary-dark"><Icon name={planIcon(s.product.type, s.product.provisioner)} className="text-[18px]" /></span>{s.product.name}</Link></Td>
-                    <Td><div className="max-w-[240px] truncate font-semibold text-slate-700">{s.hostname || "—"}</div><div className="font-mono text-xs text-mute">{s.ips.map((i: any) => i.address).join(", ")}</div></Td>
+                    <Td><div className="max-w-[240px] truncate font-semibold text-slate-700">{s.hostname || "—"}</div><div className="font-mono text-xs text-mute">{s.ips.length ? s.ips.map((i: any) => i.address).join(", ") : s.lastKnownIps?.length ? `${s.lastKnownIps.join(", ")} (last known)` : ""}</div></Td>
                     <Td><Badge status={s.status} /></Td>
                     <Td className="whitespace-nowrap font-semibold tabular-nums">{money(s.recurringAmount, s.currency)}<div className="text-[11.5px] font-normal text-mute">{(s.billingCycle ?? "").toLowerCase().replace("annual", "yearly")}</div></Td>
                     <Td className={cx("whitespace-nowrap", late ? "font-bold text-rose-600" : "text-slate-600")}>{s.nextDueDate ? date(s.nextDueDate) : "—"}{late && <div className="text-[11px] uppercase">overdue</div>}</Td>

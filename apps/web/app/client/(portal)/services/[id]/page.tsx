@@ -40,7 +40,8 @@ export default function ServicePage() {
   }, [svc?.status, isVps, isHosting, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || !svc) return <Loading />;
-  const ip = svc.ips.find((i: any) => i.isPrimary)?.address ?? svc.ips[0]?.address;
+  // the last known IP when the live one can't be confirmed (sync trouble) — better than showing nothing
+  const ip = svc.ips.find((i: any) => i.isPrimary)?.address ?? svc.ips[0]?.address ?? svc.lastKnownIps?.[0];
   const reseller = svc.product.type === "RESELLER_HOSTING" || live?.reseller;
   const showPassword = () => api(`/client/services/${id}/reveal-password`, { body: {} }).then(setCred).catch((e) => toast.error(e.message));
 

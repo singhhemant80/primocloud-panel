@@ -46,7 +46,7 @@ export default function AdminService() {
   const isHosting = s.product.provisioner === "CPANEL";
   const isColo = s.product.type === "COLOCATION";
   const ended = ["TERMINATED", "CANCELLED"].includes(s.status);
-  const primary = s.ips.find((i: any) => i.isPrimary) ?? s.ips[0];
+  const primary = s.ips.find((i: any) => i.isPrimary) ?? s.ips[0] ?? (s.lastKnownIps?.[0] ? { address: s.lastKnownIps[0], lastKnown: true } : undefined);
   const days = s.nextDueDate ? Math.ceil((new Date(s.nextDueDate).getTime() - Date.now()) / 86400_000) : null;
   const ok = live && !live.error;
   const running = ok && live.state === "running";
@@ -81,7 +81,7 @@ export default function AdminService() {
               </div>
               <div className="mt-1 text-sm text-white/75">{P.name}{P.group?.name ? ` · ${P.group.name}` : ""}{s.reseller ? ` · via reseller ${s.reseller.brandName}` : ""}</div>
               <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] [&>*]:whitespace-nowrap">
-                {primary && <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 font-mono font-semibold ring-1 ring-white/15"><Icon name="lan" className="text-[16px] text-white/70" />{primary.address}<span className="[&_button]:text-white/80"><Copy text={primary.address} /></span></span>}
+                {primary && <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 font-mono font-semibold ring-1 ring-white/15"><Icon name="lan" className="text-[16px] text-white/70" />{primary.address}<span className="[&_button]:text-white/80"><Copy text={primary.address} /></span>{primary.lastKnown && <span className="ml-1 rounded bg-amber-400/90 px-1.5 text-[10px] font-bold uppercase text-amber-950" title="Not confirmed by Virtualizor right now">last known</span>}</span>}
                 <Link href={`/admin/clients/${s.user.id}`} className="inline-flex items-center gap-1.5 font-semibold hover:underline"><Icon name="person" className="text-[16px] text-white/70" />{custName}</Link>
                 {s.order && <Link href={`/admin/orders/${s.order.id}`} className="inline-flex items-center gap-1.5 font-semibold hover:underline"><Icon name="shopping_bag" className="text-[16px] text-white/70" />{s.order.number}</Link>}
                 {s.server && <span className="inline-flex items-center gap-1.5 text-white/80"><Icon name="dns" className="text-[16px] text-white/60" />{s.server.name}{s.nodeName || s.node ? ` · ${s.nodeName ?? s.node}` : ""}{s.remoteId ? ` · #${s.remoteId}` : ""}</span>}
@@ -221,6 +221,11 @@ export default function AdminService() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                ) : s.lastKnownIps?.length ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 font-mono font-semibold text-ink">{s.lastKnownIps.map((a: string) => <span key={a} className="flex items-center gap-1">{a}<Copy text={a} /></span>)}</div>
+                    <p className="mt-1 text-xs text-amber-800">Last known IP{s.lastKnownIps.length > 1 ? "s" : ""} — not confirmed by Virtualizor right now (its sync may be down, or the IP was taken off this service). “Sync from Virtualizor” confirms it; “IP history” shows what changed.</p>
                   </div>
                 ) : <p className="text-sm text-mute">No IP assigned.</p>}
                 {ok && live.ips?.length > 0 && live.ips.join(",") !== s.ips.map((i: any) => i.address).join(",") && <p className="mt-2 text-xs font-semibold text-amber-700">Virtualizor shows {live.ips.join(", ")} — click “Sync from Virtualizor” to update this one, or <span className="inline-block align-middle"><VirtualizorSyncAll label="sync all services" variant="outline" /></span>.</p>}
@@ -518,7 +523,7 @@ function ColoCard({ s, onSaved }: { s: any; onSaved: () => void }) {
       setBusy(false);
     }
   }
-  const primary = s.ips.find((i: any) => i.isPrimary) ?? s.ips[0];
+  const primary = s.ips.find((i: any) => i.isPrimary) ?? s.ips[0] ?? (s.lastKnownIps?.[0] ? { address: s.lastKnownIps[0], lastKnown: true } : undefined);
   return (
     <Card title="Colocation details">
       <div className="grid gap-x-8 md:grid-cols-2">

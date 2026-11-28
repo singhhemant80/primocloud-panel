@@ -753,6 +753,9 @@ model Service {
   suspendReason    String?
   /// when it was suspended — set and cleared by a database trigger whenever the status goes to / from SUSPENDED
   suspendedAt      DateTime?
+  /// the IPs the service last had (primary first) — kept by the IP history trigger and NOT cleared when IPs
+  /// are taken off it, so the address still shows (and is searchable) when Virtualizor can't be synced
+  lastKnownIps     String[]  @default([])
   overrideAutoSuspend Boolean    @default(false)
   resellerId       String? // created by a reseller for their customer
   reseller         Reseller?     @relation(fields: [resellerId], references: [id])
