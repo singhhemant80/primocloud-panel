@@ -3,11 +3,17 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Alert, Button, Card, Field, Input, Loading, PageHeader, Textarea, Toggle, cx, toast, useApi } from "@/components/ui";
 
+/** clearer names than the setting keys */
+const LABELS: Record<string, string> = {
+  customersChooseIp: "Customers choose IP (signed-in customers pick their IPv4 at checkout)",
+  ipReservationMinutes: "Minutes a chosen IP is held while paying",
+};
+
 const SECTIONS: Record<string, { title: string; hint?: string }> = {
   company: { title: "Company", hint: "Printed on every invoice. State code decides CGST+SGST vs IGST." },
   tax: { title: "GST", hint: "18% is standard for hosting (SAC 998315). Exports are zero-rated unless 'applyToForeign' is on." },
   invoice: { title: "Invoices", hint: "{FY} is replaced with the Indian financial year, e.g. 2026-27." },
-  orders: { title: "Orders" },
+  orders: { title: "Orders", hint: "“Customers choose IP”: when on, signed-in customers can pick a free IPv4 at checkout (on plans that allow it). Turn it off any time — everyone then gets an IP assigned automatically." },
   support: { title: "Support" },
   affiliates: { title: "Affiliates", hint: "Amounts in paise." },
 };
@@ -29,7 +35,7 @@ export default function Settings() {
         {SECTIONS[tab].hint && <Alert className="mb-4">{SECTIONS[tab].hint}</Alert>}
         <div className="grid gap-4 sm:grid-cols-2">
           {Object.entries(sec).map(([k, val]) => (
-            <Field key={k} label={k.replace(/([A-Z])/g, " $1").toLowerCase()} className={typeof val === "string" && (val.length > 60 || k === "bankDetails" || k === "footerNote") ? "sm:col-span-2" : ""}>
+            <Field key={k} label={LABELS[k] ?? k.replace(/([A-Z])/g, " $1").toLowerCase()} className={typeof val === "string" && (val.length > 60 || k === "bankDetails" || k === "footerNote") ? "sm:col-span-2" : ""}>
               {typeof val === "boolean" ? <Toggle checked={val} onChange={(x) => set(k, x)} />
                 : Array.isArray(val) ? <Input value={val.join(", ")} onChange={(e) => set(k, e.target.value.split(",").map((x) => Number(x.trim())).filter((x) => !Number.isNaN(x)))} />
                 : typeof val === "number" ? <Input type="number" value={val} onChange={(e) => set(k, Number(e.target.value))} />

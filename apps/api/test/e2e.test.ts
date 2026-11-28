@@ -169,6 +169,8 @@ test("IP allocation: concurrent provisioning never hands out the same address tw
 });
 
 test("full order flow: register → pick IP → checkout with GST + promo → signed webhook → provision → renew → suspend", async () => {
+  // customers choosing their IP is switched on in Settings → Orders for this flow
+  await (await import("../src/lib/settings")).updateSettings("orders", { customersChooseIp: true } as never);
   // configure Razorpay with test secrets
   const webhookSecret = "whsec_test_" + RUN;
   await prisma.paymentGateway.update({ where: { code: "razorpay" }, data: { enabled: true, configEnc: encryptJson({ keyId: "rzp_test", keySecret: "sk_test", webhookSecret }) } });
@@ -563,6 +565,13 @@ test("two masters in one location show once; choosing an IP needs a signed-in cu
     assert.equal((await guest.req("GET", `/api/catalog/products/${plan.slug}/ips?serverId=${all}`)).status, 401, "guests can't list IPs");
     const cust = new Session();
     await registerClient(cust, `pickip-${RUN}@t.test`);
+    // main switch (Settings → Orders) off: no IP choice anywhere, even signed in
+    const { updateSettings } = await import("../src/lib/settings");
+    await updateSettings("orders", { customersChooseIp: false } as never);
+    assert.equal((await cust.req("GET", `/api/catalog/products/${plan.slug}`)).body.product.allowIpSelection, false);
+    assert.equal((await cust.req("GET", `/api/catalog/products/${plan.slug}/ips?serverId=${all}`)).status, 400);
+    await updateSettings("orders", { customersChooseIp: true } as never);
+    assert.equal((await cust.req("GET", `/api/catalog/products/${plan.slug}`)).body.product.allowIpSelection, true);
     const ips = await cust.req("GET", `/api/catalog/products/${plan.slug}/ips?serverId=${all}`);
     assert.equal(ips.status, 200, JSON.stringify(ips.body));
     assert.equal(ips.body.ips.length, 3, "free IPs of both Noida masters");
@@ -577,6 +586,7 @@ test("two masters in one location show once; choosing an IP needs a signed-in cu
     assert.equal(svc.serverId, a.id, "the master that owns the chosen IP");
     assert.equal((svc.config as any).requestedIpId, pick.id);
   } finally {
+    await (await import("../src/lib/settings")).updateSettings("orders", { customersChooseIp: false } as never);
     await prisma.service.deleteMany({ where: { productId: plan.id } });
     await prisma.ipAddress.deleteMany({ where: { address: { startsWith: `10.77.${oct}.` } } });
     await prisma.productOs.deleteMany({ where: { productId: plan.id } });

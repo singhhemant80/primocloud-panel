@@ -1,3 +1,4 @@
+import { getSettings } from "../../lib/settings";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../db";
@@ -181,7 +182,9 @@ catalogRouter.get(
   ah(async (req, res) => {
     const p = await findProduct(req.params.key);
     if (!p) throw notFound("Product not found");
-    res.json({ product: publicProduct(p, await resolvers()) });
+    const product = publicProduct(p, await resolvers())!;
+    // IP choice is offered only while the main switch (Settings → Orders) is on
+    res.json({ product: { ...product, allowIpSelection: product.allowIpSelection && (await getSettings()).orders.customersChooseIp } });
   }),
 );
 
@@ -220,7 +223,7 @@ catalogRouter.get(
     const q = parse(z.object({ serverId: z.string().max(2000).optional(), search: z.string().max(40).optional() }), req.query);
     const p = await prisma.product.findFirst({ where: { enabled: true, OR: [{ id: req.params.key }, { slug: req.params.key }] }, include: { servers: true } });
     if (!p) throw notFound("Product not found");
-    if (!p.allowIpSelection) throw badRequest("This plan assigns IPs automatically");
+    if (!p.allowIpSelection || !(await getSettings()).orders.customersChooseIp) throw badRequest("This plan assigns IPs automatically");
     const allowed = p.servers.map((s) => s.serverId);
     // one server, or every server of a location ("a,b")
     const wanted = q.serverId ? q.serverId.split(",").filter(Boolean) : [];
@@ -236,7 +239,7 @@ catalogRouter.post(
   ah(async (req, res) => {
     const { productId } = parse(z.object({ productId: z.string() }), req.body);
     const p = await prisma.product.findFirst({ where: { OR: [{ id: productId }, { slug: productId }], enabled: true }, include: { servers: true } });
-    if (!p || !p.allowIpSelection) throw badRequest("This plan does not support IP selection");
+    if (!p || !p.allowIpSelection || !(await getSettings()).orders.customersChooseIp) throw badRequest("This plan does not support IP selection");
     const ip = await reserveIp({ ipId: req.params.ipId, userId: req.user!.id, serverIds: p.servers.map((s) => s.serverId) });
     res.json({ reservation: { ipId: ip.id, address: ip.address, serverId: ip.serverId, expiresAt: ip.reservedUntil } });
   }),

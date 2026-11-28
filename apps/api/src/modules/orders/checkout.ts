@@ -1,3 +1,4 @@
+import { getSettings } from "../../lib/settings";
 import { prisma, type InvoiceItemType } from "../../db";
 import { badRequest, conflict } from "../../lib/http";
 import { nextSequence } from "../../lib/sequence";
@@ -49,7 +50,7 @@ export async function checkout(args: { userId: string; cart: Cart; ip?: string; 
           const max = coloSpecs(p.moduleConfig).rackUnits;
           if (max && item.equipment.units > max) throw badRequest(`${p.name} includes ${max}U of rack space — your equipment is ${item.equipment.units}U. Choose a bigger plan or contact sales.`);
         }
-        if (item.ipId && !p.allowIpSelection) throw badRequest(`${p.name} does not support choosing an IP address — one is assigned automatically`);
+        if (item.ipId && (!p.allowIpSelection || !(await getSettings(tx)).orders.customersChooseIp)) throw badRequest(`${p.name} does not support choosing an IP address — one is assigned automatically`);
         if (item.ipId && item.quantity > 1) throw badRequest("A selected IP can only be used for a single server");
         if (isHostingProduct(p)) {
           // hosting is ordered for a domain (WHMCS: "Choose a domain")

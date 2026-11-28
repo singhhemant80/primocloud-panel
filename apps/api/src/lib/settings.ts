@@ -104,6 +104,8 @@ export const DEFAULT_SETTINGS = {
     historyDays: 180,
   },
   orders: {
+    /** main switch: customers (signed in) may choose their IPv4 at checkout — on plans that allow it too */
+    customersChooseIp: false,
     ipReservationMinutes: 15,
     requireEmailVerification: false,
     allowGuestCart: true,
