@@ -76,7 +76,7 @@ const MAX_CONNECTIONS = Math.max(1, Number(process.env.VIRTUALIZOR_MAX_CONNECTIO
  */
 const totalRps = () => Math.max(0.2, Number(process.env.VIRTUALIZOR_TOTAL_RPS) || 1);
 const pauseSeconds = () => Math.max(10, Number(process.env.VIRTUALIZOR_PAUSE_S) || 90);
-type MiniRedis = { incr(k: string): Promise<number>; pexpire(k: string, ms: number): Promise<number>; set(k: string, v: string, mode: "EX", s: number): Promise<unknown>; ttl(k: string): Promise<number>; del(k: string): Promise<number> };
+type MiniRedis = { eval(script: string, keys: number, ...args: string[]): Promise<unknown>; incr(k: string): Promise<number>; pexpire(k: string, ms: number): Promise<number>; set(k: string, v: string, mode: "EX", s: number): Promise<unknown>; ttl(k: string): Promise<number>; del(k: string): Promise<number> };
 let redisP: Promise<MiniRedis | null> | null = null;
 function vzRedis(): Promise<MiniRedis | null> {
   if (process.env.VIRTUALIZOR_SHARED_LIMIT === "0") return Promise.resolve(null);
@@ -86,26 +86,27 @@ function vzRedis(): Promise<MiniRedis | null> {
   return redisP;
 }
 const nap = (ms: number) => new Promise((r) => setTimeout(r, ms));
-/** Wait for a slot in the panel-wide limit for this master. */
+/**
+ * Wait for this call's turn in the panel-wide limit for this master. Every call — from any panel process —
+ * books the next free moment (one step = 1/rate seconds) in Redis and waits for it, so calls go out evenly
+ * spaced: never a burst, however many are waiting.
+ */
+const BOOK_TURN = `local nxt = tonumber(redis.call('GET', KEYS[1]) or '0')
+local now = tonumber(ARGV[1])
+if nxt < now then nxt = now end
+redis.call('SET', KEYS[1], tostring(nxt + tonumber(ARGV[2])), 'PX', math.ceil(nxt + tonumber(ARGV[2]) - now) + 60000)
+return tostring(nxt - now)`;
 async function sharedSlot(master: string, urgent: boolean) {
   const r = await vzRedis();
   if (!r) return;
-  const rps = urgent ? 1 : totalRps();
-  const win = Math.max(1000, Math.round(1000 / rps));
-  const allowance = Math.max(1, Math.round((rps * win) / 1000));
-  for (let i = 0; i < 1200; i++) {
-    const slot = Math.floor(Date.now() / win);
-    const k = `vz:rate:${master}:${urgent ? "u" : "b"}:${slot}`;
-    let n: number;
-    try {
-      n = await r.incr(k);
-      if (n === 1) await r.pexpire(k, win * 3);
-    } catch {
-      return; // Redis trouble: the local pacer still applies
-    }
-    if (n <= allowance) return;
-    await nap((slot + 1) * win - Date.now() + Math.floor(Math.random() * 120));
+  const step = Math.round(1000 / (urgent ? 1 : totalRps()));
+  let wait: number;
+  try {
+    wait = Number(await r.eval(BOOK_TURN, 1, `vz:turn:${master}:${urgent ? "u" : "b"}`, String(Date.now()), String(step)));
+  } catch {
+    return; // Redis trouble: the local pacer still applies
   }
+  if (wait > 0) await nap(wait);
 }
 /** Seconds left of a back-off pause for this master (0 = not paused). */
 export async function virtualizorPausedFor(master: string) {

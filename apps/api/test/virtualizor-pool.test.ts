@@ -150,10 +150,9 @@ test("panel-wide limit: all clients together send about 1 call a second to a mas
     const took = Date.now() - t0;
     assert.equal(hits, 12);
     assert.ok(took >= 900, `12 calls at 4/s can't all go at once (took ${took} ms)`);
-    // never more than 4 reach the master in any one-second window
-    const perSecond = new Map<number, number>();
-    for (const t of at) perSecond.set(Math.floor(t / 1000), (perSecond.get(Math.floor(t / 1000)) ?? 0) + 1);
-    assert.ok(Math.max(...perSecond.values()) <= 4, JSON.stringify([...perSecond.values()]));
+    // evenly spaced: no two calls closer than ~a quarter second (4/s), so no burst at window edges
+    const gaps = at.slice(1).map((t, i) => t - at[i]);
+    assert.ok(Math.min(...gaps) >= 200, `gaps ${JSON.stringify(gaps)}`);
   } finally {
     process.env.VIRTUALIZOR_SHARED_LIMIT = "0";
     delete process.env.VIRTUALIZOR_TOTAL_RPS;
